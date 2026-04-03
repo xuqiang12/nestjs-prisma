@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -9,17 +9,31 @@ import type {
   NestConfig,
   SwaggerConfig,
 } from './common/configs/config.interface';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { AllExceptionFilter } from './common/filters/all-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Validation
-  app.useGlobalPipes(new ValidationPipe());
+  // Validation Pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      // 👇 关键！校验失败就立刻停止，不继续检查后面
+      stopAtFirstError: true,
+      whitelist: true,
+      exceptionFactory: (errors) => {
+        // 取第一个错误的第一条消息
+        const firstError = errors[0];
+        const firstMessage = Object.values(firstError.constraints)[0];
+        return new BadRequestException(firstMessage);
+      },
+    }),
+  );
 
-  // enable shutdown hook
+  // 开启服务关闭钩子
   app.enableShutdownHooks();
 
-  // Prisma Client Exception Filter for unhandled exceptions
+  //  数据库异常全局捕获
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
 
@@ -27,8 +41,7 @@ async function bootstrap() {
   const nestConfig = configService.get<NestConfig>('nest');
   const corsConfig = configService.get<CorsConfig>('cors');
   const swaggerConfig = configService.get<SwaggerConfig>('swagger');
-
-  // Swagger Api
+  // 自动生成接口文档 Swagger Api
   if (swaggerConfig.enabled) {
     const options = new DocumentBuilder()
       .setTitle(swaggerConfig.title || 'Nestjs')
@@ -40,11 +53,13 @@ async function bootstrap() {
     SwaggerModule.setup(swaggerConfig.path || 'api', app, document);
   }
 
-  // Cors
+  // 开启跨域（CORS）
   if (corsConfig.enabled) {
     app.enableCors();
   }
-
+  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalFilters(new AllExceptionFilter());
+  // 启动服务，监听端口
   await app.listen(process.env.PORT || nestConfig.port || 3000);
 }
 bootstrap();

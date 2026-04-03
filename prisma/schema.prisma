@@ -1,5 +1,5 @@
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -14,28 +14,13 @@ generator dbml {
 
 model User {
   id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  username  String   @unique
   email     String   @unique
+  phone     String
   password  String
-  firstname String?
-  lastname  String?
-  posts     Post[]
-  role      Role
-}
-
-model Post {
-  id        String   @id @default(cuid())
+  role      String
+  avatar    String 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  published Boolean
-  title     String
-  content   String?
-  author    User?    @relation(fields: [authorId], references: [id])
-  authorId  String?
 }
 
-enum Role {
-  ADMIN
-  USER
-}

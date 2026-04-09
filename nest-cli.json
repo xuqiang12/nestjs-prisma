@@ -8,5 +8,7 @@
     "typeCheck": true,
     "plugins": ["@nestjs/swagger/plugin", "@nestjs/graphql/plugin"]
   },
-  "spec": false 
+  "generateOptions": {
+    "spec": false
+  }
 }

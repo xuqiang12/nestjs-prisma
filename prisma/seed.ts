@@ -1,58 +1,89 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.user.deleteMany();
-  await prisma.post.deleteMany();
+  console.log('🚀 开始初始化数据...');
 
-  console.log('Seeding...');
-
-  const user1 = await prisma.user.create({
-    data: {
-      email: 'lisa@simpson.com',
-      firstname: 'Lisa',
-      lastname: 'Simpson',
-      password: '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6xNekdHgTGmrpHEfIoxm', // secret42
-      role: 'USER',
-      posts: {
-        create: {
-          title: 'Join us for Prisma Day 2019 in Berlin',
-          content: 'https://www.prisma.io/day/',
-          published: true,
-        },
-      },
+  // =========================
+  // 1️⃣ 创建权限（可选，先给一个 Administrator）
+  // =========================
+  const adminPermission = await prisma.permission.upsert({
+    where: { code: 'Administrator' },
+    update: {},
+    create: {
+      code: 'Administrator',
+      name: '超级管理员权限',
     },
   });
-  const user2 = await prisma.user.create({
-    data: {
-      email: 'bart@simpson.com',
-      firstname: 'Bart',
-      lastname: 'Simpson',
-      role: 'ADMIN',
-      password: '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6xNekdHgTGmrpHEfIoxm', // secret42
-      posts: {
+
+  // =========================
+  // 2️⃣ 创建角色（超级管理员）
+  // =========================
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'Administrator' },
+    update: {},
+    create: {
+      name: 'Administrator',
+      Permissions: {
         create: [
           {
-            title: 'Subscribe to GraphQL Weekly for community news',
-            content: 'https://graphqlweekly.com/',
-            published: true,
-          },
-          {
-            title: 'Follow Prisma on Twitter',
-            content: 'https://twitter.com/prisma',
-            published: false,
+            permission: {
+              connect: { id: adminPermission.id },
+            },
           },
         ],
       },
     },
   });
 
-  console.log({ user1, user2 });
+  // =========================
+  // 3️⃣ 加密密码
+  // =========================
+  const hashedPassword = await bcrypt.hash('xq19980212521', 10);
+
+  // =========================
+  // 4️⃣ 创建用户（小徐）
+  // =========================
+  const user = await prisma.user.upsert({
+    where: { email: '208418289@qq.com' },
+    update: {},
+    create: {
+      username: '小徐',
+      email: '208418289@qq.com',
+      phone: '18567526786',
+      password: hashedPassword,
+      avatar: 'https://example.com/avatar.jpg',
+
+      // 👇 关键：绑定角色
+      role: {
+        create: [
+          {
+            role: {
+              connect: { id: adminRole.id },
+            },
+          },
+        ],
+      },
+    },
+    include: {
+      role: {
+        include: {
+          role: true,
+        },
+      },
+    },
+  });
+
+  console.log('✅ 超级管理员创建成功：');
+  console.log(user);
 }
 
 main()
-  .catch((e) => console.error(e))
+  .catch((e) => {
+    console.error('❌ 初始化失败:', e);
+  })
   .finally(async () => {
     await prisma.$disconnect();
   });

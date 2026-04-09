@@ -1,39 +1,32 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from 'nestjs-prisma';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
+  // 注册
   async register(dto: RegisterDto) {
-    const { username, password, email, phone, role, avatar } = dto;
+    const { email } = dto;
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [{ username }, { email }],
+        OR: [{ email }],
       },
     });
+
     if (user) {
-      throw new BadRequestException('用户名或邮箱已存在');
+      throw new BadRequestException('邮箱已存在');
     }
+    // 密码加密
+    // 2. 密码加密（核心）
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(dto.password, saltRounds);
+    dto.password = hashedPassword;
+    const { role, ...rest } = dto;
     const newUser = await this.prisma.user.create({
-      data: dto,
+      data: rest,
     });
-    return newUser;
-  }
-
-  findAll() {
-    return `This action returns all user`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
-  }
-
-  update(id: number, updateUserDto: RegisterDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+    return '注册成功';
   }
 }

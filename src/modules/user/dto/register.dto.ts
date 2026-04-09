@@ -26,10 +26,10 @@ export class RegisterDto {
   avatar: string;
 }
 // {
-//   username: 'admin',
-//   password: '123456',
-//   email: 'admin@example.com',
-//   phone: '13800000000',
-//   role: 'admin',
-//   avatar: 'https://example.com/avatar.jpg',
+//   "username": "小徐",
+//   "password": "xq19980212521",
+//   "email": "208418289@qq.com",
+//   "phone": "18567526786",
+//   "role": "admin",
+//   "avatar": "https://example.com/avatar.jpg"
 // }

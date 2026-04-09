@@ -5,22 +5,88 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  // previewFeatures = []
 }
 
 generator dbml {
   provider = "prisma-dbml-generator"
 }
 
+// 用户表
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  email     String   @unique
-  phone     String
-  password  String
-  role      String
-  avatar    String 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        Int        @id @default(autoincrement()) // 用户ID
+  username  String     @unique // 用户名（唯一）
+  email     String     @unique // 邮箱（唯一）
+  phone     String // 手机号
+  password  String // 密码
+  role      UserRole[] // 关联角色
+  avatar    String // 头像
+  createdAt DateTime   @default(now()) // 创建时间
+  updatedAt DateTime   @updatedAt // 更新时间
 }
 
+// 角色表
+model Role {
+  id          Int              @id @default(autoincrement()) // 角色ID
+  name        String           @unique // 角色名：admin/common
+  users       UserRole[] // 关联用户
+  Permissions RolePermission[] // 关联权限
+}
+
+// 权限表（按钮/操作权限）
+model Permission {
+  id          Int              @id @default(autoincrement()) // 权限ID
+  code        String           @unique // 权限码：system:user:add
+  name        String // 权限名称：新增用户
+  roles       RolePermission[] // 关联角色
+  menuButtons MenuButton[]
+}
+
+// 用户 ↔ 角色 关联表
+model UserRole {
+  userId Int // 用户ID
+  roleId Int // 角色ID
+  user   User @relation(fields: [userId], references: [id])
+  role   Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId]) // 联合主键
+}
+
+// 角色 ↔ 权限 关联表
+model RolePermission {
+  roleId       Int // 角色ID
+  permissionId Int // 权限ID
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId]) // 联合主键
+}
+
+// ==============================
+// 菜单/页面表（你要的核心结构）
+// ==============================
+model Menu {
+  id        Int          @id @default(autoincrement()) // 菜单ID
+  parentId  Int?         @default(0) // 父菜单ID，0=顶级目录
+  name      String // 菜单/页面名称：用户管理
+  path      String? // 前端路由：/system/user
+  component String? // 前端组件路径
+  icon      String? // 菜单图标
+  sort      Int?         @default(0) // 排序
+  type      Int          @default(2) // 1=目录  2=页面
+  buttons   MenuButton[] // 一个页面 → 多个按钮
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+// 菜单按钮表（页面 ↔ 按钮关联）
+model MenuButton {
+  id           Int        @id @default(autoincrement()) // 按钮ID
+  menuId       Int // 所属页面ID
+  menu         Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  permissionId Int // 关联权限表
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  name         String? // 按钮名称：新增/编辑/删除
+  sort         Int?       @default(0) // 排序
+
+  @@unique([menuId, permissionId]) // 一个页面下的权限唯一
+}

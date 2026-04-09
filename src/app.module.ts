@@ -1,11 +1,18 @@
 import { Logger, Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule, loggingMiddleware } from 'nestjs-prisma';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './modules/user/user.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { AuthModule } from './modules/auth/auth.module';
 import config from './common/configs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard.ts';
+import { PermissionsGuard } from './common/guards/permissions.guard';
+import { JwtModule } from '@nestjs/jwt';
+import { MenuModule } from './modules/menu/menu.module';
 
 @Module({
   imports: [
@@ -24,8 +31,29 @@ import config from './common/configs/config';
     }),
     UserModule,
     ChatModule,
+    AuthModule,
+    // JwtModule.register({
+    //   secret: 'YOUR_SECRET_KEY_2025', // 密钥
+    //   signOptions: { expiresIn: '7d' }, // 7天过期
+    // }),
+    JwtModule.registerAsync({
+      useFactory: (config: ConfigService) => ({
+        secret: 'YOUR_SECRET_KEY_2025',
+        signOptions: {
+          expiresIn: '7d',
+        },
+      }),
+      inject: [ConfigService],
+      global: true, // 👈 关键！全局可用！
+    }),
+    MenuModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
+  ],
 })
 export class AppModule {}

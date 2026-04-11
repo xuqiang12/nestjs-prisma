@@ -20,6 +20,11 @@ export class MenuController {
   createMenu(@Body() createMenuDto: CreateMenuDto) {
     return this.menuService.createMenu(createMenuDto);
   }
+  @Public()
+  @Get("list")
+  getMenuList() {
+    return this.menuService.getMenuList();
+  }
 
   // 新增按钮
   @Public()

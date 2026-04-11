@@ -13,6 +13,11 @@ export class MenuService {
       });
     return '菜单新增成功';
   }
+  // 获取菜单列表
+  async getMenuList() {
+    return await this.prisma.menu.findMany();
+  }
+
 
 
   // 新增按钮
@@ -29,7 +34,7 @@ export class MenuService {
       });
     }
     // 3. 防重复
-    const exist = await this.prisma.button.findUnique({
+    const exist = await this.prisma.menuButton.findUnique({
       where: {
         menuId_permissionId: { menuId, permissionId: permission.id }
       }

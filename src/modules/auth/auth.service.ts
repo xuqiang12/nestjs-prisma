@@ -3,10 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'nestjs-prisma';
 import { LoginDto } from './dto/auth-login.dto';
+import { buildMenus, buildPermissions } from './auth.transformer';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwtService: JwtService) {}
+  constructor(private prisma: PrismaService, private jwtService: JwtService) { }
 
   async login(dto: LoginDto) {
     const { email, password } = dto;
@@ -42,22 +43,54 @@ export class AuthService {
     );
     // 4. 生成Token
     const token = this.jwtService.sign({
-      sub: user.id,
+      userId: user.id,
       username: user.username,
       email: user.email,
       roles,
       permissions,
     });
 
+    return { token };
+  }
+  async userInfo(token: string) {
+    const { userId } = this.jwtService.verify(token);
+    console.log(userId);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        role: {
+          include: {
+            role: {
+              include: {
+                Permissions: {
+                  include: {
+                    permission: {
+                      include: {
+                        menuButtons: {
+                          include: {
+                            menu: true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    console.log(user);
+    // return user;
     return {
-      token,
-      user: {
+      userInfo: {
         id: user.id,
         username: user.username,
-        email: user.email,
-        roles,
-        permissions,
+        avatar: user.avatar
       },
+      permissions: buildPermissions(user),
+      menus: buildMenus(user)
     };
   }
 }

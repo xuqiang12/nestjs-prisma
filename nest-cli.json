@@ -6,7 +6,7 @@
     "deleteOutDir": true,
     "builder": "swc",
     "typeCheck": true,
-    "plugins": ["@nestjs/swagger/plugin", "@nestjs/graphql/plugin"]
+    "plugins": ["@nestjs/swagger/plugin"]
   },
   "generateOptions": {
     "spec": false

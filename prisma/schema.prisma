@@ -7,10 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-generator dbml {
-  provider = "prisma-dbml-generator"
-}
-
 // 用户表
 model User {
   id        Int        @id @default(autoincrement()) // 用户ID

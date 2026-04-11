@@ -9,7 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import config from './common/configs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { RolesGuard } from './common/guards/roles.guard.ts';
+import { RolesGuard } from './common/guards/roles.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { JwtModule } from '@nestjs/jwt';
 import { MenuModule } from './modules/menu/menu.module';

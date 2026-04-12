@@ -7,7 +7,7 @@ import { buildMenus, buildPermissions } from './auth.transformer';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwtService: JwtService) { }
+  constructor(private prisma: PrismaService, private jwtService: JwtService) {}
 
   async login(dto: LoginDto) {
     const { email, password } = dto;
@@ -68,28 +68,27 @@ export class AuthService {
                       include: {
                         menuButtons: {
                           include: {
-                            menu: true
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                            menu: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
-    // return user;
     return {
       userInfo: {
         id: user.id,
         username: user.username,
-        avatar: user.avatar
+        avatar: user.avatar,
       },
       permissions: buildPermissions(user),
-      menus: buildMenus(user)
+      menus: buildMenus(user),
     };
   }
 }

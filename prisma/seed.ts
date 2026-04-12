@@ -76,8 +76,48 @@ async function main() {
     },
   });
 
-  console.log('✅ 超级管理员创建成功：');
-  console.log(user);
+  // ==================================================
+  // ✅ 新增：这里插入你要的【系统管理】菜单数据
+  // ==================================================
+  const systemMenu = await prisma.menu.upsert({
+    where: { id: 1 }, // 因为 parentId=0 是第一条，id=1
+    update: {},
+    create: {
+      parentId: 0,
+      name: '系统管理',
+      path: '/system',
+      component: 'Layout',
+      icon: 'Setting',
+      sort: 1,
+      type: 1,
+    },
+  });
+
+  console.log('✅ 菜单【系统管理】创建成功：');
+  console.log(systemMenu);
+
+  // ==================================================
+  // ✅ 新增：这里插入你要的【菜单按钮：新增】
+  // ==================================================
+  const addButton = await prisma.menuButton.upsert({
+    where: {
+      // 联合唯一索引：menuId + permissionId
+      menuId_permissionId: {
+        menuId: 1,
+        permissionId: 1,
+      },
+    },
+    update: {},
+    create: {
+      menuId: 1, // 对应上面创建的系统管理菜单
+      permissionId: 1, // 对应最开始创建的超级管理员权限
+      name: '新增',
+      sort: 1,
+    },
+  });
+
+  console.log('✅ 菜单按钮【新增】创建成功：');
+  console.log(addButton);
 }
 
 main()

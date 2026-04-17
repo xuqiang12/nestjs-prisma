@@ -1,6 +1,6 @@
 import { IsInt, IsOptional, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-export class CreateMenuDto {
+import { ApiProperty, PartialType } from '@nestjs/swagger';
+export class CreateDto {
   @ApiProperty({ description: '父菜单ID，0=顶级', default: 0 })
   @IsInt()
   @IsOptional()
@@ -33,4 +33,9 @@ export class CreateMenuDto {
   @ApiProperty({ description: '类型 1=目录 2=页面', default: 2 })
   @IsInt()
   type: number;
+}
+export class UpdateDto extends PartialType(CreateDto) {
+  @ApiProperty({ description: 'ID 必填' })
+  @IsInt()
+  id: number; // 修改必须传 id
 }

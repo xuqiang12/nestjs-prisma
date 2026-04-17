@@ -8,28 +8,52 @@ import {
   Delete,
 } from '@nestjs/common';
 import { MenuService } from './menu.service';
-import { CreateMenuDto } from './dto/menu.dto';
+import { CreateDto, UpdateDto } from './dto/menu.dto';
 import { CreateBtbDto } from './dto/button.dto';
 import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('menu')
 export class MenuController {
-  constructor(private readonly menuService: MenuService) { }
-  @Public()
-  @Post("create")
-  createMenu(@Body() createMenuDto: CreateMenuDto) {
-    return this.menuService.createMenu(createMenuDto);
-  }
-  @Public()
-  @Get("list")
+  constructor(private readonly menuService: MenuService) {}
+
+  // 获取菜单列表
+  @Get('list')
   getMenuList() {
     return this.menuService.getMenuList();
   }
-
+  // 新增菜单
+  @Post('create')
+  createMenu(@Body() createMenuDto: CreateDto) {
+    return this.menuService.createMenu(createMenuDto);
+  }
+  // 修改菜单
+  @Patch('update')
+  updateMenu(@Body() menu: UpdateDto) {
+    return this.menuService.updateMenu(menu);
+  }
+  // 删除菜单
+  @Delete('delete')
+  deleteMenu(@Body() menu: any) {
+    return this.menuService.deleteMenu(menu);
+  }
+  // 获取按钮列表
+  @Get('button/list')
+  getButtonList() {
+    return this.menuService.getButtonList();
+  }
   // 新增按钮
-  @Public()
-  @Post("button/create")
+  @Post('button/create')
   createButton(@Body() createButtonDto: CreateBtbDto) {
     return this.menuService.createButton(createButtonDto);
+  }
+  // 修改按钮
+  @Patch('button/update')
+  updateButton(@Body() button: any) {
+    return this.menuService.updateButton(button);
+  }
+  // 删除按钮
+  @Delete('button/delete')
+  deleteButton(@Body() button: any) {
+    return this.menuService.deleteButton(button);
   }
 }

@@ -21,6 +21,8 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles) return true;
 
     const { user } = context.switchToHttp().getRequest();
+    // 👉 如果是管理员，直接放行
+    if (user.isAdmin) return true;
     const hasRole = user.roles.some((role) =>
       requiredRoles.includes(role.name),
     );

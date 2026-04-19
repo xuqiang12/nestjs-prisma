@@ -36,6 +36,11 @@ export class MenuController {
   deleteMenu(@Body() menu: any) {
     return this.menuService.deleteMenu(menu);
   }
+  // 获取菜单树
+  @Get('tree')
+  getMenuTree() {
+    return this.menuService.getMenuTree();
+  }
   // 获取按钮列表
   @Get('button/list')
   getButtonList() {

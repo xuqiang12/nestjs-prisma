@@ -1,25 +1,31 @@
 module.exports = {
+  root: true,
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: 'tsconfig.json',
-    tsconfigRootDir: __dirname,
-    sourceType: 'module',
+    ecmaVersion: 2020,
+    sourceType: 'module'
   },
-  plugins: ['@typescript-eslint/eslint-plugin'],
-  extends: [
-    'plugin:@typescript-eslint/recommended',
-    'plugin:prettier/recommended',
-  ],
-  root: true,
   env: {
     node: true,
-    jest: true,
+    browser: true,
+    es2020: true
   },
-  ignorePatterns: ['.eslintrc.js'],
+  plugins: ['@typescript-eslint', 'prettier'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:prettier/recommended'
+  ],
   rules: {
-    '@typescript-eslint/interface-name-prefix': 'off',
-    '@typescript-eslint/explicit-function-return-type': 'off',
-    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    'prettier/prettier': 'error',
+
+    // 👇 这些是“开发友好型”配置
     '@typescript-eslint/no-explicit-any': 'off',
-  },
-};
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    'no-console': 'off',
+
+    // 👇 React / Vue 通用不容易冲突
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn']
+  }
+}

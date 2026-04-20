@@ -24,7 +24,7 @@ model User {
   email          String     @unique // 邮箱（唯一）
   phone          String     @unique // ⭐修改：手机号唯一（如果用于登录）
   password       String // 密码
-  roles          UserRole[] // ⭐修改：role -> roles（语义更准确）
+  roles          UserRole[] 
   avatar         String? // ⭐修改：允许为空
   isSuperAdmin   Boolean    @default(false) // ⭐新增：超级管理员
   createdAt      DateTime   @default(now()) // 创建时间

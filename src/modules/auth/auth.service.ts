@@ -7,7 +7,10 @@ import { buildMenus, buildPermissions } from './auth.transformer'
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwtService: JwtService) {}
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
 
   async login(dto: LoginDto) {
     const { email, password } = dto
@@ -40,12 +43,14 @@ export class AuthService {
     // 2. 校验密码
     const isValid = await bcrypt.compare(password, user.password)
     if (!isValid) throw new UnauthorizedException('账号或密码错误')
-
+    // console.log(user.roles)
     // 3. 提取角色 & 权限
     const roles = user.roles.map((ur) => ur.role.name)
-    const permissions = user.roles.flatMap((ur) =>
-      ur.role.permissions.map((rp) => rp.permission.code),
-    )
+    const permissions = user.roles.flatMap((ur) => {
+      // console.log(ur, 111)
+
+      return ur.role.permissions.map((rp) => rp.permission.code)
+    })
     // 4. 生成Token
     const token = this.jwtService.sign({
       userId: user.id,
@@ -53,6 +58,7 @@ export class AuthService {
       email: user.email,
       roles,
       permissions,
+      isAdmin: true,
     })
 
     return { token }
@@ -89,6 +95,7 @@ export class AuthService {
         },
       },
     })
+    console.log(user)
     return {
       userInfo: {
         id: user.id,

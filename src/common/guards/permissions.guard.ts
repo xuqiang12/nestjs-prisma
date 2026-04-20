@@ -5,11 +5,11 @@ import {
   ExecutionContext, // 请求上下文（可以拿到 request / response）
   Injectable, // 让这个类可以被 Nest 注入
   ForbiddenException, // 403 异常（没权限用这个）
-} from '@nestjs/common';
+} from '@nestjs/common'
 
-import { Reflector } from '@nestjs/core'; // 用来读取装饰器里存的数据
+import { Reflector } from '@nestjs/core' // 用来读取装饰器里存的数据
 
-import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import { PERMISSIONS_KEY } from '../decorators/permissions.decorator'
 // 👉 就是你之前定义的 'permissions'
 
 @Injectable()
@@ -20,26 +20,21 @@ export class PermissionsGuard implements CanActivate {
   // 每次请求都会执行这个方法
   canActivate(context: ExecutionContext): boolean {
     // ⭐ 从装饰器里获取“当前接口需要的权限”
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
-      PERMISSIONS_KEY,
-      [
-        context.getHandler(), // 👉 当前方法（比如 controller 里的某个接口）
-        context.getClass(), // 👉 当前 controller
-      ],
-    );
+    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
+      context.getHandler(), // 👉 当前方法（比如 controller 里的某个接口）
+      context.getClass(), // 👉 当前 controller
+    ])
 
     // 👉 如果这个接口没有写 @Permissions，就直接放行
-    if (!requiredPermissions) return true;
+    if (!requiredPermissions) return true
 
     // ⭐ 从 request 里拿当前登录用户
     // ⚠️ 前提：你已经有 JWT 登录，把 user 挂到 req 上了
-    const { user } = context.switchToHttp().getRequest();
+    const { user } = context.switchToHttp().getRequest()
     // 👉 如果是管理员，直接放行
-    if (user.isAdmin) return true;
+    if (user.isAdmin) return true
     // ⭐ 核心权限判断
-    const hasPermission = requiredPermissions.every((p) =>
-      user.permissions.includes(p),
-    );
+    const hasPermission = requiredPermissions.every((p) => user.permissions.includes(p))
 
     /**
      * 解释一下这行：
@@ -55,10 +50,10 @@ export class PermissionsGuard implements CanActivate {
 
     // 👉 没权限 → 抛异常（403）
     if (!hasPermission) {
-      throw new ForbiddenException('无操作权限');
+      throw new ForbiddenException('无操作权限')
     }
 
     // 👉 有权限 → 放行
-    return true;
+    return true
   }
 }

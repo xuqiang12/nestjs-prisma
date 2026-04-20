@@ -17,10 +17,10 @@ export function buildMenus(user: any) {
   // 1. 先收集所有有权限的菜单（扁平结构）
   const menuMap = new Map()
 
-  user.role?.forEach((ur: any) => {
+  user.roles?.forEach((ur: any) => {
     const role = ur.role
-
-    role?.Permissions?.forEach((rp: any) => {
+    console.log(role, 999)
+    role?.permissions?.forEach((rp: any) => {
       const permission = rp.permission
       if (!permission) return
       const code = permission.code

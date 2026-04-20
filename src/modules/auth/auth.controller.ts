@@ -1,21 +1,21 @@
-import { Controller, Post, Body, Req, Get } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/auth-login.dto';
-import { Public } from '../../common/decorators/public.decorator';
-import { Headers } from '@nestjs/common';
+import { Controller, Post, Body, Req, Get } from '@nestjs/common'
+import { AuthService } from './auth.service'
+import { LoginDto } from './dto/auth-login.dto'
+import { Public } from '../../common/decorators/public.decorator'
+import { Headers } from '@nestjs/common'
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
   @Public()
   @Post('/login')
   login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+    return this.authService.login(dto)
   }
 
   @Get('/userInfo')
   userInfo(@Headers('authorization') auth: string) {
-    const token = auth.replace('Bearer ', '');
-    return this.authService.userInfo(token);
+    const token = auth.replace('Bearer ', '')
+    return this.authService.userInfo(token)
   }
   // 公开接口（不用登录）
   //   @Public()

@@ -4,26 +4,54 @@
   "typescript.suggest.autoImports": true,
   "javascript.suggest.autoImports": true,
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[vue]": {
-    "editor.defaultFormatter": "Vue.volar",
+    "editor.defaultFormatter": "Vue.volar"
   },
   "[javascript]": {
-    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "[scss]": {
-    "editor.defaultFormatter": "vscode.css-language-features",
+    "editor.defaultFormatter": "vscode.css-language-features"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
 
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true,
+    "source.fixAll.eslint": true
   },
 
   "eslint.validate": ["javascript", "typescript", "vue"],
+  "dbcode.connections": [
+    {
+      "connectionId": "DDNEvOfEKA1-2RV45WbbX",
+      "name": "prisma",
+      "driver": "mysql",
+      "connectionType": "host",
+      "host": "localhost",
+      "port": 3306,
+      "ssl": false,
+      "authMethod": "password",
+      "username": "root",
+      "password": "",
+      "savePassword": "secretStorage",
+      "database": "blog_db",
+      "readOnly": false,
+      "postConnectionSqlType": "inline",
+      "connectionTimeout": 30,
+      "pinnedConnectionTimeout": "0",
+      "driverOptions": {
+        "retrievePublickey": true,
+        "disableMultiStatements": false,
+        "permitLocalInfile": false
+      },
+      "introspection": {
+        "progressive": false
+      }
+    }
+  ]
 }

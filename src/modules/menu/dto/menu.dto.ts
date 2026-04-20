@@ -1,41 +1,46 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { IsArray, IsInt, IsOptional, IsString } from 'class-validator'
+import { ApiProperty, PartialType } from '@nestjs/swagger'
+export enum MenuType {
+  DIRECTORY = 'DIRECTORY',
+  PAGE = 'PAGE',
+}
+
 export class CreateDto {
-  @ApiProperty({ description: '父菜单ID，0=顶级', default: 0 })
+  @ApiProperty({ description: '父菜单ID，0=顶级', default: null })
   @IsInt()
   @IsOptional()
-  parentId?: number;
+  parentId?: number
 
   @ApiProperty({ description: '菜单名称' })
   @IsString()
-  name: string;
+  name: string
 
   @ApiProperty({ description: '路由路径', required: false })
   @IsString()
   @IsOptional()
-  path?: string;
+  path?: string
 
   @ApiProperty({ description: '前端组件路径', required: false })
   @IsString()
   @IsOptional()
-  component?: string;
+  component?: string
 
   @ApiProperty({ description: '菜单图标', required: false })
   @IsString()
   @IsOptional()
-  icon?: string;
+  icon?: string
 
   @ApiProperty({ description: '排序', default: 0 })
   @IsInt()
   @IsOptional()
-  sort?: number;
+  sort?: number
 
   @ApiProperty({ description: '类型 1=目录 2=页面', default: 2 })
   @IsInt()
-  type: number;
+  type: MenuType
 }
 export class UpdateDto extends PartialType(CreateDto) {
   @ApiProperty({ description: 'ID 必填' })
   @IsInt()
-  id: number; // 修改必须传 id
+  id: number // 修改必须传 id
 }

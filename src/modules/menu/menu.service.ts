@@ -51,4 +51,33 @@ export class MenuService {
     })
     return '按钮新增成功'
   }
+  // 修改菜单
+  async updateMenu(menu: any) {
+    await this.prisma.menu.update({
+      where: { id: menu.id },
+      data: menu,
+    })
+    return '菜单修改成功'
+  }
+  // 删除菜单
+  async deleteMenu(menu: any) {
+    await this.prisma.menu.delete({
+      where: { id: menu.id },
+    })
+    return '菜单删除成功'
+  }
+  // 获取菜单树
+  async getMenuTree() {
+    const list = await this.prisma.menu.findMany()
+    function buildMenuTree(list, parentId = null) {
+      return list
+        .filter((item) => item.parentId === parentId)
+        .map((item) => ({
+          ...item,
+          children: buildMenuTree(list, item.id),
+        }))
+    }
+    const tree = buildMenuTree(list)
+    return tree
+  }
 }

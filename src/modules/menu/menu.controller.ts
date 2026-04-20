@@ -33,23 +33,23 @@ export class MenuController {
     return this.menuService.getMenuTree()
   }
   // 获取按钮列表
-  @Get('button/list')
-  getButtonList() {
-    return this.menuService.getButtonList()
-  }
+  // @Get('button/list')
+  // getButtonList() {
+  //   return this.menuService.getButtonList()
+  // }
   // 新增按钮
   @Post('button/create')
   createButton(@Body() createButtonDto: CreateBtbDto) {
     return this.menuService.createButton(createButtonDto)
   }
-  // 修改按钮
-  @Patch('button/update')
-  updateButton(@Body() button: any) {
-    return this.menuService.updateButton(button)
-  }
-  // 删除按钮
-  @Delete('button/delete')
-  deleteButton(@Body() button: any) {
-    return this.menuService.deleteButton(button)
-  }
+  // // 修改按钮
+  // @Patch('button/update')
+  // updateButton(@Body() button: any) {
+  //   return this.menuService.updateButton(button)
+  // }
+  // // 删除按钮
+  // @Delete('button/delete')
+  // deleteButton(@Body() button: any) {
+  //   return this.menuService.deleteButton(button)
+  // }
 }

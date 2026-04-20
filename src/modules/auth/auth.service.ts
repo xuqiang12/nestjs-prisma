@@ -14,12 +14,15 @@ export class AuthService {
 
     // 1. 查询用户 + 角色 + 权限
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email }, //在 user 表里找一个唯一用户
       include: {
+        //UserRole
         roles: {
           include: {
+            // Role
             role: {
               include: {
+                // RolePermission
                 permissions: {
                   include: {
                     permission: true,
@@ -31,7 +34,7 @@ export class AuthService {
         },
       },
     })
-
+    console.log(user)
     if (!user) throw new UnauthorizedException('账号或密码错误')
 
     // 2. 校验密码
@@ -39,9 +42,9 @@ export class AuthService {
     if (!isValid) throw new UnauthorizedException('账号或密码错误')
 
     // 3. 提取角色 & 权限
-    const roles = user.role.map((ur) => ur.role.name)
-    const permissions = user.role.flatMap((ur) =>
-      ur.role.Permissions.map((rp) => rp.permission.code),
+    const roles = user.roles.map((ur) => ur.role.name)
+    const permissions = user.roles.flatMap((ur) =>
+      ur.role.permissions.map((rp) => rp.permission.code),
     )
     // 4. 生成Token
     const token = this.jwtService.sign({
@@ -60,11 +63,14 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
-        role: {
+        //UserRole
+        roles: {
           include: {
+            // Role
             role: {
               include: {
-                Permissions: {
+                // RolePermission
+                permissions: {
                   include: {
                     permission: {
                       include: {

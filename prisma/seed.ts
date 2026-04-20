@@ -49,15 +49,15 @@ async function main() {
   // =========================
   // 4️⃣ 用户
   // =========================
-  const hashedPassword = await bcrypt.hash('123456', 10)
+  const hashedPassword = await bcrypt.hash('xq19980212521', 10)
 
   const user = await prisma.user.upsert({
-    where: { email: 'admin@qq.com' },
+    where: { email: '208418289@qq.com' },
     update: {},
     create: {
-      username: '管理员',
-      email: 'admin@qq.com',
-      phone: '13800000000',
+      username: '管理员new',
+      email: '208418289@qq.com',
+      phone: '18567526786',
       password: hashedPassword,
       avatar: '',
 

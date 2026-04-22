@@ -1,18 +1,19 @@
-import { Logger, Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { PrismaModule, loggingMiddleware } from 'nestjs-prisma';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { UserModule } from './modules/user/user.module';
-import { ChatModule } from './modules/chat/chat.module';
-import { AuthModule } from './modules/auth/auth.module';
-import config from './common/configs/config';
-import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { RolesGuard } from './common/guards/roles.guard';
-import { PermissionsGuard } from './common/guards/permissions.guard';
-import { JwtModule } from '@nestjs/jwt';
-import { MenuModule } from './modules/menu/menu.module';
+import { Logger, Module } from '@nestjs/common'
+import { ConfigModule, ConfigService } from '@nestjs/config'
+import { PrismaModule, loggingMiddleware } from 'nestjs-prisma'
+import { AppController } from './app.controller'
+import { AppService } from './app.service'
+import { UserModule } from './modules/user/user.module'
+import { ChatModule } from './modules/chat/chat.module'
+import { AuthModule } from './modules/auth/auth.module'
+import config from './common/configs/config'
+import { APP_GUARD } from '@nestjs/core'
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
+import { RolesGuard } from './common/guards/roles.guard'
+import { PermissionsGuard } from './common/guards/permissions.guard'
+import { JwtModule } from '@nestjs/jwt'
+import { MenuModule } from './modules/menu/menu.module'
+import { AiModule } from './modules/ai/ai.module'
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { MenuModule } from './modules/menu/menu.module';
       global: true, // 👈 关键！全局可用！
     }),
     MenuModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [

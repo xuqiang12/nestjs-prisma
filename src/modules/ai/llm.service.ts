@@ -2,7 +2,6 @@ import axios from 'axios'
 
 export async function callLLM(messages: any[]) {
   try {
-    console.log('messages:', process.env.CHAT_API_URL_AGENT!)
     const res = await axios.post(
       process.env.CHAT_API_URL_AGENT!,
       {

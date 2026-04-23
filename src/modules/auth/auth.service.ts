@@ -37,18 +37,14 @@ export class AuthService {
         },
       },
     })
-    console.log(user)
     if (!user) throw new UnauthorizedException('账号或密码错误')
 
     // 2. 校验密码
     const isValid = await bcrypt.compare(password, user.password)
     if (!isValid) throw new UnauthorizedException('账号或密码错误')
-    // console.log(user.roles)
     // 3. 提取角色 & 权限
     const roles = user.roles.map((ur) => ur.role.name)
     const permissions = user.roles.flatMap((ur) => {
-      // console.log(ur, 111)
-
       return ur.role.permissions.map((rp) => rp.permission.code)
     })
     // 4. 生成Token
@@ -65,7 +61,6 @@ export class AuthService {
   }
   async userInfo(token: string) {
     const { userId } = this.jwtService.verify(token)
-    console.log(userId)
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -95,7 +90,8 @@ export class AuthService {
         },
       },
     })
-    console.log(user)
+    console.log(JSON.stringify(user, null, 2))
+    // console.log(user)
     return {
       userInfo: {
         id: user.id,

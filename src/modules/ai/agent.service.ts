@@ -11,7 +11,6 @@ export class AgentService {
     // 1️⃣ RAG（知识增强）
     // =========================
     const ragContext = await this.rag.search(userMessage)
-
     // =========================
     // 2️⃣ 第一次LLM（判断是否调用Skill）
     // =========================
@@ -24,7 +23,6 @@ export class AgentService {
     const first = await callLLM(messages)
 
     let parsed
-
     try {
       parsed = JSON.parse(first)
     } catch (e) {

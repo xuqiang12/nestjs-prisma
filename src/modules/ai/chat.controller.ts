@@ -6,14 +6,10 @@ import { Public } from '../../common/decorators/public.decorator'
 export class ChatController {
   constructor(private readonly agent: AgentService) {}
   @Public()
-  @Post('stream')
+  @Post('stream1')
   async stream(@Body() body: { message: string }, @Res() res) {
-    const meta = Reflect.getMetadata('isPublic', this.stream)
-    console.log('controller meta:', meta)
-    console.log('111112223')
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Connection', 'keep-alive')
-
     await this.agent.run(body.message, res)
   }
 }

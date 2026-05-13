@@ -7,10 +7,7 @@ import { buildMenus, buildPermissions } from './auth.transformer'
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-  ) {}
+  constructor(private prisma: PrismaService, private jwtService: JwtService) {}
 
   async login(dto: LoginDto) {
     const { email, password } = dto
@@ -65,7 +62,6 @@ export class AuthService {
   }
   async userInfo(token: string) {
     const { userId } = this.jwtService.verify(token)
-    console.log(userId)
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {

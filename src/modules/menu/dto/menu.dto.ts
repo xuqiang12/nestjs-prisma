@@ -35,8 +35,8 @@ export class CreateDto {
   @IsOptional()
   sort?: number
 
-  @ApiProperty({ description: '类型 1=目录 2=页面', default: 2 })
-  @IsInt()
+  @ApiProperty({ description: '类型 DIRECTORY=菜单 PAGE=页面', default: MenuType.PAGE })
+  @IsString()
   type: MenuType
 }
 export class UpdateDto extends PartialType(CreateDto) {

@@ -19,7 +19,6 @@ export function buildMenus(user: any) {
 
   user.roles?.forEach((ur: any) => {
     const role = ur.role
-    console.log(role, 999)
     role?.permissions?.forEach((rp: any) => {
       const permission = rp.permission
       if (!permission) return

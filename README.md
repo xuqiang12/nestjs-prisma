@@ -88,3 +88,8 @@ npm run docker:db
 <!-- docker run -d --name blog-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=blog_db --restart=always mysql:8.0 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci -->
 <!-- docker创建postgresql数据库 -->
 <!-- docker run -d --name blog-postgres -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=blog_db --restart=always postgres:15 -->
+<!-- docker创建postgresql向量数据库 持久化数据 -->
+<!-- docker run -d --name blog-postgres -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=blog_db -v pg_data:/var/lib/postgresql/data --restart=always pgvector/pgvector:pg15 -->
+
+<!-- docker exec -it blog-postgres psql -U postgres -->
+<!-- CREATE EXTENSION IF NOT EXISTS vector; -->

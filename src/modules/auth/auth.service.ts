@@ -7,10 +7,7 @@ import { buildMenus, buildPermissions } from './auth.transformer'
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-  ) {}
+  constructor(private prisma: PrismaService, private jwtService: JwtService) {}
 
   async login(dto: LoginDto) {
     const { email, password } = dto

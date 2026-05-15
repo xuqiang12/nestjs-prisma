@@ -14,6 +14,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard'
 import { JwtModule } from '@nestjs/jwt'
 import { MenuModule } from './modules/menu/menu.module'
 import { AiModule } from './modules/ai/ai.module'
+import { AiCoreModule } from './modules/aiCore/aiCore.module'
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { AiModule } from './modules/ai/ai.module'
     }),
     MenuModule,
     AiModule,
+    AiCoreModule,
   ],
   controllers: [AppController],
   providers: [

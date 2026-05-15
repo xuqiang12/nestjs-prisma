@@ -91,5 +91,13 @@ npm run docker:db
 <!-- docker创建postgresql向量数据库 持久化数据 -->
 <!-- docker run -d --name blog-postgres -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=blog_db -v pg_data:/var/lib/postgresql/data --restart=always pgvector/pgvector:pg15 -->
 
-<!-- docker exec -it blog-postgres psql -U postgres -->
+<!-- 连接数据库 -->
+<!-- docker exec -it blog-postgres psql -U postgres -d blog_db -->
+<!-- 创建向量扩展 -->
 <!-- CREATE EXTENSION IF NOT EXISTS vector; -->
+<!-- 查看向量扩展是否安装成功 -->
+<!-- \dx vector -->
+<!-- 退出数据库 -->
+<!-- \q -->
+<!-- 查看数据库所有表 -->
+<!-- \dt -->

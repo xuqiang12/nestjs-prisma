@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 // ==============================
@@ -121,4 +122,19 @@ model MenuButton {
   sort         Int?       @default(0)
 
   @@unique([menuId, permissionId])
+}
+
+
+// ==============================
+// 向量数据库表
+// ==============================
+model Document {
+  id        String   @id @default(cuid())
+  content   String   // 原始文本（必须有）
+  metadata  Json?    // 附加信息（可选）例如：{  "source": "vue.md",  "page": 3,  "type": "doc"}
+
+  embedding Unsupported("vector") //让 Prisma 知道这里是 pgvector 类型
+  createdAt DateTime @default(now())
+
+  @@map("documents")
 }

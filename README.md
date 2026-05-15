@@ -101,3 +101,16 @@ npm run docker:db
 <!-- \q -->
 <!-- 查看数据库所有表 -->
 <!-- \dt -->
+
+## 创建 SQL索引
+
+```sql
+-- 创建一个索引，名字叫：documents_embedding_idx
+CREATE INDEX documents_embedding_idx
+-- 该索引作用于：documents 表
+ON documents
+-- 使用 pgvector 提供的 IVF_FLAT 索引  将数据分桶（clustering）、查询时只搜索部分桶、提高查询速度
+USING ivfflat (embedding vector_cosine_ops)
+-- 将数据分成 100 个桶（clusters）
+WITH (lists = 100);
+```

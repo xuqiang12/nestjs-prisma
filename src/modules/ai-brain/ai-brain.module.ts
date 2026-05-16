@@ -6,11 +6,13 @@ import { Module } from '@nestjs/common'
 
 import { VectorStoreController } from './vector-store/vector-store.controller'
 import { VectorStoreService } from './vector-store/vector-store.service'
-import { ChatController } from '../chat/chat.controller'
+
 import { ChatService } from '../chat/chat.service'
+import { WorkflowService } from './graph/workflow.service.ts'
+import { ChatController } from './chat/chat.controller'
 
 @Module({
   controllers: [ChatController, VectorStoreController],
-  providers: [ChatService, VectorStoreService],
+  providers: [ChatService, VectorStoreService, WorkflowService],
 })
 export class AiBrainModule {}

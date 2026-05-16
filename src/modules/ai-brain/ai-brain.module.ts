@@ -8,7 +8,7 @@ import { VectorStoreController } from './vector-store/vector-store.controller'
 import { VectorStoreService } from './vector-store/vector-store.service'
 
 import { ChatService } from '../chat/chat.service'
-import { WorkflowService } from './graph/workflow.service.ts'
+import { WorkflowService } from './graph/workflow.service'
 import { ChatController } from './chat/chat.controller'
 
 @Module({

@@ -1,0 +1,21 @@
+/**
+ * 路由节点 - 决定问题应该走 RAG 还是普通对话
+ * 根据问题的性质判断是否需要检索知识库
+ */
+import { llm } from '../../llm/llm.client'
+
+export async function routerNode(state: any) {
+  const res = await llm.invoke(`
+判断问题是否需要知识库：
+
+返回：
+rag 或 chat
+
+问题：${state.question}
+`)
+
+  return {
+    ...state,
+    route: typeof res.content === 'string' ? res.content.trim() : '',
+  }
+}

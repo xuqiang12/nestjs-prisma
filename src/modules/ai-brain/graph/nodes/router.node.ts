@@ -14,8 +14,15 @@ rag 或 chat
 问题：${state.question}
 `)
 
+  const content =
+    typeof res.content === 'string'
+      ? res.content
+      : Array.isArray(res.content)
+        ? res.content.map((c) => (typeof c === 'string' ? c : c.text || '')).join('')
+        : ''
+
   return {
     ...state,
-    route: typeof res.content === 'string' ? res.content.trim() : '',
+    route: content.trim(),
   }
 }

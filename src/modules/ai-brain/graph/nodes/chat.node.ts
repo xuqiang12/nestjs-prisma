@@ -9,8 +9,15 @@ export async function chatNode(state: any) {
 回答问题：${state.question}
 `)
 
+  const content =
+    typeof res.content === 'string'
+      ? res.content
+      : Array.isArray(res.content)
+        ? res.content.map((c) => (typeof c === 'string' ? c : c.text || '')).join('')
+        : ''
+
   return {
     ...state,
-    answer: res.content,
+    answer: content,
   }
 }

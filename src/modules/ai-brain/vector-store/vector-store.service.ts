@@ -2,12 +2,14 @@
  * 向量存储服务 - 处理向量存储业务逻辑
  * 负责知识库的创建、分块、向量化和相似度搜索
  */
+import { Injectable } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 import { createEmbedding } from '../embedding/embedding.service'
 import { splitText } from '../document/chunk.service'
 
 const prisma = new PrismaClient()
 
+@Injectable()
 export class VectorStoreService {
   /**
    * 创建知识库 - 批量将文本分块、向量化并存储到数据库

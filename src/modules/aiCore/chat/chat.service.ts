@@ -7,7 +7,7 @@ export class ChatService {
   // 创建知识库
   async createKnowledge(content, metadata = {}) {
     // 1️⃣ 分块
-    const chunks = splitText(content, 500)
+    const chunks = splitText(content, { maxSize: 500 })
 
     console.log(`总共分成 ${chunks.length} 块`)
 

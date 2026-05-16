@@ -8,7 +8,8 @@ export class VectorService {
   async createKnowledge(content, metadata = {}) {
     try {
       // 1. 分块
-      const chunks = splitText(content, 500)
+      const chunks = splitText(content, { maxSize: 500, overlap: 100 })
+
       // 2. 批量插入（关键：不要循环插入！）
       const insertPromises = chunks.map(async (chunk, i) => {
         try {

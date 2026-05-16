@@ -15,6 +15,7 @@ import { JwtModule } from '@nestjs/jwt'
 import { MenuModule } from './modules/menu/menu.module'
 import { AiModule } from './modules/ai/ai.module'
 import { AiCoreModule } from './modules/aiCore/aiCore.module'
+import { AiBrainModule } from './modules/ai-brain/ai-brain.module'
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AiCoreModule } from './modules/aiCore/aiCore.module'
     UserModule,
     ChatModule,
     AuthModule,
+    AiBrainModule,
     // JwtModule.register({
     //   secret: 'YOUR_SECRET_KEY_2025', // 密钥
     //   signOptions: { expiresIn: '7d' }, // 7天过期

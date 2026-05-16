@@ -4,7 +4,7 @@
  */
 import axios from 'axios'
 
-export async function EmbeddingService(text) {
+export async function createEmbedding(text) {
   try {
     const res = await axios.post(
       'https://api.siliconflow.cn/v1/embeddings',

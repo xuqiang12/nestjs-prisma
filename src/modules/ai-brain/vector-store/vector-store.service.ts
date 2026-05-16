@@ -3,7 +3,7 @@
  * 负责知识库的创建、分块、向量化和相似度搜索
  */
 import { PrismaClient } from '@prisma/client'
-import { EmbeddingService } from '../embedding/embedding.service'
+import { createEmbedding } from '../embedding/embedding.service'
 import { splitText } from '../document/chunk.service'
 
 const prisma = new PrismaClient()
@@ -20,7 +20,7 @@ export class VectorStoreService {
 
       const insertPromises = chunks.map(async (chunk, i) => {
         try {
-          const embedding = await EmbeddingService(chunk)
+          const embedding = await createEmbedding(chunk)
           await prisma.$executeRaw`
           INSERT INTO documents (id, content, metadata, embedding)
           VALUES (
@@ -56,7 +56,7 @@ export class VectorStoreService {
    * @param limit 返回结果数量限制
    */
   async searchSimilar(text, limit = 5) {
-    const embedding = await EmbeddingService(text)
+    const embedding = await createEmbedding(text)
 
     const result = await prisma.$queryRaw`
       SELECT

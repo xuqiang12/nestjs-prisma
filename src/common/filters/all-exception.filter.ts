@@ -7,7 +7,6 @@ export class AllExceptionFilter implements ExceptionFilter {
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
     const res = ctx.getResponse()
-
     // Prisma 错误
     if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       if (exception.code === 'P2002') {
@@ -33,7 +32,7 @@ export class AllExceptionFilter implements ExceptionFilter {
     return res.status(500).json({
       code: 500,
       message: '服务器错误',
-      data: null,
+      data: exception,
     })
   }
 }

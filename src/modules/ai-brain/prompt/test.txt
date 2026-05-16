@@ -1,0 +1,23 @@
+NestJS 是一个用于构建高效服务端应用的 Node.js 框架。
+它使用 TypeScript 作为默认开发语言，并借鉴了 Angular 的模块化架构思想。
+
+在 NestJS 中，应用由 Module（模块）组成，每个模块负责不同业务功能。
+Controller 用于处理 HTTP 请求，Service 用于处理业务逻辑。
+
+依赖注入是 NestJS 的核心机制之一，用于自动管理类之间的依赖关系，从而实现解耦。
+
+Prisma 是一个现代 ORM 工具，用于操作数据库，它提供类型安全的数据库查询能力。
+Prisma 通常配合 PostgreSQL、MySQL 等数据库使用。
+
+pgvector 是 PostgreSQL 的一个扩展，用于支持向量数据类型，可以实现向量检索和语义搜索。
+
+向量数据库的核心思想是把文本转换成 embedding 向量，然后通过相似度计算找到最相关内容。
+
+Embedding 是一种将文本转换为高维向量的技术，常用于语义搜索、RAG 系统和推荐系统。
+
+RAG（Retrieval-Augmented Generation）是一种结合检索和大模型生成的技术架构。
+它的流程是：先检索相关知识，再把知识交给大模型生成答案。
+
+Docker 是一种容器化技术，可以快速部署应用环境，保证开发和生产一致性。
+
+PostgreSQL 是一个功能强大的关系型数据库，支持扩展如 pgvector 来增强 AI 能力。

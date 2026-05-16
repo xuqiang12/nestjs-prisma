@@ -7,14 +7,14 @@ import { VectorStoreService } from './vector-store.service'
 import { readFileContent } from '../document/file-reader.service'
 import { Public } from 'src/common/decorators/public.decorator'
 
-@Controller('ai-brain/vector-store')
+@Controller('ai-brain/knowledge')
 export class VectorStoreController {
   constructor(private readonly vector: VectorStoreService) {}
 
   @Public()
-  @Post('setVector')
-  async setVector() {
-    const content = await readFileContent('src/modules/ai-brain/prompt/test.txt')
+  @Post('ingest')
+  async knowledgeIngest() {
+    const content = await readFileContent('src/modules/aiCore/prompt/test.txt')
     return this.vector.createKnowledge(content, {
       source: 'test',
     })
@@ -22,7 +22,7 @@ export class VectorStoreController {
 
   @Public()
   @Post('search')
-  async searchSimilar(@Body() body: { message: string }) {
+  async knowledgeSimilarSearch(@Body() body: { message: string }) {
     return this.vector.searchSimilar(body.message, 5)
   }
 }

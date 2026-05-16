@@ -4,10 +4,10 @@
  */
 import { Module } from '@nestjs/common'
 
-import { ChatController } from './chat/chat.controller'
-import { ChatService } from './chat/chat.service'
 import { VectorStoreController } from './vector-store/vector-store.controller'
 import { VectorStoreService } from './vector-store/vector-store.service'
+import { ChatController } from '../chat/chat.controller'
+import { ChatService } from '../chat/chat.service'
 
 @Module({
   controllers: [ChatController, VectorStoreController],

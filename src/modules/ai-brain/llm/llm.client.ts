@@ -1,23 +1,3 @@
-/**
- * LLM 客户端 - 初始化和配置大语言模型
- * 使用豆包 doubao-pro 模型
- */
-
-// 使用 LangChain 初始化 LLM 客户端
-
-// import { ChatOpenAI } from '@langchain/openai'
-
-// // 初始化 LLM 客户端
-// export const llm = new ChatOpenAI({
-//   model: 'ep-你的EndpointID',
-//   apiKey: process.env.CHAT_API_KEY,
-//   configuration: {
-//     baseURL: process.env.CHAT_API_URL_AGENT, // 你的接口地址
-//     // baseURL: 'https://ark.cn-beijing.volces.com/api/v3', 只能到v3
-//   },
-//   temperature: 0.2, // 保持和你原来一致
-//   topP: 0.8, // 注意 LangChain 里是大写 P
-// })
 // 使用openai 调用
 import OpenAI from 'openai'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
@@ -28,11 +8,11 @@ import { ChatResult } from '@langchain/core/outputs' // 修复 1
 export class DoubaoLLM extends BaseChatModel {
   private client: OpenAI
 
-  constructor(apiKey: string) {
+  constructor() {
     super({})
     this.client = new OpenAI({
-      apiKey,
-      baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+      apiKey: process.env.SILICONFLOW_API_KEY,
+      baseURL: process.env.SILICONFLOW_BASE_URL,
     })
   }
 
@@ -46,20 +26,34 @@ export class DoubaoLLM extends BaseChatModel {
 
   // ✅ 你要的 invoke 就是走这个方法
   async _generate(messages: BaseMessage[]): Promise<ChatResult> {
-    const msgList = messages.map((m) => ({
-      role: m._getType() === 'ai' ? 'assistant' : m._getType(),
-      content: m.content as string,
-    }))
+    const msgList = messages.map((m) => {
+      let role: 'system' | 'user' | 'assistant' | 'tool'
+      const type = m._getType()
+      console.log('type', type)
+      if (type === 'ai') {
+        role = 'assistant'
+      } else if (type === 'human') {
+        role = 'user'
+      } else if (type === 'system') {
+        role = 'system'
+      } else {
+        role = 'user'
+      }
+      return {
+        role,
+        content: m.content as string,
+      }
+    })
 
     const res = await this.client.chat.completions.create({
-      model: 'doubao-seed-1-6-lite-251015',
+      model: process.env.SILICONFLOW_MODEL,
       messages: msgList,
       temperature: 0.2,
       top_p: 0.8,
     })
 
     const content = res.choices[0].message.content || ''
-
+    console.log('content', content)
     return {
       generations: [
         {
@@ -70,4 +64,5 @@ export class DoubaoLLM extends BaseChatModel {
     }
   }
 }
-export const llm = new DoubaoLLM(process.env.CHAT_API_KEY || '')
+
+export const llm = new DoubaoLLM()

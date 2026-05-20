@@ -16,7 +16,7 @@ export async function ragAnswerNode(state: any) {
       : Array.isArray(res.content)
         ? res.content.map((c) => (typeof c === 'string' ? c : c.text || '')).join('')
         : ''
-
+  console.log('第三步，用问题和上下文去LLM生成回答：', content)
   return {
     ...state,
     answer: content,

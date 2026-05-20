@@ -7,14 +7,14 @@ import axios from "axios"
 export async function createEmbedding(text) {
     try {
         const res = await axios.post(
-            "https://api.siliconflow.cn/v1/embeddings",
+            `${process.env.SILICONFLOW_BASE_URL}/embeddings`,
             {
-                model: "Qwen/Qwen3-VL-Embedding-8B",
+                model: process.env.SILICONFLOW_MODEL,
                 input: text,
             },
             {
                 headers: {
-                    Authorization: `Bearer ${'sk-sbryzumrzqcjqhtygwxrkbqqjdhbcvanjdcvsmoylxahjcte'}`,
+                    Authorization: `Bearer ${process.env.SILICONFLOW_API_KEY}`,
                     "Content-Type": "application/json",
                 },
             }

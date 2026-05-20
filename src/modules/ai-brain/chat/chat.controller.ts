@@ -13,7 +13,6 @@ export class ChatController {
   @Public()
   @Post('stream')
   async stream(@Body() body: { message: string }) {
-    console.log(1111)
     try {
       const result = await this.chat.workflowChat(body.message)
       return result

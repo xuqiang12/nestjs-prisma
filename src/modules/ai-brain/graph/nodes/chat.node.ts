@@ -5,9 +5,7 @@
 import { llm } from '../../llm/llm.client'
 
 export async function chatNode(state: any) {
-  const res = await llm.invoke(`
-回答问题：${state.question}
-`)
+  const res = await llm.invoke(`回答问题：${state.question}`)
 
   const content =
     typeof res.content === 'string'
@@ -15,7 +13,7 @@ export async function chatNode(state: any) {
       : Array.isArray(res.content)
         ? res.content.map((c) => (typeof c === 'string' ? c : c.text || '')).join('')
         : ''
-
+  console.log('第四步，chat回答', content)
   return {
     ...state,
     answer: content,

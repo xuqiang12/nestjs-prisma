@@ -7,10 +7,7 @@ import { llm } from '../../llm/llm.client'
 export async function routerNode(state: any) {
   const res = await llm.invoke(`
 判断问题是否需要知识库：
-
-返回：
-rag 或 chat
-
+返回：rag 或 chat
 问题：${state.question}
 `)
 
@@ -20,7 +17,7 @@ rag 或 chat
       : Array.isArray(res.content)
         ? res.content.map((c) => (typeof c === 'string' ? c : c.text || '')).join('')
         : ''
-
+  console.log('第一步，返回路由结果：', content.trim(), '判断用户问题类型 是走chat还是rag')
   return {
     ...state,
     route: content.trim(),

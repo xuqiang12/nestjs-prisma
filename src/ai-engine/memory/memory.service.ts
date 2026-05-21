@@ -41,4 +41,5 @@ export class InMemoryMemoryService implements IMemoryService {
   }
 }
 
-export const memoryService = new InMemoryMemoryService()
+// 删除全局实例，只使用 NestJS DI 容器
+// export const memoryService = new InMemoryMemoryService()

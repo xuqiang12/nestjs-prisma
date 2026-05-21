@@ -1,20 +1,27 @@
 import { AIRegistry } from './ai.registry'
 import { IntentRouter } from '../router/intent.router'
 import { Orchestrator } from './orchestrator'
-import { workflowEngine } from './workflow.engine'
-import { memoryService } from '../memory/memory.service'
-import { toolExecutor } from '../tools/tool.executor'
+import { WorkflowEngine } from './workflow.engine'
+import { InMemoryMemoryService } from '../memory/memory.service'
+import { DefaultToolExecutor } from '../tools/tool.executor'
 import { WorkflowContext } from './types'
 
 export class AIRuntime {
   private orchestrator: Orchestrator
   private registry: AIRegistry
 
-  constructor(registry: AIRegistry) {
+  constructor(
+    registry: AIRegistry,
+    workflowEngine: WorkflowEngine,
+    memoryService: InMemoryMemoryService,
+    toolExecutor: DefaultToolExecutor,
+  ) {
     console.log('[AIRuntime（ai-runtime）] 构造函数-初始化...')
     this.registry = registry
     const router = new IntentRouter()
     console.log('[AIRuntime（ai-runtime）] 构造函数-Router 创建完成')
+    
+    console.log('[AIRuntime（ai-runtime）] 构造函数-创建 Orchestrator...')
     this.orchestrator = new Orchestrator(
       registry,
       router,

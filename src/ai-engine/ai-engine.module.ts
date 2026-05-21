@@ -24,7 +24,16 @@ import { chatWorkflow } from './workflow/chat.workflow'
     DefaultToolExecutor,
     {
       provide: WorkflowEngine,
-      useClass: WorkflowEngine,
+      useFactory: (
+        toolExecutor: DefaultToolExecutor,
+        registry: AIRegistry
+      ) => {
+        console.log('[ai-engine.module] 初始化 WorkflowEngine...')
+        console.log('[ai-engine.module] toolExecutor:', !!toolExecutor)
+        console.log('[ai-engine.module] registry:', !!registry)
+        return new WorkflowEngine(toolExecutor, registry)
+      },
+      inject: [DefaultToolExecutor, AIRegistry],
     },
     {
       provide: Orchestrator,
@@ -34,6 +43,7 @@ import { chatWorkflow } from './workflow/chat.workflow'
         toolExecutor: DefaultToolExecutor,
         workflowEngine: WorkflowEngine,
       ) => {
+        console.log('[ai-engine.module] 初始化 Orchestrator...')
         const router = new (require('./router/intent.router').IntentRouter)()
         return new Orchestrator(
           registry,
@@ -47,10 +57,21 @@ import { chatWorkflow } from './workflow/chat.workflow'
     },
     {
       provide: AIRuntime,
-      useFactory: (registry: AIRegistry) => {
-        return new AIRuntime(registry)
+      useFactory: (
+        registry: AIRegistry,
+        workflowEngine: WorkflowEngine,
+        memoryService: InMemoryMemoryService,
+        toolExecutor: DefaultToolExecutor,
+      ) => {
+        console.log('[ai-engine.module] 初始化 AIRuntime...')
+        return new AIRuntime(
+          registry,
+          workflowEngine,
+          memoryService,
+          toolExecutor
+        )
       },
-      inject: [AIRegistry],
+      inject: [AIRegistry, WorkflowEngine, InMemoryMemoryService, DefaultToolExecutor],
     },
   ],
   exports: [AIRegistry, AIRuntime, Orchestrator, InMemoryMemoryService, DefaultToolExecutor],

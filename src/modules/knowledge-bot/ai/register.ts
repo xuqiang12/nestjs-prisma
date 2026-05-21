@@ -7,16 +7,22 @@
 import { AIRegistry } from '../../../ai-engine/core/ai.registry'
 import { SearchKnowledgeTool } from './tools/search-knowledge.tool'
 import { AddDocumentTool } from './tools/add-document.tool'
+import { GetUserMenuPermissionsTool } from './tools/get-user-menu-permissions.tool'
 
-export function registerKnowledgeBotAI(registry: AIRegistry) {
+export function registerKnowledgeBotAI(
+  registry: AIRegistry,
+  getUserMenuPermissionsTool?: GetUserMenuPermissionsTool,
+) {
   console.log('========== 注册 Knowledge Bot AI 插件 ==========')
 
-  // 1. 注册工具
+  // 1. 注册简单工具（不需要依赖注入）
   registry.registerTool(SearchKnowledgeTool)
   registry.registerTool(AddDocumentTool)
 
-  // 2. 也可以注册工作流（如果有）
-  // registry.registerWorkflow(xxxWorkflow)
+  // 2. 注册需要依赖注入的工具
+  if (getUserMenuPermissionsTool) {
+    registry.registerTool(getUserMenuPermissionsTool.getToolDefinition())
+  }
 
   console.log('✅ Knowledge Bot AI 插件注册完成')
   console.log('   已注册工具:', registry.getToolNames())

@@ -13,9 +13,8 @@ import { RolesGuard } from './common/guards/roles.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
 import { JwtModule } from '@nestjs/jwt'
 import { MenuModule } from './modules/menu/menu.module'
-import { AiModule } from './modules/ai/ai.module'
-import { AiCoreModule } from './modules/aiCore/aiCore.module'
-import { AiBrainModule } from './modules/ai-brain/ai-brain.module'
+import { AIEngineModule } from './ai-engine/ai-engine.module'
+import { KnowledgeBotModule } from './modules/knowledge-bot/knowledge-bot.module'
 
 @Module({
   imports: [
@@ -35,7 +34,8 @@ import { AiBrainModule } from './modules/ai-brain/ai-brain.module'
     UserModule,
     ChatModule,
     AuthModule,
-    AiBrainModule,
+    AIEngineModule,
+    KnowledgeBotModule,
     // JwtModule.register({
     //   secret: 'YOUR_SECRET_KEY_2025', // 密钥
     //   signOptions: { expiresIn: '7d' }, // 7天过期
@@ -51,8 +51,6 @@ import { AiBrainModule } from './modules/ai-brain/ai-brain.module'
       global: true, // 👈 关键！全局可用！
     }),
     MenuModule,
-    AiModule,
-    AiCoreModule,
   ],
   controllers: [AppController],
   providers: [

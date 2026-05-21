@@ -1,25 +1,24 @@
 import { Injectable } from '@nestjs/common'
 import { ToolExecutor as IToolExecutor, ToolDefinition } from '../core/interfaces'
+import { AIRegistry } from '../core/ai.registry'
 
 @Injectable()
 export class DefaultToolExecutor implements IToolExecutor {
-  private tools: Map<string, ToolDefinition> = new Map()
-
-  constructor() {
+  constructor(private registry: AIRegistry) {
     console.log('[ToolExecutor（tool）] 构造函数-开始初始化...')
     this.registerDefaultTools()
-    console.log('[ToolExecutor（tool）] 构造函数-初始化完成✅，已注册工具数量:', this.tools.size)
+    console.log('[ToolExecutor（tool）] 构造函数-初始化完成✅')
   }
 
+  // 兼容旧的注册方式
   registerTool(name: string, definition: ToolDefinition) {
-    console.log('[ToolExecutor（registerTool）] 注册工具:', name)
-    this.tools.set(name, definition)
-    console.log('[ToolExecutor（registerTool）] 工具', name, '注册完成✅')
+    this.registry.registerTool(definition)
   }
 
+  // 从 registry 获取工具
   listTools(): ToolDefinition[] {
     console.log('[ToolExecutor（listTools）] 列出所有工具...')
-    const tools = Array.from(this.tools.values())
+    const tools = this.registry.listTools()
     console.log('[ToolExecutor（listTools）] 可用工具:', tools.map(t => t.name))
     return tools
   }
@@ -27,7 +26,7 @@ export class DefaultToolExecutor implements IToolExecutor {
   async execute(toolName: string, params: any) {
     console.log('[ToolExecutor（execute）] 执行工具:', { toolName, params })
 
-    const tool = this.tools.get(toolName)
+    const tool = this.registry.getTool(toolName)
     if (!tool) {
       console.log('[ToolExecutor（execute）] ❌ 工具不存在:', toolName)
       throw new Error(`Tool ${toolName} not found`)
@@ -43,7 +42,7 @@ export class DefaultToolExecutor implements IToolExecutor {
   private registerDefaultTools() {
     console.log('[ToolExecutor（registerDefaultTools）] 注册默认工具...')
 
-    this.registerTool('search_web', {
+    this.registry.registerTool({
       name: 'search_web',
       description: '搜索网络信息',
       params: { query: '搜索关键词' },
@@ -53,7 +52,7 @@ export class DefaultToolExecutor implements IToolExecutor {
       },
     })
 
-    this.registerTool('get_time', {
+    this.registry.registerTool({
       name: 'get_time',
       description: '获取当前时间',
       params: {},
@@ -68,4 +67,12 @@ export class DefaultToolExecutor implements IToolExecutor {
   }
 }
 
-export const toolExecutor = new DefaultToolExecutor()
+// 保留向后兼容的导出（不再推荐使用）
+// 推荐通过 DI 注入 DefaultToolExecutor
+export const toolExecutor = {
+  execute: async (toolName: string, params: any) => {
+    throw new Error('Deprecated: Please inject DefaultToolExecutor instead of using the global instance')
+  },
+  listTools: () => [],
+  registerTool: () => {},
+}

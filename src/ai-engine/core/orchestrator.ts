@@ -19,7 +19,6 @@ export class Orchestrator {
 
     let memory = null
     if (this.memoryService && userId) {
-      // log('[orchestrator] 第二步-开始读取用户记忆...', { userId })
       memory = await this.memoryService.getShortMemory(userId)
       log.info('[orchestrator] 第三步-保存用户消息到记忆...', {
         读取到记忆条数: memory?.length || 0,
@@ -74,7 +73,7 @@ export class Orchestrator {
       await this.memoryService.addMessage(userId, 'assistant', result.answer)
       log.info('[orchestrator] 第八步-助手回复保存到记忆✅', { userId })
     }
-    log.info('[orchestrator] 第九步-执行完成✅', {})
+    log.info('[orchestrator] 第九步-执行完成✅', { 返回结果: result })
 
     return result
   }

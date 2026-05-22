@@ -7,7 +7,7 @@ export class InMemoryMemoryService implements IMemoryService {
     new Map()
 
   constructor() {
-    console.log('上下文记忆初始化完成✅')
+    log.info('上下文记忆初始化完成✅')
   }
 
   async getShortMemory(userId: string) {

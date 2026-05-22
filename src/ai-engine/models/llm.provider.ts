@@ -5,7 +5,7 @@ export class SiliconFlowLLMProvider implements LLMProvider {
   private client: OpenAI
 
   constructor() {
-    log.info('models/llm.provider LLM 初始化配置', {
+    log.info('LLM 初始化配置', {
       'API Key': process.env.SILICONFLOW_API_KEY ? '已设置' : '未设置',
       'Base URL': process.env.SILICONFLOW_BASE_URL,
       Model: process.env.SILICONFLOW_MODEL,

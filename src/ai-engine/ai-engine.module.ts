@@ -41,7 +41,7 @@ import { chatWorkflow } from './workflow/chat.workflow'
         toolExecutor: DefaultToolExecutor,
         workflowEngine: WorkflowEngine,
       ) => {
-        console.log('初始化AI 调度中心')
+        log.info('初始化AI 调度中心')
         const router = new (require('./router/intent.router').IntentRouter)()
         return new Orchestrator(registry, router, workflowEngine, memoryService, toolExecutor)
       },
@@ -55,7 +55,7 @@ import { chatWorkflow } from './workflow/chat.workflow'
         memoryService: InMemoryMemoryService,
         toolExecutor: DefaultToolExecutor,
       ) => {
-        console.log('初始化（AI 核心运行时）')
+        log.info('初始化（AI 核心运行时）')
         return new AIRuntime(registry, workflowEngine, memoryService, toolExecutor)
       },
       inject: [AIRegistry, WorkflowEngine, InMemoryMemoryService, DefaultToolExecutor],

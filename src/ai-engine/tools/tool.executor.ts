@@ -6,7 +6,7 @@ import { AIRegistry } from '../core/ai.registry'
 export class DefaultToolExecutor implements IToolExecutor {
   constructor(private registry: AIRegistry) {
     this.registerDefaultTools()
-    console.log('工具执行器初始化完成✅')
+    log.info('工具执行器初始化完成✅')
   }
 
   // 兼容旧的注册方式

@@ -9,7 +9,7 @@ export class SiliconFlowEmbeddingProvider implements EmbeddingProvider {
       apiKey: process.env.SILICONFLOW_API_KEY,
       baseURL: process.env.SILICONFLOW_BASE_URL,
     })
-    console.log('向量化构造函数初始化完成✅')
+    log.info('向量化构造函数初始化完成✅')
   }
 
   async createEmbedding(text: string): Promise<number[]> {

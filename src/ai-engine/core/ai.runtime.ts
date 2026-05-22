@@ -16,10 +16,10 @@ export class AIRuntime {
     memoryService: InMemoryMemoryService,
     toolExecutor: DefaultToolExecutor,
   ) {
-    log.info('构造函数-初始化1...')
+    log.info('AI 推理管理器初始化完成✅')
     this.registry = registry
     const router = new IntentRouter()
-    console.log('构造函数-Router 创建完成')
+    log.info('构造函数-Router 创建完成✅')
     this.orchestrator = new Orchestrator(
       registry,
       router,
@@ -38,15 +38,11 @@ export class AIRuntime {
   }): Promise<any> {
     const { input, userId, metadata } = params
 
-    console.log(' 第一步-开始处理请求:', { input, userId })
-
     try {
-      console.log(' 第二步-调用 Orchestrator.execute()')
       const result = await this.orchestrator.execute({
         message: input,
         userId,
       })
-      console.log(' 第三步-Orchestrator 返回结果:', result)
 
       return {
         success: true,
@@ -55,13 +51,12 @@ export class AIRuntime {
         state: { userId, metadata },
       }
     } catch (err: any) {
-      console.log(' ❌ 发生错误!')
       return this.handleError(err, input)
     }
   }
 
   private handleError(error: Error, input: string) {
-    console.error(' 错误详情:', {
+    console.error('❌ 发生错误! 错误详情:', {
       message: error.message,
       stack: error.stack,
     })

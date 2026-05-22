@@ -9,35 +9,30 @@ export class WorkflowEngine {
   constructor(
     private toolExecutor?: DefaultToolExecutor,
     private registry?: AIRegistry,
-  ) {
-    console.log('[WorkflowEngine（workflow-engine）] 构造函数-初始化完成✅')
-  }
+  ) {}
 
   async chat(message: string, memory?: any) {
-    console.log('[WorkflowEngine（chat）] 开始 CHAT 工作流...')
-
     let prompt = message
 
     if (memory && memory.length > 0) {
-      console.log('[WorkflowEngine（chat）] 包含记忆，构建历史上下文...')
       const history = memory.map((m: any) => `${m.role}: ${m.content}`).join('\n')
       prompt = `${history}\n\n用户: ${message}`
-      console.log('[WorkflowEngine（chat）] 构建的 Prompt 长度:', prompt.length)
+      log.info('[WorkflowEngine（chat）] 包含记忆，构建历史上下文 Prompt 长度:', {
+        promptLength: prompt.length,
+      })
     } else {
-      console.log('[WorkflowEngine（chat）] 无记忆，直接使用原始消息')
+      log.info('[WorkflowEngine（chat）] 无记忆，直接使用原始消息', {
+        messageLength: message.length,
+      })
     }
 
-    console.log('[WorkflowEngine（chat）] 调用 ChatWorkflow...')
     const context = await chatWorkflow.run({ input: prompt })
-    console.log('[WorkflowEngine（chat）] ChatWorkflow 返回:', context.output)
+    log.info('[WorkflowEngine（chat）] ChatWorkflow 返回:', { outputLength: context.output.length })
 
     return context.output
   }
 
   async rag(message: string) {
-    console.log('[WorkflowEngine（rag）] 开始 RAG 工作流...')
-
-    console.log('[WorkflowEngine（rag）] 调用 RagWorkflow...')
     const context = await ragWorkflow.run({ input: message })
     console.log('[WorkflowEngine（rag）] RagWorkflow 返回:', context.output)
 

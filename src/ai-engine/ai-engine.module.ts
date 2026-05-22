@@ -24,13 +24,11 @@ import { chatWorkflow } from './workflow/chat.workflow'
     DefaultToolExecutor,
     {
       provide: WorkflowEngine,
-      useFactory: (
-        toolExecutor: DefaultToolExecutor,
-        registry: AIRegistry
-      ) => {
-        console.log('[ai-engine.module] 初始化 WorkflowEngine...')
-        console.log('[ai-engine.module] toolExecutor:', !!toolExecutor)
-        console.log('[ai-engine.module] registry:', !!registry)
+      useFactory: (toolExecutor: DefaultToolExecutor, registry: AIRegistry) => {
+        log.info('初始化工作流引擎', {
+          工具执行器加载状态: !!toolExecutor ? '✅ 已加载' : '❌ 未加载',
+          工作流注册器加载状态: !!registry ? '✅ 已加载' : '❌ 未加载',
+        })
         return new WorkflowEngine(toolExecutor, registry)
       },
       inject: [DefaultToolExecutor, AIRegistry],
@@ -43,15 +41,9 @@ import { chatWorkflow } from './workflow/chat.workflow'
         toolExecutor: DefaultToolExecutor,
         workflowEngine: WorkflowEngine,
       ) => {
-        console.log('[ai-engine.module] 初始化 Orchestrator...')
+        console.log('初始化AI 调度中心')
         const router = new (require('./router/intent.router').IntentRouter)()
-        return new Orchestrator(
-          registry,
-          router,
-          workflowEngine,
-          memoryService,
-          toolExecutor,
-        )
+        return new Orchestrator(registry, router, workflowEngine, memoryService, toolExecutor)
       },
       inject: [AIRegistry, InMemoryMemoryService, DefaultToolExecutor, WorkflowEngine],
     },
@@ -63,13 +55,8 @@ import { chatWorkflow } from './workflow/chat.workflow'
         memoryService: InMemoryMemoryService,
         toolExecutor: DefaultToolExecutor,
       ) => {
-        console.log('[ai-engine.module] 初始化 AIRuntime...')
-        return new AIRuntime(
-          registry,
-          workflowEngine,
-          memoryService,
-          toolExecutor
-        )
+        console.log('初始化（AI 核心运行时）')
+        return new AIRuntime(registry, workflowEngine, memoryService, toolExecutor)
       },
       inject: [AIRegistry, WorkflowEngine, InMemoryMemoryService, DefaultToolExecutor],
     },

@@ -16,12 +16,10 @@ export class AIRuntime {
     memoryService: InMemoryMemoryService,
     toolExecutor: DefaultToolExecutor,
   ) {
-    console.log('[AIRuntime（ai-runtime）] 构造函数-初始化...')
+    log.info('构造函数-初始化1...')
     this.registry = registry
     const router = new IntentRouter()
-    console.log('[AIRuntime（ai-runtime）] 构造函数-Router 创建完成')
-    
-    console.log('[AIRuntime（ai-runtime）] 构造函数-创建 Orchestrator...')
+    console.log('构造函数-Router 创建完成')
     this.orchestrator = new Orchestrator(
       registry,
       router,
@@ -29,8 +27,7 @@ export class AIRuntime {
       memoryService,
       toolExecutor,
     )
-    console.log('[AIRuntime（ai-runtime）] 构造函数-Orchestrator 创建完成')
-    console.log('[AIRuntime（ai-runtime）] 构造函数-初始化完成✅')
+    console.log(' 构造函数-Orchestrator 创建完成')
   }
 
   async run(params: {
@@ -41,21 +38,15 @@ export class AIRuntime {
   }): Promise<any> {
     const { input, userId, metadata } = params
 
-    console.log('═══════════════════════════════════════════════════════════')
-    console.log('[AIRuntime（ai-runtime）] 第一步-开始处理请求:', { input, userId })
-    console.log('═══════════════════════════════════════════════════════════')
+    console.log(' 第一步-开始处理请求:', { input, userId })
 
     try {
-      console.log('[AIRuntime（ai-runtime）] 第二步-调用 Orchestrator.execute()')
+      console.log(' 第二步-调用 Orchestrator.execute()')
       const result = await this.orchestrator.execute({
         message: input,
         userId,
       })
-      console.log('[AIRuntime（ai-runtime）] 第三步-Orchestrator 返回结果:', result)
-
-      console.log('═══════════════════════════════════════════════════════════')
-      console.log('[AIRuntime（ai-runtime）] 第四步-请求处理完成✅')
-      console.log('═══════════════════════════════════════════════════════════')
+      console.log(' 第三步-Orchestrator 返回结果:', result)
 
       return {
         success: true,
@@ -64,13 +55,13 @@ export class AIRuntime {
         state: { userId, metadata },
       }
     } catch (err: any) {
-      console.log('[AIRuntime（ai-runtime）] ❌ 发生错误!')
+      console.log(' ❌ 发生错误!')
       return this.handleError(err, input)
     }
   }
 
   private handleError(error: Error, input: string) {
-    console.error('[AIRuntime] 错误详情:', {
+    console.error(' 错误详情:', {
       message: error.message,
       stack: error.stack,
     })

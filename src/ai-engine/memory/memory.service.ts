@@ -3,10 +3,11 @@ import { MemoryService as IMemoryService } from '../core/interfaces'
 
 @Injectable()
 export class InMemoryMemoryService implements IMemoryService {
-  private memories: Map<string, Array<{ role: string; content: string; timestamp: number }>> = new Map()
+  private memories: Map<string, Array<{ role: string; content: string; timestamp: number }>> =
+    new Map()
 
   constructor() {
-    console.log('[MemoryService（memory）] 构造函数-初始化完成✅')
+    console.log('上下文记忆初始化完成✅')
   }
 
   async getShortMemory(userId: string) {
@@ -17,7 +18,11 @@ export class InMemoryMemoryService implements IMemoryService {
   }
 
   async addMessage(userId: string, role: string, content: string) {
-    console.log('[MemoryService（addMessage）] 添加消息:', { userId, role, contentLength: content.length })
+    console.log('[MemoryService（addMessage）] 添加消息:', {
+      userId,
+      role,
+      contentLength: content.length,
+    })
 
     if (!this.memories.has(userId)) {
       console.log('[MemoryService（addMessage）] 新用户，创建记忆空间')

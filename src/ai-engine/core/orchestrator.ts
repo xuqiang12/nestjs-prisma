@@ -11,88 +11,82 @@ export class Orchestrator {
     private workflowEngine: WorkflowEngine,
     private memoryService?: MemoryService,
     private toolExecutor?: ToolExecutor,
-  ) {
-    console.log('[Orchestrator（orchestrator）] 构造函数-初始化完成✅')
-  }
+  ) {}
 
   async execute(input: { message: string; userId?: string }) {
     const { message, userId } = input
-
-    console.log('───────────────────────────────────────────────────────────')
-    console.log('[Orchestrator（orchestrator）] 第二步-执行请求:', { message, userId })
-    console.log('───────────────────────────────────────────────────────────')
+    log.info('[orchestrator] 第一步-执行请求:', { message, userId })
 
     let memory = null
     if (this.memoryService && userId) {
-      console.log('[Orchestrator（orchestrator）] 第三步-读取用户记忆...')
+      // log('[orchestrator] 第二步-开始读取用户记忆...', { userId })
       memory = await this.memoryService.getShortMemory(userId)
-      console.log('[Orchestrator（orchestrator）] 第三步-读取到记忆:', memory?.length || 0, '条')
-
-      console.log('[Orchestrator（orchestrator）] 第四步-保存用户消息到记忆...')
+      log.info('[orchestrator] 第三步-保存用户消息到记忆...', {
+        读取到记忆条数: memory?.length || 0,
+      })
       await this.memoryService.addMessage(userId, 'user', message)
-      console.log('[Orchestrator（orchestrator）] 第四步-用户消息已保存✅')
+      log.info('[orchestrator] 第四步-用户消息已保存✅', { userId })
     } else {
-      console.log('[Orchestrator（orchestrator）] 第三步-无 userId，跳过记忆读取')
+      log.info('[orchestrator] 第二步-无 userId，跳过记忆读取', {})
     }
 
-    console.log('[Orchestrator（orchestrator）] 第五步-开始路由判断...')
     const route = await this.routeWithLLM(message)
-    console.log('[Orchestrator（orchestrator）] 第五步-路由结果:', route)
-
-    console.log('[Orchestrator（orchestrator）] 第六步-根据路由类型分流执行:', route.type)
+    log.info('[orchestrator] 第五步-路由结果:', {
+      路由结果: route,
+      根据路由类型分流执行: route.type,
+    })
     let result
 
     switch (route.type) {
       case 'chat':
-        console.log('[Orchestrator（orchestrator）] 第六步-分支: CHAT 对话模式')
+        log.info('[orchestrator] 第六步-分支: chat 对话模式', { message, memory })
         result = await this.workflowEngine.chat(message, memory)
         break
 
       case 'rag':
-        console.log('[Orchestrator（orchestrator）] 第六步-分支: RAG 知识库模式')
+        log.info('[orchestrator] 第六步-分支: rag 知识库模式', { message })
         result = await this.workflowEngine.rag(message)
         break
 
       case 'tool':
-        console.log('[Orchestrator（orchestrator）] 第六步-分支: TOOL 工具模式', route.tools)
+        log.info('[orchestrator] 第六步-分支: tool 工具模式', { message, tools: route.tools })
         result = await this.workflowEngine.tool(message, route.tools || [])
         break
 
       case 'summary':
-        console.log('[Orchestrator（orchestrator）] 第六步-分支: SUMMARY 摘要模式')
+        log.info('[orchestrator] 第六步-分支: summary 摘要模式', { message })
         result = await this.workflowEngine.summary(message)
         break
 
       case 'agent':
-        console.log('[Orchestrator（orchestrator）] 第六步-分支: AGENT 代理模式')
+        log.info('[orchestrator] 第六步-分支: agent 代理模式', { message, memory })
         result = await this.runAgentLoop(message, memory)
         break
 
       default:
-        console.log('[Orchestrator（orchestrator）] 第六步-分支: 默认 CHAT 模式')
+        log.info('[orchestrator] 第六步-分支: 默认 CHAT 模式', { message, memory })
         result = await this.workflowEngine.chat(message, memory)
     }
 
-    console.log('[Orchestrator（orchestrator）] 第七步-Workflow 执行结果:', result)
+    log.info('[orchestrator] 第七步-Workflow 执行结果:', { result })
 
     if (this.memoryService && userId && result?.answer) {
-      console.log('[Orchestrator（orchestrator）] 第八步-保存助手回复到记忆...')
       await this.memoryService.addMessage(userId, 'assistant', result.answer)
-      console.log('[Orchestrator（orchestrator）] 第八步-助手回复已保存✅')
+      log.info('[orchestrator] 第八步-助手回复保存到记忆✅', { userId })
     }
-
-    console.log('───────────────────────────────────────────────────────────')
-    console.log('[Orchestrator（orchestrator）] 第九步-执行完成✅')
-    console.log('───────────────────────────────────────────────────────────')
+    log.info('[orchestrator] 第九步-执行完成✅', {})
 
     return result
   }
 
   private async routeWithLLM(message: string): Promise<ExtendedRouteResult> {
-    console.log('[Orchestrator（routeWithLLM）] 开始 LLM 路由判断...')
+    log.info('[orchestrator] 第五步-开始 LLM 路由判断...', { message })
 
     const toolsPrompt = this.toolExecutor
-      ? `\n可用工具: ${this.toolExecutor.listTools().map(t => t.name).join(', ')}`
+      ? `\n可用工具: ${this.toolExecutor
+          .listTools()
+          .map((t) => t.name)
+          .join(', ')}`
       : ''
 
     const prompt = `
@@ -115,34 +109,35 @@ export class Orchestrator {
 }
 `
 
-    console.log('[Orchestrator（routeWithLLM）] 调用 LLM...')
     const response = await llmProvider.invoke(prompt)
-    console.log('[Orchestrator（routeWithLLM）] LLM 返回:', response)
+    log.info('[orchestrator] 第五步-LLM 返回:', { response })
 
     try {
-      console.log('[Orchestrator（routeWithLLM）] 开始解析响应...')
       let jsonStr = response
 
       if (jsonStr.includes('```json')) {
-        console.log('[Orchestrator（routeWithLLM）] 检测到 Markdown 代码块，正在清理...')
         const startIdx = jsonStr.indexOf('```json') + 7
         const endIdx = jsonStr.lastIndexOf('```')
         if (startIdx < endIdx) {
           jsonStr = jsonStr.substring(startIdx, endIdx).trim()
-          console.log('[Orchestrator（routeWithLLM）] 清理后的 JSON:', jsonStr)
+          log.info('[orchestrator] 第五步-Markdown 代码块清理后的 JSON:', { jsonStr })
         }
       } else if (jsonStr.includes('```')) {
-        console.log('[Orchestrator（routeWithLLM）] 检测到无标签代码块，正在清理...')
         const startIdx = jsonStr.indexOf('```') + 3
         const endIdx = jsonStr.lastIndexOf('```')
         if (startIdx < endIdx) {
           jsonStr = jsonStr.substring(startIdx, endIdx).trim()
-          console.log('[Orchestrator（routeWithLLM）] 清理后的 JSON:', jsonStr)
+          log.info('[orchestrator] 第五步-无标签代码块清理后的 JSON:', { jsonStr })
         }
       }
 
       const parsed = JSON.parse(jsonStr)
-      console.log('[Orchestrator（routeWithLLM）] JSON 解析成功:', parsed)
+      log.info('[orchestrator] 第五步-JSON 解析成功:', {
+        type: parsed.type || 'chat',
+        confidence: parsed.confidence || 0.5,
+        tools: parsed.tools || [],
+        reason: parsed.reason,
+      })
       return {
         type: parsed.type || 'chat',
         confidence: parsed.confidence || 0.5,
@@ -150,8 +145,7 @@ export class Orchestrator {
         reason: parsed.reason,
       }
     } catch (e) {
-      console.error('[Orchestrator（routeWithLLM）] ❌ JSON 解析失败:', e)
-      console.error('[Orchestrator（routeWithLLM）] 原始响应:', response)
+      log.info('[orchestrator] 第五步-❌ JSON 解析失败:', { error: e.message, 原始响应: response })
       return {
         type: 'chat',
         confidence: 0.3,
@@ -161,10 +155,6 @@ export class Orchestrator {
   }
 
   async runAgentLoop(message: string, memory: any) {
-    console.log('───────────────────────────────────────────────────────────')
-    console.log('[Orchestrator（Agent）] 启动 Agent 循环')
-    console.log('───────────────────────────────────────────────────────────')
-
     const state: AgentState = {
       message,
       memory,
@@ -175,39 +165,45 @@ export class Orchestrator {
     for (let i = 0; i < 5; i++) {
       console.log(`[Orchestrator（Agent）] ========== Agent第${i + 1}步开始 ==========`)
 
-      console.log('[Orchestrator（Agent）] 决定下一步动作...')
       const action = await this.decideNextAction(state)
-      console.log('[Orchestrator（Agent）] 动作决定:', action)
+      log.info('[orchestrator] 第六步-JSON Agent动作决定:', { action })
 
       if (action.type === 'final') {
-        console.log('[Orchestrator（Agent）] ✅ Final 动作，返回最终结果')
+        log.info('[orchestrator] 第六步-JSON Agent Final 动作 动作，返回最终结果:', {
+          answer: action.output,
+          steps: state.steps,
+        })
         return { answer: action.output, steps: state.steps }
       }
 
       if (action.type === 'tool' && this.toolExecutor) {
-        console.log('[Orchestrator（Agent）] 执行工具:', action.tool, '参数:', action.params)
+        log.info('[Orchestrator（Agent）] 第六步-JSON Agent 执行工具:', {
+          tool: action.tool,
+          params: action.params,
+        })
         try {
           const toolResult = await this.toolExecutor.execute(action.tool, action.params)
-          console.log('[Orchestrator（Agent）] 工具执行结果:', toolResult)
           state.steps.push({ action, toolResult })
           state.result = toolResult
-          console.log('[Orchestrator（Agent）] Agent状态已更新')
+          log.info('[Orchestrator（Agent）] 第六步-JSON Agent 工具执行结果已更新:', {
+            action,
+            toolResult,
+          })
         } catch (e) {
           console.error('[Orchestrator（Agent）] ❌ 工具执行失败:', e)
         }
       }
-
-      console.log(`[Orchestrator（Agent）] ========== Agent第${i + 1}步结束 ==========`)
     }
 
-    console.log('[Orchestrator（Agent）] Agent循环结束，返回结果')
+    log.info('[Orchestrator（Agent）] 第六步-JSON Agent 循环结束，返回结果:', {
+      answer: state.result,
+      steps: state.steps,
+    })
     return { answer: state.result, steps: state.steps }
   }
 
   private async decideNextAction(state: AgentState) {
-    console.log('[Orchestrator（decideNextAction）] Agent思考中...')
-
-    const history = state.steps.map(s => JSON.stringify(s)).join('\n')
+    const history = state.steps.map((s) => JSON.stringify(s)).join('\n')
 
     const prompt = `
 当前状态:
@@ -224,44 +220,42 @@ export class Orchestrator {
 }
 `
 
-    console.log('[Orchestrator（decideNextAction）] 调用 LLM 决策...')
     const response = await llmProvider.invoke(prompt)
-    console.log('[Orchestrator（decideNextAction）] LLM 返回:', response)
+    log.info('[Orchestrator（decideNextAction）] LLM 返回:', { prompt, response })
 
     try {
-      console.log('[Orchestrator（decideNextAction）] 开始解析Agent响应...')
       let jsonStr = response
 
       if (jsonStr.includes('```json')) {
-        console.log('[Orchestrator（decideNextAction）] 检测到 Markdown 代码块，正在清理...')
         const startIdx = jsonStr.indexOf('```json') + 7
         const endIdx = jsonStr.lastIndexOf('```')
         if (startIdx < endIdx) {
           jsonStr = jsonStr.substring(startIdx, endIdx).trim()
-          console.log('[Orchestrator（decideNextAction）] 清理后的 JSON:', jsonStr)
+          log.info('[Orchestrator（decideNextAction）]  Markdown 代码块清理后的 JSON:', { jsonStr })
         }
       } else if (jsonStr.includes('```')) {
-        console.log('[Orchestrator（decideNextAction）] 检测到无标签代码块，正在清理...')
         const startIdx = jsonStr.indexOf('```') + 3
         const endIdx = jsonStr.lastIndexOf('```')
         if (startIdx < endIdx) {
           jsonStr = jsonStr.substring(startIdx, endIdx).trim()
-          console.log('[Orchestrator（decideNextAction）] 清理后的 JSON:', jsonStr)
+          log.info('[Orchestrator（decideNextAction）] 无标签代码块清理后的 JSON:', { jsonStr })
         }
       }
 
       const action = JSON.parse(jsonStr)
-      console.log('[Orchestrator（decideNextAction）] Agent思考结果解析成功:', action)
+      log.info('[Orchestrator（decideNextAction）] Agent思考结果解析成功:', { action })
       return action
     } catch (e) {
-      console.error('[Orchestrator（decideNextAction）] ❌ Agent思考结果解析失败:', e)
-      console.error('[Orchestrator（decideNextAction）] 原始响应:', response)
+      log.info('[Orchestrator（decideNextAction）] ❌ Agent思考结果解析失败:', {
+        error: e.message,
+        原始响应: response,
+      })
       return { type: 'final', output: '处理完成' }
     }
   }
 
   async stream(message: string) {
-    console.log('[Orchestrator（stream）] 流式输出模式')
+    log.info('[Orchestrator（stream）] 流式输出模式', { message })
     return this.workflowEngine.stream(message)
   }
 }

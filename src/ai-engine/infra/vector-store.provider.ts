@@ -6,9 +6,7 @@ import { splitText } from './text-chunker'
 const prisma = new PrismaClient()
 
 export class PrismaVectorStore implements VectorStore {
-  constructor() {
-    console.log('[PrismaVectorStore（vector-store）] 构造函数-初始化完成✅')
-  }
+  constructor() {}
 
   async addDocuments(
     contents: string[],
@@ -26,7 +24,11 @@ export class PrismaVectorStore implements VectorStore {
         const content = contents[i]
         console.log(`[PrismaVectorStore（addDocuments）] 处理文档${i + 1}，长度:`, content.length)
         const chunks = splitText(content)
-        console.log(`[PrismaVectorStore（addDocuments）] 文档${i + 1}切分为`, chunks.length, '个 chunks')
+        console.log(
+          `[PrismaVectorStore（addDocuments）] 文档${i + 1}切分为`,
+          chunks.length,
+          '个 chunks',
+        )
         allChunks.push(...chunks)
       }
 
@@ -35,9 +37,14 @@ export class PrismaVectorStore implements VectorStore {
       console.log('[PrismaVectorStore（addDocuments）] 开始向量化和入库...')
       const insertPromises = allChunks.map(async (chunk, i) => {
         try {
-          console.log(`[PrismaVectorStore（addDocuments）] 处理 chunk${i + 1}/${allChunks.length}...`)
+          console.log(
+            `[PrismaVectorStore（addDocuments）] 处理 chunk${i + 1}/${allChunks.length}...`,
+          )
           const embedding = await embeddingProvider.createEmbedding(chunk)
-          console.log(`[PrismaVectorStore（addDocuments）] chunk${i + 1}向量化完成，维度:`, embedding.length)
+          console.log(
+            `[PrismaVectorStore（addDocuments）] chunk${i + 1}向量化完成，维度:`,
+            embedding.length,
+          )
           await prisma.$executeRaw`
           INSERT INTO documents (id, content, metadata, embedding)
           VALUES (
@@ -60,7 +67,11 @@ export class PrismaVectorStore implements VectorStore {
       await Promise.allSettled(insertPromises)
 
       console.log('───────────────────────────────────────────────────────────')
-      console.log('[PrismaVectorStore（addDocuments）] 完成！成功添加', allChunks.length, '个 chunks ✅')
+      console.log(
+        '[PrismaVectorStore（addDocuments）] 完成！成功添加',
+        allChunks.length,
+        '个 chunks ✅',
+      )
       console.log('───────────────────────────────────────────────────────────')
 
       return {

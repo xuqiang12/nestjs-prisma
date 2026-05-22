@@ -5,9 +5,8 @@ import { AIRegistry } from '../core/ai.registry'
 @Injectable()
 export class DefaultToolExecutor implements IToolExecutor {
   constructor(private registry: AIRegistry) {
-    console.log('[ToolExecutor（tool）] 构造函数-开始初始化...')
     this.registerDefaultTools()
-    console.log('[ToolExecutor（tool）] 构造函数-初始化完成✅')
+    console.log('工具执行器初始化完成✅')
   }
 
   // 兼容旧的注册方式
@@ -19,7 +18,10 @@ export class DefaultToolExecutor implements IToolExecutor {
   listTools(): ToolDefinition[] {
     console.log('[ToolExecutor（listTools）] 列出所有工具...')
     const tools = this.registry.listTools()
-    console.log('[ToolExecutor（listTools）] 可用工具:', tools.map(t => t.name))
+    console.log(
+      '[ToolExecutor（listTools）] 可用工具:',
+      tools.map((t) => t.name),
+    )
     return tools
   }
 
@@ -71,7 +73,9 @@ export class DefaultToolExecutor implements IToolExecutor {
 // 推荐通过 DI 注入 DefaultToolExecutor
 export const toolExecutor = {
   execute: async (toolName: string, params: any) => {
-    throw new Error('Deprecated: Please inject DefaultToolExecutor instead of using the global instance')
+    throw new Error(
+      'Deprecated: Please inject DefaultToolExecutor instead of using the global instance',
+    )
   },
   listTools: () => [],
   registerTool: () => {},

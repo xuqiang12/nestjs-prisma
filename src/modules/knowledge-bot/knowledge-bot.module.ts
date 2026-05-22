@@ -14,7 +14,7 @@ import { GetUserMenuPermissionsTool } from './ai/tools/get-user-menu-permissions
 export class KnowledgeBotModule implements OnModuleInit {
   constructor(
     private registry: AIRegistry,
-    private getUserMenuPermissionsTool: GetUserMenuPermissionsTool
+    private getUserMenuPermissionsTool: GetUserMenuPermissionsTool,
   ) {}
 
   onModuleInit() {

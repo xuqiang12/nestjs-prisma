@@ -9,6 +9,7 @@ export class ChatController {
   @Public()
   @Post()
   async chat(@Body() body: { message: string; userId?: string }) {
+    console.log('1、调用接口，请求参数:', body)
     return this.chatService.chat(body.message, body.userId)
   }
 }

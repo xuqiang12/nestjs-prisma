@@ -1,3 +1,5 @@
+import './common/utils/logger'
+
 import { BadRequestException, ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { HttpAdapterHost, NestFactory } from '@nestjs/core'
@@ -7,9 +9,11 @@ import { AppModule } from './app.module'
 import type { CorsConfig, NestConfig, SwaggerConfig } from './common/configs/config.interface'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { AllExceptionFilter } from './common/filters/all-exception.filter'
-
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create(AppModule, {
+    // 关闭所有 Nest 自带的启动日志
+    logger: false,
+  })
 
   // Validation Pipe
   app.useGlobalPipes(

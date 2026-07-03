@@ -1,96 +1,127 @@
-# AGENTS.md — pms-web 项目规则
+# AGENTS.md - nestjs-prisma 项目规则
+
+本文件是当前 `nestjs-prisma` 项目的协作与编码准则。所有任务必须优先遵守用户明确要求，其次遵守本文件规则。
 
 ## 项目技术栈
 
-- Vue 2.6
-- Vue CLI
-- Vue Router 3
-- Vuex 3
-- mg-ui / Element UI
-- axios
-- SCSS
-- qiankun 子应用接入
-- `@vue/composition-api` 已接入，可在 Vue2 中使用组合式能力
-- 当任务涉及 `src/components/elementForm`、`@/components/elementForm/index.vue`、页面中注册 `customForm: () => import('@/components/elementForm/index.vue')`，或新增/修改 `elementForm` 的 `columns` 配置时，必须先读取 `src/components/elementForm/AGENTS.md`。使用该组件时必须按其中的 `param`、`effect`、`type`、`rules`、事件和 slot 规则配置，禁止套用 `src/components/customForm` 的 `pram/backPram/type: 'zh-cn'/type: 'choice'` 旧写法。
+- NestJS 10
+- TypeScript
+- Prisma 5
+- PostgreSQL
+- pgvector
+- `nestjs-prisma`
+- `@nestjs/config`
+- `@nestjs/jwt`
+- `@nestjs/swagger`
+- `class-validator` / `class-transformer`
+- LangChain / OpenAI 兼容接口
+- Jest / ts-jest / supertest
 
-## 开发原则（最高优先级）
+## 当前项目结构认知
 
-1. 只做用户明确要求的内容，不多做、不少做、不错做；能用项目已有指令、全局方法、组件能力解决的，不新增 computed、方法、工具函数或额外抽象。
-2. 不确定字段名、接口名、参数名、业务逻辑、响应结构时，必须直接问用户，不允许猜测。
-3. 变量名、字段名、接口名、参数名、响应字段必须严格按照用户或现有接口提供的名称。
-4. 不擅自修改业务含义，不擅自增加默认值、额外兜底、兼容逻辑、格式化逻辑或额外功能。
-5. 只允许对 `null` / `undefined` 做必要兜底；不能把 `0`、`false` 等有效值误处理为空值。
-6. `v-for` 默认允许使用 `index` 作为 `key`，优先沿用现有项目写法；仅在双循环、动态增删、拖拽排序等场景下，必须先询问用户使用什么字段作为 `key`。
-7. 尽量不对接口返回数据格式化；确实需要格式化时，必须先问用户确认。
+- 应用入口：`src/main.ts`
+- 根模块：`src/app.module.ts`
+- 全局配置：`src/common/configs`
+- 全局 Guard：`src/common/guards`
+- 全局异常与响应封装：`src/common/filters`、`src/common/interceptors`
+- 用户、认证、菜单、聊天模块：`src/modules`
+- AI 调度核心：`src/ai-engine`
+- 知识库业务模块：`src/modules/knowledge-bot`
+- Prisma schema：`prisma/schema.prisma`
+- Prisma seed：`prisma/seed.ts`、`prisma/seeds`
+- e2e 测试：`test`
 
 ## 任务执行规则
 
-当用户要求“分析、看一下、帮我看看、review”或仅要求判断方案时，只允许阅读代码、接口文档、日志和配置，分析问题原因并输出建议；禁止修改业务代码，禁止执行会改变业务代码或项目运行状态的命令。
+1. 用户只要求“分析、看看、review、帮我看一下、判断方案”时，只允许阅读代码、配置、文档和测试，不修改业务代码，不执行会改变项目运行状态的命令。
+2. 用户明确要求“修复、开发、实现、可以改、按方案处理、更新文件”后，才允许修改代码或文档。
+3. 编码前必须先说明前提假设、执行步骤和验证标准；需求不清楚时先问，不擅自补业务含义。
+4. 修改范围必须最小化，只改和本次需求直接相关的文件。
+5. 不顺手重构、不格式化无关文件、不删除历史代码、不改变未确认的业务语义。
+6. 发现无关问题时，只在结论里标注风险；除非用户确认，否则不一起修。
+7. 所有新增或修改的中文文本、注释、文档必须保持 UTF-8 可读，不允许出现乱码。
 
-分析类任务完成后，如果 `doc/code` 下没有对应文档，且分析结果明确属于当前真实现状，必须在不修改业务代码的前提下自动形成文档，不再仅提示后续补充文档。
+## NestJS 编码规则
 
-分析类任务输出必须包含：问题分析、实现方案、风险评估、待确认事项。
+1. Controller 只负责路由、参数接收和调用 Service；业务逻辑放在 Service。
+2. DTO 必须放在对应模块的 `dto` 目录，并使用 `class-validator` 描述入参规则。
+3. 新增接口时必须确认路由、HTTP 方法、请求参数、返回结构和鉴权要求。
+4. 不擅自新增全局中间件、全局 Guard、全局 Filter、全局 Interceptor。
+5. 修改 `src/main.ts`、`src/app.module.ts`、全局 Guard、全局异常处理时，必须先说明影响范围。
+6. 现有接口统一响应由 `ResponseInterceptor` 处理，不要在普通业务接口里重复包装 `{ code, message, data }`，除非当前代码路径已有明确约定。
+7. 使用 `@Public()` 必须有明确理由；不得为了调试绕过认证。
 
-当用户明确要求“修复、开发、实现、可以改、按方案处理”时，才允许进行代码修改、功能实现或问题修复。
+## Prisma 与数据库规则
 
-开发类任务必须修改范围最小化，优先复用已有代码，保持原有代码风格；能原地补字段、补属性、补指令时，不改写原代码结构，不为测试、复用或个人习惯拆新方法、改写流程；禁止擅自扩展需求，禁止修改无关文件，禁止顺手重构，禁止改变未确认的业务逻辑。
+1. 运行期业务代码优先使用 `nestjs-prisma` 提供的 `PrismaService`，不要随意新增 `new PrismaClient()`。
+2. 修改 `prisma/schema.prisma` 时，必须同步考虑 migration、seed、DTO、Service 查询和返回结构。
+3. 不擅自执行会重置、迁移或写入数据库的命令，例如 `prisma migrate dev`、`prisma db push --force-reset`、`prisma migrate reset`、`prisma db seed`。
+4. 涉及 `documents.embedding`、pgvector、原始 SQL、`$queryRaw`、`$executeRaw` 时，必须先确认向量维度、模型来源、SQL 注入风险和数据库扩展依赖。
+5. Seed 脚本必须尽量幂等；新增初始化数据优先使用 `upsert` 或唯一约束配合 `skipDuplicates`。
+6. 不提交真实账号、密码、手机号、API Key、数据库连接串等敏感信息。
 
-开发类任务完成后必须说明：修改内容、实现说明、影响范围、验证方式、文档更新结果。
+## 认证与权限规则
 
-## 编码规范
+1. 认证入口主要在 `src/modules/auth`，权限判断主要在 `src/common/guards`。
+2. JWT payload 字段必须来自真实用户、角色和权限数据，不允许硬编码管理员身份。
+3. 修改 `JwtAuthGuard`、`RolesGuard`、`PermissionsGuard` 前，必须追踪 token 生成、request.user 结构和装饰器读取逻辑。
+4. `Role`、`Permission`、`Menu`、`MenuRole`、`MenuButton` 的关系必须以 `prisma/schema.prisma` 为准，不根据旧注释或旧代码猜测字段。
+5. 菜单显示权限和按钮操作权限是两个不同概念；变更前必须确认使用 `MenuRole` 还是 `MenuButton -> Permission` 作为依据。
+6. 权限码、角色名、菜单路径、组件路径不得擅自改名。
 
-1. 所有代码、文本、注释、中文标签必须使用 UTF-8 编码，禁止乱码、奇怪符号、不可读字符。
-2. 优先使用 `@/` 路径别名引用 `src` 下文件。
-3. 代码保持干净、简洁、可直接使用。
-4. 不添加无关重构，不顺手改业务逻辑。
-5. 只有确实必要才新增方法；单次使用、简单判断、简单展示逻辑默认不新增方法。新增方法必须添加有效注释，注释必须包含方法作用。
-6. 新增属性、参数、状态字段、接口字段、业务配置项时必须添加有效注释，注释必须说明业务含义或参数作用。
-7. 不允许把 Options API 擅自改成 Composition API。
+## AI 与知识库规则
 
-## UI 与组件约定
+1. 当前 AI 主线是 `src/ai-engine` 和 `src/modules/knowledge-bot`。
+2. `src/modules/ai-brain`、`src/modules/aiCore`、`src/modules/ai copy` 等目录可能是实验或旧路径；未确认前不要把它们当作线上主路径。
+3. 修改 AI 路由、工具调用、RAG、向量检索前，必须先追踪当前模块是否已在 `AppModule` 注册。
+4. LLM、Embedding、Chat API 相关环境变量必须通过 `.env.example` 或配置文档说明，不写死真实密钥。
+5. 不擅自改变 prompt、路由分类、工具名称、返回结构；这些会影响上层调用契约。
+6. 向量入库和检索涉及外部模型与数据库，测试时不要默认执行真实远程调用，除非用户明确允许。
 
-1. UI 基于 Element UI，优先沿用现有组件写法。
-2. 图标 class 统一使用 `iconfont`，业务图标 class 以 `pms-` 开头。
-3. 搜索区优先参考 `src/components/search/indexPro.vue`。
-4. 分页优先使用 `src/components/Pagination/index.vue`，字段通常为 `pageNum`、`pageSize`。
-5. 配置型表单优先参考 `src/components/elementForm`。
-6. 不擅自引入新的 UI 库、图标库或样式体系。
-7. 页面样式优先使用 SCSS，保持现有后台管理系统视觉规范，不擅自修改全局样式。
+## 环境变量规则
 
-## API 与数据规则
+1. `.env` 可能包含本地敏感配置，不要输出或提交真实值。
+2. `.env.example` 只能写变量名和示例占位值。
+3. 新增配置项时，必须同步检查：
+   - `src/common/configs/config.ts`
+   - `src/common/configs/config.interface.ts`
+   - `.env.example`
+   - 实际读取配置的位置
+4. 同一类配置优先统一通过 `ConfigService` 读取；不要在同一业务链路里混用多个配置来源，除非当前模块已有明确原因。
 
-1. API 文件统一放在 `src/api` 下，按业务模块拆分。
-2. 普通业务请求使用 `@/utils/request`。
-3. 上传相关请求使用现有上传封装，不新增重复 axios 实例，除非用户明确要求。
-4. GET 请求参数使用 `params`，POST 请求体使用 `data`，保持现有接口习惯。
-5. 不擅自修改接口路径、请求方法、参数名、响应字段名。
-6. 后端字段不明确时，必须问用户确认。
-7. 所有接口方法从文件最下方一行新增。
-8. 不要为了页面展示提前拼接字符串，优先在 template 中直接渲染；template 中可直接完成的空值展示、字段截取、简单三元判断，不新增 `formatXxx` / helper 方法。
-9. 当新接口返回的是独立业务数据时，必须按业务含义单独声明状态，不允许为了少改代码复用旧字段。
+## 测试与验证规则
 
-## 修改前检查
+1. 代码修改后优先运行：
+   - `npx.cmd tsc --noEmit`
+2. 涉及 HTTP 控制器、全局启动或基础行为时，运行：
+   - `npm.cmd run test:e2e -- --runInBand`
+3. 涉及单元测试时，运行：
+   - `npm.cmd test -- --runInBand`
+4. 涉及 Prisma Client 生成、schema 或类型变化时，视情况运行：
+   - `npm.cmd run prisma:generate`
+5. 如果某条验证命令因为环境、数据库、网络或密钥缺失无法执行，必须在最终说明中明确写出未执行原因。
 
-1. 先看同目录或同业务模块已有写法；尤其先确认是否已有可用的指令、全局方法、组件能力，例如权限优先用 `v-permission`，输入限制优先用 `v-replace`，空值展示优先用 `$empty`。
+## 文档规则
 
-## 文档更新规则
+1. 修改接口、认证、权限、数据库模型、AI 工具、环境变量时，必须同步考虑 README 或相关文档是否需要更新。
+2. 当前项目没有稳定的 `doc/code` 业务文档体系；不要照搬其他项目的文档目录规则。
+3. 分析类任务输出必须包含：
+   - 问题分析
+   - 实现方案或建议
+   - 风险评估
+   - 待确认事项
+4. 开发类任务完成后必须说明：
+   - 修改内容
+   - 影响范围
+   - 验证方式
+   - 未验证项或剩余风险
 
-1. 项目代码逻辑文档统一维护在根目录 `doc/code` 文件夹下。
-2. 文档必须按业务模块和页面建立，并统一按 `doc/code/业务模块/页面名.md` 命名；业务模块优先取路由一级模块或 `src/views` 下对应业务目录，页面名优先取页面目录名称。例如：`src/views/orderManage/addReserve/index.vue` 或路由 `/orderManage/addReserve` 对应文档应为 `doc/code/orderManage/addReserve.md`。
-3. 非独立路由组件（弹窗、抽屉、业务组件、表格组件等）不单独创建文档，统一记录在所属页面文档中；仅独立路由页面允许单独创建页面文档。
-4. 开发前必须先检查并阅读 `doc/code` 下对应业务文档；更新文档前必须先检查是否已存在对应文档，已有则更新原文档，不存在时才允许新增文档。
-5. 新增、修改、删除业务功能，或接口、交互逻辑、按钮状态、表单规则、弹窗行为等发生变化时，必须同步更新对应文档；修改代码后必须同步更新文档。
-6. 文档只记录当前真实实现；若发现文档与实际代码、接口或业务行为不一致，必须先说明差异和风险，再以真实代码和业务行为为准更新文档，禁止直接依据旧文档修改代码。
-7. 页面文档必须记录业务流程、字段映射、组件业务逻辑、接口依赖、接口参数、返回字段、页面联动关系及提交参数组装逻辑；不得仅记录页面结构、组件名称或接口名称。
-8. 页面文档至少应包含以下内容：页面功能与业务目标、页面业务流程、关键业务规则、页面字段说明及字段映射关系、页面联动逻辑、 业务组件逻辑及数据回填关系、 接口依赖、请求参数、返回字段及业务用途、数据流转及提交参数组装逻辑
-9. 页面涉及业务组件、接口调用、字段联动、状态变化、数据计算、数据组装或提交流程时，必须记录触发条件、处理逻辑、影响范围及最终结果，确保未参与开发的人员能够仅通过文档理解并维护该页面。
+## 禁止事项
 
-## 重构建议文档规则
-
-1. 根目录 `doc/refactor.md` 只用于记录优化建议。
-2. `doc/refactor.md` 只维护三个模块：方法封装、组件封装、逻辑封装。
-3. 方法封装：同一方法至少出现 2 处以上，且相似度达到 90%，才允许记录为优化点。
-4. 组件封装：同类组件至少出现 3 处以上，且相似度达到 90%，才允许记录为优化点。
-5. 逻辑封装：同类逻辑至少出现 2 处以上，且相似度达到 90%，才允许记录为优化点。
-6. 未达到数量要求或相似度要求的内容，不记录为封装优化点。
-7. 每个优化建议必须包含：文件位置、行号、重复说明、修改建议。
+1. 禁止把前端项目规则、Vue 规则、Element UI 规则套用到本项目。
+2. 禁止擅自删除或重写 `prisma/migrations`。
+3. 禁止擅自运行数据库重置、真实 seed、真实远程 AI 调用。
+4. 禁止提交真实密钥、真实数据库地址、真实个人账号信息。
+5. 禁止为了一次性逻辑新增复杂抽象。
+6. 禁止为了测试方便绕过认证、权限或业务校验。
+7. 禁止在未确认业务契约时新增默认值、兜底逻辑或兼容分支。

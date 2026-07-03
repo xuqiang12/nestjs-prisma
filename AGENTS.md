@@ -72,7 +72,7 @@
 ## AI 与知识库规则
 
 1. 当前 AI 主线是 `src/ai-engine` 和 `src/modules/knowledge-bot`。
-2. `src/modules/ai-brain`、`src/modules/aiCore`、`src/modules/ai copy` 等目录可能是实验或旧路径；未确认前不要把它们当作线上主路径。
+2. 旧实验 AI 目录已清理；不要在未确认业务契约时重新新增平行 AI 路径。
 3. 修改 AI 路由、工具调用、RAG、向量检索前，必须先追踪当前模块是否已在 `AppModule` 注册。
 4. LLM、Embedding、Chat API 相关环境变量必须通过 `.env.example` 或配置文档说明，不写死真实密钥。
 5. 不擅自改变 prompt、路由分类、工具名称、返回结构；这些会影响上层调用契约。

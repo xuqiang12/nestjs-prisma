@@ -80,8 +80,6 @@ nest g resource modules/user
 
 ```bash
 docker-compose -f docker-compose.db.yml up -d
-# 或
-npm run docker:db
 ```
 
 <!-- docker创建mysql数据库 -->

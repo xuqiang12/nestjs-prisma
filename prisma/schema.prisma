@@ -1,6 +1,15 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+
+  // 使用本地 Docker/PostgreSQL 时，取消下面两行注释，并注释掉 Neon 的两行。
+  // url       = env("LOCAL_DATABASE_URL")
+  // directUrl = env("LOCAL_DATABASE_URL")
+
+  // 使用 Neon 时，保留下面两行生效。
+  // NEON_DATABASE_URL 使用带 -pooler 的连接池地址，供应用运行使用。
+  // NEON_DIRECT_URL 使用不带 -pooler 的直连地址，供 Prisma migrate/generate 使用。
+  url       = env("NEON_DATABASE_URL")
+  directUrl = env("NEON_DIRECT_URL")
 }
 
 generator client {

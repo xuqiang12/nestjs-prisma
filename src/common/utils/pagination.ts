@@ -1,8 +1,8 @@
-export function formatPage(data, total, page, pageSize) {
+export function formatPage(data, total, pageNum, pageSize) {
   return {
     list: data,
     total,
-    page,
+    pageNum,
     pageSize,
   };
 }

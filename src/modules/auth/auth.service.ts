@@ -81,6 +81,11 @@ export class AuthService {
                     },
                   },
                 },
+                menus: {
+                  include: {
+                    menu: true,
+                  },
+                },
               },
             },
           },

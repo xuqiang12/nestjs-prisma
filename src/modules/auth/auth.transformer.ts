@@ -3,10 +3,10 @@
 export function buildPermissions(user: any): string[] {
   const set = new Set<string>()
 
-  user.role?.forEach((ur: any) => {
-    ur.role?.Permissions?.forEach((rp: any) => {
-      if (rp.permission?.name) {
-        set.add(rp.permission.name)
+  user.roles?.forEach((ur: any) => {
+    ur.role?.permissions?.forEach((rp: any) => {
+      if (rp.permission?.code) {
+        set.add(rp.permission.code)
       }
     })
   })
@@ -14,11 +14,27 @@ export function buildPermissions(user: any): string[] {
   return Array.from(set)
 }
 export function buildMenus(user: any) {
-  // 1. 先收集所有有权限的菜单（扁平结构）
+  // 1. 先按角色菜单权限收集可见菜单
   const menuMap = new Map()
 
   user.roles?.forEach((ur: any) => {
     const role = ur.role
+    role?.menus?.forEach((mr: any) => {
+      const menu = mr.menu
+      if (!menu || menuMap.has(menu.id)) return
+
+      menuMap.set(menu.id, {
+        id: menu.id,
+        parentId: menu.parentId,
+        name: menu.name,
+        path: menu.path,
+        component: menu.component,
+        icon: menu.icon,
+        type: menu.type,
+        buttons: [],
+      })
+    })
+
     role?.permissions?.forEach((rp: any) => {
       const permission = rp.permission
       if (!permission) return
@@ -28,18 +44,7 @@ export function buildMenus(user: any) {
         const menu = mb.menu
         if (!menu) return
 
-        if (!menuMap.has(menu.id)) {
-          menuMap.set(menu.id, {
-            id: menu.id,
-            parentId: menu.parentId, // 👈 加上父级 ID
-            name: menu.name,
-            path: menu.path,
-            component: menu.component,
-            icon: menu.icon,
-            type: menu.type, // 1=目录 2=页面
-            buttons: [],
-          })
-        }
+        if (!menuMap.has(menu.id)) return
 
         const item = menuMap.get(menu.id)
         if (!item.buttons.includes(code)) {
@@ -52,7 +57,7 @@ export function buildMenus(user: any) {
   // 2. 转成数组
   const menuList = Array.from(menuMap.values())
 
-  // 3. 生成树形结构（核心！）
+  // 3. 生成树形结构
   return buildTree(menuList)
 }
 
@@ -76,7 +81,7 @@ function buildTree(menuList: any[]) {
       // 有父级 → 放进父级的 children
       parent.children.push(menu)
     } else {
-      // 没有父级（parentId=0）→ 一级菜单
+      // 没有父级（parentId=null）→ 一级菜单
       tree.push(menu)
     }
   })

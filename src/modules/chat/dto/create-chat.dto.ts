@@ -1,3 +1,6 @@
+import { ApiProperty } from '@nestjs/swagger'
+
 export class CreateChatDto {
-    message: string;
+  @ApiProperty({ description: '聊天消息' })
+  message: string
 }

@@ -4,11 +4,13 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { HttpAdapterHost, NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { knife4jSetup, type Service } from 'nestjs-knife4j-plus'
 import { PrismaClientExceptionFilter } from 'nestjs-prisma'
 import { AppModule } from './app.module'
 import type { CorsConfig, NestConfig, SwaggerConfig } from './common/configs/config.interface'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { AllExceptionFilter } from './common/filters/all-exception.filter'
+import { getKnife4jGroups, isApiDocsEnabled } from './common/swagger/swagger-docs'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     // 关闭所有 Nest 自带的启动日志
@@ -42,15 +44,27 @@ async function bootstrap() {
   const corsConfig = configService.get<CorsConfig>('cors')
   const swaggerConfig = configService.get<SwaggerConfig>('swagger')
   // 自动生成接口文档 Swagger Api
-  if (swaggerConfig.enabled) {
+  if (swaggerConfig.enabled && isApiDocsEnabled(process.env.NODE_ENV)) {
     const options = new DocumentBuilder()
       .setTitle(swaggerConfig.title || 'Nestjs')
       .setDescription(swaggerConfig.description || 'The nestjs API description')
       .setVersion(swaggerConfig.version || '1.0')
+      .addBearerAuth()
       .build()
-    const document = SwaggerModule.createDocument(app, options)
 
-    SwaggerModule.setup(swaggerConfig.path || 'api', app, document)
+    const knife4jServices: Service[] = getKnife4jGroups().map((group) => {
+      const groupDocument = SwaggerModule.createDocument(app, options, {
+        include: [group.module],
+      })
+      SwaggerModule.setup(group.url.replace(/-json$/, ''), app, groupDocument)
+
+      return {
+        name: group.name,
+        url: group.url,
+      }
+    })
+
+    await knife4jSetup(app, knife4jServices)
   }
 
   // 开启跨域（CORS）

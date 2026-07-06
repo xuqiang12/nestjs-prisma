@@ -58,6 +58,7 @@
     "bcryptjs": "^3.0.3",
     "class-transformer": "0.5.1",
     "class-validator": "0.13.2",
+    "nestjs-knife4j-plus": "^1.0.9",
     "nestjs-prisma": "0.22.0-dev.0",
     "reflect-metadata": "0.1.13",
     "rxjs": "7.8.1"
@@ -98,6 +99,9 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

@@ -1,17 +1,25 @@
 import { Controller, Post, Body, Req, Get } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { AuthService } from './auth.service'
 import { LoginDto } from './dto/auth-login.dto'
 import { Public } from '../../common/decorators/public.decorator'
 import { Headers } from '@nestjs/common'
+
+@ApiTags('认证模块')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
   @Public()
+  @ApiOperation({ summary: '用户登录' })
   @Post('/login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto)
   }
+
   @Public()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '获取当前用户信息' })
   @Get('/userInfo')
   userInfo(@Headers('authorization') auth: string) {
     const token = auth.replace('Bearer ', '')

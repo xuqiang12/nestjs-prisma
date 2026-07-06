@@ -16,15 +16,12 @@ describe('swagger docs config', () => {
     expect(isApiDocsEnabled('production')).toBe(false)
   })
 
-  it('builds one Knife4j group per public module document', () => {
+  it('builds Knife4j groups by business domain', () => {
     const groups = getKnife4jGroups()
 
     expect(groups).toEqual([
-      { name: '认证模块', url: '/api-docs/auth-json', module: AuthModule },
-      { name: '用户模块', url: '/api-docs/user-json', module: UserModule },
-      { name: '菜单模块', url: '/api-docs/menu-json', module: MenuModule },
-      { name: '聊天模块', url: '/api-docs/chat-json', module: ChatModule },
-      { name: '知识库模块', url: '/api-docs/knowledge-bot-json', module: KnowledgeBotModule },
+      { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule] },
+      { name: 'AI模块', url: '/api-docs/ai-json', modules: [ChatModule, KnowledgeBotModule] },
     ])
     expect(groups.some((group) => group.url === '/api-json')).toBe(false)
   })

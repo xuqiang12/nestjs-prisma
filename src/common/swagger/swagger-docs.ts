@@ -8,7 +8,7 @@ import { UserModule } from '../../modules/user/user.module'
 export interface Knife4jGroup {
   name: string
   url: string
-  module: Type<any>
+  modules: Type<any>[]
 }
 
 const enabledEnvironments = ['local', 'development', 'test']
@@ -19,10 +19,7 @@ export function isApiDocsEnabled(nodeEnv?: string) {
 
 export function getKnife4jGroups(): Knife4jGroup[] {
   return [
-    { name: '认证模块', url: '/api-docs/auth-json', module: AuthModule },
-    { name: '用户模块', url: '/api-docs/user-json', module: UserModule },
-    { name: '菜单模块', url: '/api-docs/menu-json', module: MenuModule },
-    { name: '聊天模块', url: '/api-docs/chat-json', module: ChatModule },
-    { name: '知识库模块', url: '/api-docs/knowledge-bot-json', module: KnowledgeBotModule },
+    { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule] },
+    { name: 'AI模块', url: '/api-docs/ai-json', modules: [ChatModule, KnowledgeBotModule] },
   ]
 }

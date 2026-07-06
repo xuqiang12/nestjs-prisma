@@ -54,7 +54,7 @@ async function bootstrap() {
 
     const knife4jServices: Service[] = getKnife4jGroups().map((group) => {
       const groupDocument = SwaggerModule.createDocument(app, options, {
-        include: [group.module],
+        include: group.modules,
       })
       SwaggerModule.setup(group.url.replace(/-json$/, ''), app, groupDocument)
 

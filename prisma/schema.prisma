@@ -37,6 +37,8 @@ model User {
   roles          UserRole[] 
   avatar         String? // ⭐修改：允许为空
   isSuperAdmin   Boolean    @default(false) // ⭐新增：超级管理员
+  isDeleted      Boolean    @default(false) // 软删除标记
+  deletedAt      DateTime?  // 软删除时间
   createdAt      DateTime   @default(now()) // 创建时间
   updatedAt      DateTime   @updatedAt // 更新时间
 }

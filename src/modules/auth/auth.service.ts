@@ -34,7 +34,7 @@ export class AuthService {
         },
       },
     })
-    if (!user) throw new UnauthorizedException('账号或密码错误')
+    if (!user || user.isDeleted) throw new UnauthorizedException('账号或密码错误')
 
     // 2. 校验密码
     const isValid = await bcrypt.compare(password, user.password)
@@ -92,6 +92,7 @@ export class AuthService {
         },
       },
     })
+    if (!user || user.isDeleted) throw new UnauthorizedException('账号或密码错误')
     console.log(JSON.stringify(user, null, 2))
     // console.log(user)
     return {

@@ -31,4 +31,9 @@ export class UserListDto {
   @IsString()
   @IsOptional()
   phone?: string
+
+  @ApiPropertyOptional({ description: '是否包含已删除用户', required: false, type: String })
+  @IsString()
+  @IsOptional()
+  includeDeleted?: string
 }

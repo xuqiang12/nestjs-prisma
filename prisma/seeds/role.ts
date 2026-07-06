@@ -1,7 +1,7 @@
 // prisma/seeds/role.ts
 import { prisma } from '../client'
 
-export async function seedRole(permissionId: number) {
+export async function seedRole(permissionIds: number[]) {
   console.log('👉 初始化角色')
 
   const role = await prisma.role.upsert({
@@ -13,12 +13,10 @@ export async function seedRole(permissionId: number) {
   })
 
   await prisma.rolePermission.createMany({
-    data: [
-      {
-        roleId: role.id,
-        permissionId,
-      },
-    ],
+    data: permissionIds.map((permissionId) => ({
+      roleId: role.id,
+      permissionId,
+    })),
     skipDuplicates: true,
   })
 

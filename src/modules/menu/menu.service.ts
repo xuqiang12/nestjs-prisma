@@ -143,11 +143,33 @@ export class MenuService {
   // 获取菜单树
   async getMenuTree() {
     const list = await this.getMenuList()
+    const buttons = await this.prisma.menuButton.findMany({
+      include: {
+        permission: {
+          select: { code: true },
+        },
+      },
+      orderBy: [{ sort: 'asc' }, { id: 'asc' }],
+    })
+    const buttonMap = buttons.reduce((map, item) => {
+      const button = {
+        id: item.id,
+        menuId: item.menuId,
+        name: item.name,
+        sort: item.sort,
+        permissionId: item.permissionId,
+        permissionCode: item.permission.code,
+      }
+      map[item.menuId] = map[item.menuId] || []
+      map[item.menuId].push(button)
+      return map
+    }, {})
     function buildMenuTree(list, parentId = null) {
       return list
         .filter((item) => item.parentId === parentId)
         .map((item) => ({
           ...item,
+          buttons: buttonMap[item.id] || [],
           children: buildMenuTree(list, item.id),
         }))
     }

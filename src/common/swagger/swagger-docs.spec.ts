@@ -3,6 +3,7 @@ import { AuthModule } from '../../modules/auth/auth.module'
 import { ChatModule } from '../../modules/chat/chat.module'
 import { KnowledgeBotModule } from '../../modules/knowledge-bot/knowledge-bot.module'
 import { MenuModule } from '../../modules/menu/menu.module'
+import { RoleModule } from '../../modules/role/role.module'
 import { UserModule } from '../../modules/user/user.module'
 import { getKnife4jGroups, isApiDocsEnabled } from './swagger-docs'
 
@@ -20,7 +21,7 @@ describe('swagger docs config', () => {
     const groups = getKnife4jGroups()
 
     expect(groups).toEqual([
-      { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule] },
+      { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule, RoleModule] },
       { name: 'AI模块', url: '/api-docs/ai-json', modules: [ChatModule, KnowledgeBotModule] },
     ])
     expect(groups.some((group) => group.url === '/api-json')).toBe(false)

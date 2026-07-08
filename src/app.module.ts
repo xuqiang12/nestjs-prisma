@@ -15,6 +15,7 @@ import { JwtModule } from '@nestjs/jwt'
 import { MenuModule } from './modules/menu/menu.module'
 import { AIEngineModule } from './ai-engine/ai-engine.module'
 import { KnowledgeBotModule } from './modules/knowledge-bot/knowledge-bot.module'
+import { RoleModule } from './modules/role/role.module'
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { KnowledgeBotModule } from './modules/knowledge-bot/knowledge-bot.module
       global: true, // 👈 关键！全局可用！
     }),
     MenuModule,
+    RoleModule,
   ],
   controllers: [AppController],
   providers: [

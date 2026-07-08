@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common'
+import { Body, Controller, Get, ParseIntPipe, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { MenuService } from './menu.service'
-import { CreateDto, UpdateDto } from './dto/menu.dto'
-import { CreateBtbDto } from './dto/button.dto'
+import { CreateDto, DeleteDto, UpdateDto } from './dto/menu.dto'
+import { CreateButtonDto, DeleteButtonDto, UpdateButtonDto } from './dto/button.dto'
 
 @ApiTags('菜单模块')
 @ApiBearerAuth()
@@ -24,14 +24,14 @@ export class MenuController {
   }
   // 修改菜单
   @ApiOperation({ summary: '修改菜单' })
-  @Patch('update')
+  @Post('update')
   updateMenu(@Body() menu: UpdateDto) {
     return this.menuService.updateMenu(menu)
   }
   // 删除菜单
   @ApiOperation({ summary: '删除菜单' })
-  @Delete('delete')
-  deleteMenu(@Body() menu: any) {
+  @Post('delete')
+  deleteMenu(@Body() menu: DeleteDto) {
     return this.menuService.deleteMenu(menu)
   }
   // 获取菜单树
@@ -41,24 +41,27 @@ export class MenuController {
     return this.menuService.getMenuTree()
   }
   // 获取按钮列表
-  // @Get('button/list')
-  // getButtonList() {
-  //   return this.menuService.getButtonList()
-  // }
+  @ApiOperation({ summary: '获取菜单按钮列表' })
+  @Get('button/list')
+  getButtonList(@Query('menuId', ParseIntPipe) menuId: number) {
+    return this.menuService.getButtonList({ menuId })
+  }
   // 新增按钮
   @ApiOperation({ summary: '新增菜单按钮' })
   @Post('button/create')
-  createButton(@Body() createButtonDto: CreateBtbDto) {
+  createButton(@Body() createButtonDto: CreateButtonDto) {
     return this.menuService.createButton(createButtonDto)
   }
-  // // 修改按钮
-  // @Patch('button/update')
-  // updateButton(@Body() button: any) {
-  //   return this.menuService.updateButton(button)
-  // }
-  // // 删除按钮
-  // @Delete('button/delete')
-  // deleteButton(@Body() button: any) {
-  //   return this.menuService.deleteButton(button)
-  // }
+  // 修改按钮
+  @ApiOperation({ summary: '修改菜单按钮' })
+  @Post('button/update')
+  updateButton(@Body() button: UpdateButtonDto) {
+    return this.menuService.updateButton(button)
+  }
+  // 删除按钮
+  @ApiOperation({ summary: '删除菜单按钮' })
+  @Post('button/delete')
+  deleteButton(@Body() button: DeleteButtonDto) {
+    return this.menuService.deleteButton(button)
+  }
 }

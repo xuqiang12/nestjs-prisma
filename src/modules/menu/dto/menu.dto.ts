@@ -44,3 +44,9 @@ export class UpdateDto extends PartialType(CreateDto) {
   @IsInt()
   id: number // 修改必须传 id
 }
+
+export class DeleteDto {
+  @ApiProperty({ description: 'ID 必填' })
+  @IsInt()
+  id: number // 删除必须传 id
+}

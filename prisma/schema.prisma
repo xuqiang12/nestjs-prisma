@@ -127,7 +127,7 @@ model MenuButton {
   id           Int        @id @default(autoincrement()) // 按钮ID
   menuId       Int // 所属页面ID
   menu         Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
-  permissionId Int // 权限ID
+  permissionId Int        @unique // 权限ID
   permission   Permission @relation(fields: [permissionId], references: [id])
   name         String? // 按钮名称
   sort         Int?       @default(0)

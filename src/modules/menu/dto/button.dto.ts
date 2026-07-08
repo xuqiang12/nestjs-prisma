@@ -1,10 +1,13 @@
 import { IsInt, IsOptional, IsString } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 
-export class CreateBtbDto {
+export class ButtonListDto {
   @ApiProperty({ description: '所属菜单ID' })
   @IsInt()
   menuId: number
+}
+
+export class CreateButtonDto extends ButtonListDto {
 
   @ApiProperty({ description: '权限标识，如 system:user:add' })
   @IsString()
@@ -19,4 +22,16 @@ export class CreateBtbDto {
   @IsInt()
   @IsOptional()
   sort?: number
+}
+
+export class UpdateButtonDto extends CreateButtonDto {
+  @ApiProperty({ description: 'ID 必填' })
+  @IsInt()
+  id: number // 修改按钮必须传 id
+}
+
+export class DeleteButtonDto {
+  @ApiProperty({ description: 'ID 必填' })
+  @IsInt()
+  id: number // 删除按钮必须传 id
 }

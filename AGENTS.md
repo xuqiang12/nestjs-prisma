@@ -46,10 +46,11 @@
 1. Controller 只负责路由、参数接收和调用 Service；业务逻辑放在 Service。
 2. DTO 必须放在对应模块的 `dto` 目录，并使用 `class-validator` 描述入参规则。
 3. 新增接口时必须确认路由、HTTP 方法、请求参数、返回结构和鉴权要求。
-4. 不擅自新增全局中间件、全局 Guard、全局 Filter、全局 Interceptor。
-5. 修改 `src/main.ts`、`src/app.module.ts`、全局 Guard、全局异常处理时，必须先说明影响范围。
-6. 现有接口统一响应由 `ResponseInterceptor` 处理，不要在普通业务接口里重复包装 `{ code, message, data }`，除非当前代码路径已有明确约定。
-7. 使用 `@Public()` 必须有明确理由；不得为了调试绕过认证。
+4. 后续新增或调整 HTTP 接口时，只使用 `GET` 和 `POST`：查询读取使用 `GET`，新增、修改、删除、批量操作、状态变更等写操作统一使用 `POST`；不要新增 `DELETE`、`PUT`、`PATCH` 等其他请求方法，除非用户明确单独要求。
+5. 不擅自新增全局中间件、全局 Guard、全局 Filter、全局 Interceptor。
+6. 修改 `src/main.ts`、`src/app.module.ts`、全局 Guard、全局异常处理时，必须先说明影响范围。
+7. 现有接口统一响应由 `ResponseInterceptor` 处理，不要在普通业务接口里重复包装 `{ code, message, data }`，除非当前代码路径已有明确约定。
+8. 使用 `@Public()` 必须有明确理由；不得为了调试绕过认证。
 
 ## Prisma 与数据库规则
 
@@ -100,6 +101,10 @@
 4. 涉及 Prisma Client 生成、schema 或类型变化时，视情况运行：
    - `npm.cmd run prisma:generate`
 5. 如果某条验证命令因为环境、数据库、网络或密钥缺失无法执行，必须在最终说明中明确写出未执行原因。
+
+## Git 提交规则
+
+1. 不提交单元测试文件；如需本地验证，可创建或修改单元测试文件，但最终提交前必须从暂存区和提交内容中排除。
 
 ## 文档规则
 

@@ -14,6 +14,15 @@ declare global {
     warn(moduleName: string, configObj?: Record<string, any>): void
     error(moduleName: string, configObj?: Record<string, any>): void
   }
+
+  namespace Express {
+    namespace Multer {
+      interface File {
+        buffer: Buffer
+        originalname: string
+      }
+    }
+  }
 }
 
 export {}

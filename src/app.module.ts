@@ -4,7 +4,6 @@ import { PrismaModule, loggingMiddleware } from 'nestjs-prisma'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { UserModule } from './modules/user/user.module'
-import { ChatModule } from './modules/chat/chat.module'
 import { AuthModule } from './modules/auth/auth.module'
 import config from './common/configs/config'
 import { APP_GUARD } from '@nestjs/core'
@@ -33,7 +32,6 @@ import { RoleModule } from './modules/role/role.module'
       },
     }),
     UserModule,
-    ChatModule,
     AuthModule,
     AIEngineModule,
     KnowledgeBotModule,

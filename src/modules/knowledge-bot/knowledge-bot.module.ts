@@ -3,13 +3,15 @@ import { ChatController } from './chat/chat.controller'
 import { ChatService } from './chat/chat.service'
 import { KnowledgeController } from './knowledge/knowledge.controller'
 import { KnowledgeService } from './knowledge/knowledge.service'
+import { ConversationController } from './conversation/conversation.controller'
+import { ConversationService } from './conversation/conversation.service'
 import { AIRegistry } from '../../ai-engine/core/ai.registry'
 import { registerKnowledgeBotAI } from './ai/register'
 import { GetUserMenuPermissionsTool } from './ai/tools/get-user-menu-permissions.tool'
 
 @Module({
-  controllers: [ChatController, KnowledgeController],
-  providers: [ChatService, KnowledgeService, GetUserMenuPermissionsTool],
+  controllers: [ChatController, KnowledgeController, ConversationController],
+  providers: [ChatService, KnowledgeService, ConversationService, GetUserMenuPermissionsTool],
 })
 export class KnowledgeBotModule implements OnModuleInit {
   constructor(

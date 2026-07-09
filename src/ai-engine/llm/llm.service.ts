@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import OpenAI from 'openai'
 
-type ChatMessage = {
+export type ChatMessage = {
   role: 'system' | 'user' | 'assistant'
   content: string
 }

@@ -1,0 +1,62 @@
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common'
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Request } from 'express'
+import { Permissions } from '../../../common/decorators/permissions.decorator'
+import { ConversationService } from './conversation.service'
+import {
+  ConversationDetailDto,
+  ConversationListDto,
+  CreateConversationDto,
+  DeleteConversationDto,
+  RenameConversationDto,
+} from './dto/conversation.dto'
+
+type AuthenticatedRequest = Request & {
+  user: {
+    userId: number
+  }
+}
+
+@ApiTags('知识库模块')
+@Controller('knowledge-bot/conversation')
+export class ConversationController {
+  constructor(private readonly conversationService: ConversationService) {}
+
+  @ApiOperation({ summary: '查询 AI 会话列表' })
+  @Permissions('ai:chat:send')
+  @Get('list')
+  async list(@Query() query: ConversationListDto, @Req() req: AuthenticatedRequest) {
+    return this.conversationService.list(req.user.userId, query)
+  }
+
+  @ApiOperation({ summary: '新建 AI 会话' })
+  @ApiBody({ type: CreateConversationDto })
+  @Permissions('ai:chat:send')
+  @Post('create')
+  async create(@Body() body: CreateConversationDto, @Req() req: AuthenticatedRequest) {
+    return this.conversationService.create(req.user.userId, body.mode || 'chat', body.title)
+  }
+
+  @ApiOperation({ summary: '查询 AI 会话详情' })
+  @Permissions('ai:chat:send')
+  @Get('detail')
+  async detail(@Query() query: ConversationDetailDto, @Req() req: AuthenticatedRequest) {
+    return this.conversationService.detail(req.user.userId, query.id)
+  }
+
+  @ApiOperation({ summary: '重命名 AI 会话' })
+  @ApiBody({ type: RenameConversationDto })
+  @Permissions('ai:chat:send')
+  @Post('rename')
+  async rename(@Body() body: RenameConversationDto, @Req() req: AuthenticatedRequest) {
+    return this.conversationService.rename(req.user.userId, body.id, body.title)
+  }
+
+  @ApiOperation({ summary: '删除 AI 会话' })
+  @ApiBody({ type: DeleteConversationDto })
+  @Permissions('ai:chat:send')
+  @Post('delete')
+  async delete(@Body() body: DeleteConversationDto, @Req() req: AuthenticatedRequest) {
+    return this.conversationService.delete(req.user.userId, body.id)
+  }
+}

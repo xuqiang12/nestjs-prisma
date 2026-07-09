@@ -35,6 +35,7 @@ model User {
   phone          String     @unique // ⭐修改：手机号唯一（如果用于登录）
   password       String // 密码
   roles          UserRole[] 
+  aiConversations AiConversation[] // AI 会话列表
   avatar         String? // ⭐修改：允许为空
   isSuperAdmin   Boolean    @default(false) // ⭐新增：超级管理员
   isDeleted      Boolean    @default(false) // 软删除标记
@@ -148,4 +149,37 @@ model Document {
   createdAt DateTime @default(now())
 
   @@map("documents")
+}
+
+// ==============================
+// AI 会话表
+// ==============================
+model AiConversation {
+  id        String      @id @default(cuid()) // 会话ID
+  userId    Int         // 所属用户ID
+  user      User        @relation(fields: [userId], references: [id])
+  title     String      // 会话标题
+  mode      String      @default("chat") // 会话模式：chat / knowledge
+  messages  AiMessage[] // 会话消息
+  isDeleted Boolean     @default(false) // 软删除标记
+  deletedAt DateTime?   // 软删除时间
+  createdAt DateTime    @default(now()) // 创建时间
+  updatedAt DateTime    @updatedAt // 更新时间
+
+  @@index([userId, isDeleted, updatedAt])
+}
+
+// ==============================
+// AI 会话消息表
+// ==============================
+model AiMessage {
+  id             String         @id @default(cuid()) // 消息ID
+  conversationId String         // 所属会话ID
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String         // 消息角色：user / assistant
+  content        String         // 消息内容
+  sources        Json?          // 知识库问答引用来源
+  createdAt      DateTime       @default(now()) // 创建时间
+
+  @@index([conversationId, createdAt])
 }

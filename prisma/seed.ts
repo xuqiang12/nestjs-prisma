@@ -19,7 +19,7 @@ async function main() {
   await seedUser(role.id)
 
   // 4️⃣ 菜单 + 按钮
-  await seedMenus(role.id, addPermission.id)
+  await seedMenus(role.id, addPermission.id, permissions)
 
   console.log('✅ 初始化完成')
 }

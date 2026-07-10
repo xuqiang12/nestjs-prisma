@@ -93,8 +93,6 @@ export class AuthService {
       },
     })
     if (!user || user.isDeleted) throw new UnauthorizedException('账号或密码错误')
-    console.log(JSON.stringify(user, null, 2))
-    // console.log(user)
     const [allPermissions, allMenus] = user.isSuperAdmin
       ? await Promise.all([
           this.prisma.permission.findMany({

@@ -22,12 +22,9 @@ export class GetUserMenuPermissionsTool {
 
   // 执行工具逻辑
   async execute(params: { userId: number | string }) {
-    console.log('[GetUserMenuPermissionsTool] 查询用户菜单权限，原始 userId:', params.userId, '类型:', typeof params.userId)
-
     try {
       // 确保 userId 是数字
       const userId = typeof params.userId === 'string' ? parseInt(params.userId, 10) : params.userId
-      console.log('[GetUserMenuPermissionsTool] 转换后的 userId:', userId)
 
       // 查询用户拥有的菜单权限
       const userWithMenus = await this.prisma.user.findUnique({
@@ -69,8 +66,6 @@ export class GetUserMenuPermissionsTool {
       // 构建菜单树
       const menuTree = this.buildMenuTree(menus)
 
-      console.log('[GetUserMenuPermissionsTool] 查询完成，找到', menus.length, '个菜单')
-
       return {
         success: true,
         userId: params.userId,
@@ -80,7 +75,6 @@ export class GetUserMenuPermissionsTool {
         menuTree,
       }
     } catch (error) {
-      console.error('[GetUserMenuPermissionsTool] 查询失败:', error)
       return { success: false, message: '查询用户菜单权限失败', error: String(error) }
     }
   }

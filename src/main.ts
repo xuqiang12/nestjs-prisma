@@ -11,6 +11,7 @@ import type { CorsConfig, NestConfig, SwaggerConfig } from './common/configs/con
 import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { AllExceptionFilter } from './common/filters/all-exception.filter'
 import { getKnife4jGroups, isApiDocsEnabled } from './common/swagger/swagger-docs'
+import { requestLogMiddleware } from './common/middlewares/request-log.middleware'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     // 关闭所有 Nest 自带的启动日志
@@ -71,6 +72,7 @@ async function bootstrap() {
   if (corsConfig.enabled) {
     app.enableCors()
   }
+  app.use(requestLogMiddleware)
   app.useGlobalInterceptors(new ResponseInterceptor())
   app.useGlobalFilters(new AllExceptionFilter())
   // 启动服务，监听端口

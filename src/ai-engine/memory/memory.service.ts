@@ -6,46 +6,29 @@ export class InMemoryMemoryService implements IMemoryService {
   private memories: Map<string, Array<{ role: string; content: string; timestamp: number }>> =
     new Map()
 
-  constructor() {
-    log.info('上下文记忆初始化完成✅')
-  }
-
   // 读取指定用户最近的短期记忆，限制返回数量避免 prompt 过长。
   async getShortMemory(userId: string) {
-    console.log('[MemoryService（getShortMemory）] 读取用户记忆:', userId)
     const memory = this.memories.get(userId) || []
-    console.log('[MemoryService（getShortMemory）] 记忆数量:', memory.length, '条（返回最近10条）')
     return memory.slice(-10)
   }
 
   // 追加一条用户上下文记忆，并在超过上限时移除最早的记录。
   async addMessage(userId: string, role: string, content: string) {
-    console.log('[MemoryService（addMessage）] 添加消息:', {
-      userId,
-      role,
-      contentLength: content.length,
-    })
-
     if (!this.memories.has(userId)) {
-      console.log('[MemoryService（addMessage）] 新用户，创建记忆空间')
       this.memories.set(userId, [])
     }
 
     const memory = this.memories.get(userId)!
     memory.push({ role, content, timestamp: Date.now() })
-    console.log('[MemoryService（addMessage）] 消息已添加，当前记忆数量:', memory.length)
 
     if (memory.length > 50) {
-      console.log('[MemoryService（addMessage）] 记忆超过50条，移除最早的1条')
       memory.shift()
     }
   }
 
   // 清空指定用户的临时记忆。
   async clearMemory(userId: string) {
-    console.log('[MemoryService（clearMemory）] 清空用户记忆:', userId)
     this.memories.delete(userId)
-    console.log('[MemoryService（clearMemory）] 记忆已清空✅')
   }
 }
 

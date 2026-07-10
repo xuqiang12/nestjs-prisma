@@ -9,8 +9,6 @@ export const SearchKnowledgeTool: ToolDefinition = {
   },
   // 执行知识库搜索工具，目前返回演示数据用于验证工具调用链路。
   handler: async (params: any) => {
-    console.log('[SearchKnowledgeTool] 搜索知识库，关键词:', params.query)
-
     // 模拟知识库搜索
     return {
       query: params.query,

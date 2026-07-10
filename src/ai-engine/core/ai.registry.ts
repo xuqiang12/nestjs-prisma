@@ -9,7 +9,6 @@ export class AIRegistry {
   // 注册一个工作流，后续可通过工作流名称查找执行。
   registerWorkflow(workflow: Workflow) {
     this.workflows.set(workflow.name, workflow)
-    console.log('[AIRegistry] 工作流已注册:', workflow.name)
   }
 
   // 根据工作流名称读取已注册的工作流定义。
@@ -26,7 +25,6 @@ export class AIRegistry {
   // 注册一个 AI 工具，工具名称相同会被后注册的定义覆盖。
   registerTool(tool: ToolDefinition) {
     this.tools.set(tool.name, tool)
-    console.log('[AIRegistry] 工具已注册:', tool.name)
   }
 
   // 批量注册 AI 工具，复用单个工具注册逻辑。

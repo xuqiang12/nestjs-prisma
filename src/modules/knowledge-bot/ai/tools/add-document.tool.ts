@@ -10,11 +10,6 @@ export const AddDocumentTool: ToolDefinition = {
   },
   // 执行添加文档工具，目前用于演示工具调用链路。
   handler: async (params: any) => {
-    console.log('[AddDocumentTool] 添加文档:', {
-      title: params.title,
-      contentLength: params.content?.length || 0,
-    })
-    
     // 模拟添加文档
     return {
       documentId: `DOC_${Date.now()}`,

@@ -22,7 +22,6 @@ export class ChatController {
   @Post()
   // 普通知识库聊天接口，返回一次完整的 AI 回复。
   async chat(@Body() body: ChatRequestDto, @Req() req: AuthenticatedRequest) {
-    console.log('1、调用接口，请求参数:', body)
     return this.chatService.chat(body, req.user.userId)
   }
 

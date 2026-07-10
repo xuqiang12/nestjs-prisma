@@ -22,5 +22,4 @@ export function registerKnowledgeBotAI(
   if (getUserMenuPermissionsTool) {
     registry.registerTool(getUserMenuPermissionsTool.getToolDefinition())
   }
-  console.log('✅ Knowledge Bot AI 插件注册完成    已注册工具', registry.getToolNames())
 }

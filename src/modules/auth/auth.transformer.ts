@@ -1,6 +1,29 @@
 // src/modules/auth/auth.transformer.ts
 
-export function buildPermissions(user: any): string[] {
+type PermissionLike = {
+  code: string
+}
+
+type MenuButtonLike = {
+  permission?: PermissionLike | null
+}
+
+type MenuLike = {
+  id: number
+  parentId: number | null
+  name: string
+  path: string | null
+  component: string | null
+  icon: string | null
+  type: string
+  buttons?: MenuButtonLike[]
+}
+
+export function buildPermissions(user: any, allPermissions: PermissionLike[] = []): string[] {
+  if (user.isSuperAdmin) {
+    return allPermissions.map((item) => item.code)
+  }
+
   const set = new Set<string>()
 
   user.roles?.forEach((ur: any) => {
@@ -13,7 +36,24 @@ export function buildPermissions(user: any): string[] {
 
   return Array.from(set)
 }
-export function buildMenus(user: any) {
+export function buildMenus(user: any, allMenus: MenuLike[] = []) {
+  if (user.isSuperAdmin) {
+    return buildTree(
+      allMenus.map((menu) => ({
+        id: menu.id,
+        parentId: menu.parentId,
+        name: menu.name,
+        path: menu.path,
+        component: menu.component,
+        icon: menu.icon,
+        type: menu.type,
+        buttons: (menu.buttons || [])
+          .map((button) => button.permission?.code)
+          .filter((code): code is string => Boolean(code)),
+      })),
+    )
+  }
+
   // 1. 先按角色菜单权限收集可见菜单
   const menuMap = new Map()
 

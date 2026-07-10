@@ -32,7 +32,7 @@ export class PermissionsGuard implements CanActivate {
     // ⚠️ 前提：你已经有 JWT 登录，把 user 挂到 req 上了
     const { user } = context.switchToHttp().getRequest()
     // 👉 如果是管理员，直接放行
-    if (user.isAdmin) return true
+    if (user.isSuperAdmin) return true
     // ⭐ 核心权限判断
     const hasPermission = requiredPermissions.every((p) => user.permissions.includes(p))
 

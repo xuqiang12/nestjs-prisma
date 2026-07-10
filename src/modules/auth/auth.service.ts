@@ -51,7 +51,7 @@ export class AuthService {
       email: user.email,
       roles,
       permissions,
-      isAdmin: true,
+      isSuperAdmin: user.isSuperAdmin,
     })
 
     return { token }
@@ -95,14 +95,34 @@ export class AuthService {
     if (!user || user.isDeleted) throw new UnauthorizedException('账号或密码错误')
     console.log(JSON.stringify(user, null, 2))
     // console.log(user)
+    const [allPermissions, allMenus] = user.isSuperAdmin
+      ? await Promise.all([
+          this.prisma.permission.findMany({
+            orderBy: { id: 'asc' },
+          }),
+          this.prisma.menu.findMany({
+            include: {
+              buttons: {
+                include: {
+                  permission: true,
+                },
+                orderBy: [{ sort: 'asc' }, { id: 'asc' }],
+              },
+            },
+            orderBy: [{ sort: 'asc' }, { id: 'asc' }],
+          }),
+        ])
+      : [[], []]
+
     return {
       userInfo: {
         id: user.id,
         username: user.username,
         avatar: user.avatar,
+        isSuperAdmin: user.isSuperAdmin,
       },
-      permissions: buildPermissions(user),
-      menus: buildMenus(user),
+      permissions: buildPermissions(user, allPermissions),
+      menus: buildMenus(user, allMenus),
     }
   }
 }

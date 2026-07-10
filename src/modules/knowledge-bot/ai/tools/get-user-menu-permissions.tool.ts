@@ -2,16 +2,13 @@ import { Injectable } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
 import { ToolDefinition } from '../../../../ai-engine/core/interfaces'
 
-/**
- * 查询用户菜单权限工具 - 支持依赖注入
- */
+// 查询用户菜单权限工具 - 支持依赖注入
 @Injectable()
 export class GetUserMenuPermissionsTool {
+  // 注入 PrismaService，用于在工具执行时读取真实用户角色和菜单关系。
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * 获取工具定义
-   */
+  // 获取工具定义
   getToolDefinition(): ToolDefinition {
     return {
       name: 'get_user_menu_permissions',
@@ -23,9 +20,7 @@ export class GetUserMenuPermissionsTool {
     }
   }
 
-  /**
-   * 执行工具逻辑
-   */
+  // 执行工具逻辑
   async execute(params: { userId: number | string }) {
     console.log('[GetUserMenuPermissionsTool] 查询用户菜单权限，原始 userId:', params.userId, '类型:', typeof params.userId)
 
@@ -90,9 +85,7 @@ export class GetUserMenuPermissionsTool {
     }
   }
 
-  /**
-   * 构建菜单树
-   */
+  // 构建菜单树
   private buildMenuTree(menus: any[], parentId: number | null = null) {
     return menus
       .filter((item) => item.parentId === parentId)

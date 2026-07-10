@@ -4,16 +4,19 @@ import { AIRegistry } from '../core/ai.registry'
 
 @Injectable()
 export class DefaultToolExecutor implements IToolExecutor {
+  // 初始化工具执行器，并注册默认内置工具。
   constructor(private registry: AIRegistry) {
     this.registerDefaultTools()
     log.info('工具执行器初始化完成✅')
   }
 
+  // 兼容旧调用方的单个工具注册方式，实际仍统一写入 AIRegistry。
   // 兼容旧的注册方式
   registerTool(name: string, definition: ToolDefinition) {
     this.registry.registerTool(definition)
   }
 
+  // 从注册中心读取当前所有可用工具定义。
   // 从 registry 获取工具
   listTools(): ToolDefinition[] {
     console.log('[ToolExecutor（listTools）] 列出所有工具...')
@@ -25,6 +28,7 @@ export class DefaultToolExecutor implements IToolExecutor {
     return tools
   }
 
+  // 按工具名称查找并执行对应 handler。
   async execute(toolName: string, params: any) {
     console.log('[ToolExecutor（execute）] 执行工具:', { toolName, params })
 
@@ -41,6 +45,7 @@ export class DefaultToolExecutor implements IToolExecutor {
     return result
   }
 
+  // 注册基础演示工具，保证没有业务工具时工具执行器也有默认能力。
   private registerDefaultTools() {
     console.log('[ToolExecutor（registerDefaultTools）] 注册默认工具...')
 

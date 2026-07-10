@@ -25,6 +25,7 @@ export class ConversationController {
   @ApiOperation({ summary: '查询 AI 会话列表' })
   @Permissions('ai:chat:send')
   @Get('list')
+  // 查询当前登录用户的 AI 会话列表。
   async list(@Query() query: ConversationListDto, @Req() req: AuthenticatedRequest) {
     return this.conversationService.list(req.user.userId, query)
   }
@@ -33,6 +34,7 @@ export class ConversationController {
   @ApiBody({ type: CreateConversationDto })
   @Permissions('ai:chat:send')
   @Post('create')
+  // 为当前登录用户创建一个新的 AI 会话。
   async create(@Body() body: CreateConversationDto, @Req() req: AuthenticatedRequest) {
     return this.conversationService.create(req.user.userId, body.mode || 'chat', body.title)
   }
@@ -40,6 +42,7 @@ export class ConversationController {
   @ApiOperation({ summary: '查询 AI 会话详情' })
   @Permissions('ai:chat:send')
   @Get('detail')
+  // 查询当前登录用户拥有的 AI 会话详情。
   async detail(@Query() query: ConversationDetailDto, @Req() req: AuthenticatedRequest) {
     return this.conversationService.detail(req.user.userId, query.id)
   }
@@ -48,6 +51,7 @@ export class ConversationController {
   @ApiBody({ type: RenameConversationDto })
   @Permissions('ai:chat:send')
   @Post('rename')
+  // 修改当前登录用户拥有的 AI 会话标题。
   async rename(@Body() body: RenameConversationDto, @Req() req: AuthenticatedRequest) {
     return this.conversationService.rename(req.user.userId, body.id, body.title)
   }
@@ -56,6 +60,7 @@ export class ConversationController {
   @ApiBody({ type: DeleteConversationDto })
   @Permissions('ai:chat:send')
   @Post('delete')
+  // 删除当前登录用户拥有的 AI 会话。
   async delete(@Body() body: DeleteConversationDto, @Req() req: AuthenticatedRequest) {
     return this.conversationService.delete(req.user.userId, body.id)
   }

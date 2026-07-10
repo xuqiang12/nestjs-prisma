@@ -12,6 +12,7 @@ type MessageSource = Record<string, any>
 export class ConversationService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // 查询当前用户的会话列表，并支持按聊天模式过滤。
   async list(userId: number, query: ConversationListDto) {
     const pageNum = Number(query.pageNum || 1)
     const pageSize = Number(query.pageSize || 20)
@@ -41,6 +42,7 @@ export class ConversationService {
     return { list, total }
   }
 
+  // 创建新的 AI 会话，并统一清洗标题。
   async create(userId: number, mode: ChatMode = 'chat', title = '新会话') {
     return this.prisma.aiConversation.create({
       data: {
@@ -51,6 +53,7 @@ export class ConversationService {
     })
   }
 
+  // 查询当前用户拥有的会话详情，并按时间正序带出消息记录。
   async detail(userId: number, id: string) {
     const conversation = await this.prisma.aiConversation.findFirst({
       where: {
@@ -72,6 +75,7 @@ export class ConversationService {
     return conversation
   }
 
+  // 重命名当前用户拥有的会话。
   async rename(userId: number, id: string, title: string) {
     await this.ensureOwnedConversation(userId, id)
     return this.prisma.aiConversation.update({
@@ -80,6 +84,7 @@ export class ConversationService {
     })
   }
 
+  // 软删除当前用户拥有的会话，保留历史数据用于后续审计或恢复。
   async delete(userId: number, id: string) {
     await this.ensureOwnedConversation(userId, id)
     await this.prisma.aiConversation.update({
@@ -93,6 +98,7 @@ export class ConversationService {
     return { success: true }
   }
 
+  // 发送消息前获取已有会话；没有传会话 ID 时自动创建一个新会话。
   async getOrCreateForMessage(
     userId: number,
     params: { conversationId?: string; message: string; mode?: ChatMode },
@@ -116,6 +122,7 @@ export class ConversationService {
     return this.create(userId, params.mode || 'chat', this.buildTitle(params.message))
   }
 
+  // 读取最近的历史消息，并转换为大模型可直接使用的 ChatMessage。
   async getHistoryMessages(conversationId: string, limit = 20): Promise<ChatMessage[]> {
     const messages = await this.prisma.aiMessage.findMany({
       where: { conversationId },
@@ -133,6 +140,7 @@ export class ConversationService {
       .map((item) => ({ role: item.role as MessageRole, content: item.content }))
   }
 
+  // 向指定会话追加一条消息，可选保存知识库来源信息。
   async addMessage(
     conversationId: string,
     role: MessageRole,
@@ -149,6 +157,7 @@ export class ConversationService {
     })
   }
 
+  // 刷新会话更新时间，让列表按最近对话排序。
   async touchConversation(id: string) {
     return this.prisma.aiConversation.update({
       where: { id },
@@ -156,6 +165,7 @@ export class ConversationService {
     })
   }
 
+  // 校验会话是否属于当前用户，避免跨用户读取或修改。
   private async ensureOwnedConversation(userId: number, id: string) {
     const conversation = await this.prisma.aiConversation.findFirst({
       where: {
@@ -172,10 +182,12 @@ export class ConversationService {
     return conversation
   }
 
+  // 根据用户首条消息生成默认标题，并限制标题长度。
   private buildTitle(message: string) {
     return this.normalizeTitle(message).slice(0, 30)
   }
 
+  // 清理标题两端空白，空标题统一使用默认会话名。
   private normalizeTitle(title: string) {
     return title.trim() || '新会话'
   }

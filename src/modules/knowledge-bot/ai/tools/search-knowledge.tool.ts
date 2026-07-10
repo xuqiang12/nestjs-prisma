@@ -1,6 +1,4 @@
-/**
- * 知识库搜索工具 - knowledge-bot 业务模块示例
- */
+// 知识库搜索工具 - knowledge-bot 业务模块示例
 import { ToolDefinition } from '../../../../ai-engine/core/interfaces'
 
 export const SearchKnowledgeTool: ToolDefinition = {
@@ -9,6 +7,7 @@ export const SearchKnowledgeTool: ToolDefinition = {
   params: {
     query: '搜索关键词',
   },
+  // 执行知识库搜索工具，目前返回演示数据用于验证工具调用链路。
   handler: async (params: any) => {
     console.log('[SearchKnowledgeTool] 搜索知识库，关键词:', params.query)
 

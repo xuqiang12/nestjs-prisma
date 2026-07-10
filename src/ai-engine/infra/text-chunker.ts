@@ -3,6 +3,7 @@ type ChunkOptions = {
   overlap?: number
 }
 
+// 按段落把长文本拆成适合向量化的小片段，并保留相邻片段的重叠上下文。
 export function splitText(text: string, options: ChunkOptions = {}) {
   const maxSize = options.maxSize ?? 500
   const overlap = options.overlap ?? 100
@@ -34,6 +35,7 @@ export function splitText(text: string, options: ChunkOptions = {}) {
   return applyOverlap(chunks, overlap)
 }
 
+// 给相邻切片补充重叠尾部，减少知识片段边界导致的上下文丢失。
 function applyOverlap(chunks: string[], overlap: number) {
   const result: string[] = []
 
@@ -57,6 +59,7 @@ function applyOverlap(chunks: string[], overlap: number) {
   return result
 }
 
+// 统一换行格式并压缩过多空行，保证后续按段落切片更稳定。
 function normalizeText(text: string) {
   return text
     .replace(/\r\n/g, '\n')

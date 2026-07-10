@@ -8,6 +8,7 @@ export class EmbeddingService {
     baseURL: process.env.SILICONFLOW_BASE_URL,
   })
 
+  // 调用 Embedding 模型，把文本转换为可写入 pgvector 的向量数组。
   async createEmbedding(text: string): Promise<number[]> {
     const res = await this.client.embeddings.create({
       model: process.env.SILICONFLOW_EMBEDDING_MODEL || 'Alibaba-NLP/gte-Qwen2-7B-instruct',

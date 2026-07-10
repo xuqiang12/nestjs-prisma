@@ -18,6 +18,7 @@ export class KnowledgeController {
   @ApiBody({ type: CreateKnowledgeDto })
   @Permissions('ai:knowledge:upload')
   @Post()
+  // 新增纯文本知识内容。
   async createKnowledge(@Body() body: CreateKnowledgeDto) {
     return this.knowledgeService.createKnowledge(body.content, body.metadata)
   }
@@ -26,6 +27,7 @@ export class KnowledgeController {
   @Permissions('ai:knowledge:upload')
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
+  // 上传知识文件，并把 metadata 作为可选 JSON 字符串传给业务层解析。
   async upload(@UploadedFile() file: Express.Multer.File, @Body('metadata') metadata?: string) {
     return this.knowledgeService.upload(file, metadata)
   }
@@ -33,6 +35,7 @@ export class KnowledgeController {
   @ApiOperation({ summary: '查询知识列表' })
   @Permissions('ai:knowledge:list')
   @Get('list')
+  // 分页查询知识库内容列表。
   async list(@Query() query: KnowledgeListDto) {
     return this.knowledgeService.list(query)
   }
@@ -41,6 +44,7 @@ export class KnowledgeController {
   @ApiBody({ type: DeleteKnowledgeDto })
   @Permissions('ai:knowledge:delete')
   @Post('delete')
+  // 删除指定知识内容。
   async delete(@Body() body: DeleteKnowledgeDto) {
     return this.knowledgeService.delete(body.id)
   }
@@ -49,6 +53,7 @@ export class KnowledgeController {
   @ApiBody({ type: RevectorKnowledgeDto })
   @Permissions('ai:knowledge:revector')
   @Post('revector')
+  // 重新生成指定知识内容的向量。
   async revector(@Body() body: RevectorKnowledgeDto) {
     return this.knowledgeService.revector(body.id)
   }
@@ -58,6 +63,7 @@ export class KnowledgeController {
   @ApiQuery({ name: 'limit', description: '返回数量', required: false })
   @Permissions('ai:knowledge:search')
   @Get('search')
+  // 根据关键词检索相似知识内容。
   async searchSimilar(@Query() query: SearchKnowledgeDto) {
     return this.knowledgeService.searchSimilar(query.query, query.limit)
   }

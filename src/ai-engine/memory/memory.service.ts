@@ -10,6 +10,7 @@ export class InMemoryMemoryService implements IMemoryService {
     log.info('上下文记忆初始化完成✅')
   }
 
+  // 读取指定用户最近的短期记忆，限制返回数量避免 prompt 过长。
   async getShortMemory(userId: string) {
     console.log('[MemoryService（getShortMemory）] 读取用户记忆:', userId)
     const memory = this.memories.get(userId) || []
@@ -17,6 +18,7 @@ export class InMemoryMemoryService implements IMemoryService {
     return memory.slice(-10)
   }
 
+  // 追加一条用户上下文记忆，并在超过上限时移除最早的记录。
   async addMessage(userId: string, role: string, content: string) {
     console.log('[MemoryService（addMessage）] 添加消息:', {
       userId,
@@ -39,6 +41,7 @@ export class InMemoryMemoryService implements IMemoryService {
     }
   }
 
+  // 清空指定用户的临时记忆。
   async clearMemory(userId: string) {
     console.log('[MemoryService（clearMemory）] 清空用户记忆:', userId)
     this.memories.delete(userId)

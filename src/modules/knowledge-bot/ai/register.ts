@@ -9,6 +9,7 @@ import { SearchKnowledgeTool } from './tools/search-knowledge.tool'
 import { AddDocumentTool } from './tools/add-document.tool'
 import { GetUserMenuPermissionsTool } from './tools/get-user-menu-permissions.tool'
 
+// 注册 knowledge-bot 暴露给 AI 编排层使用的工具集合。
 export function registerKnowledgeBotAI(
   registry: AIRegistry,
   getUserMenuPermissionsTool?: GetUserMenuPermissionsTool,

@@ -15,6 +15,7 @@ import { MenuModule } from './modules/menu/menu.module'
 import { AIEngineModule } from './ai-engine/ai-engine.module'
 import { KnowledgeBotModule } from './modules/knowledge-bot/knowledge-bot.module'
 import { RoleModule } from './modules/role/role.module'
+import { HomeModule } from './modules/home/home.module'
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { RoleModule } from './modules/role/role.module'
     }),
     MenuModule,
     RoleModule,
+    HomeModule,
   ],
   controllers: [AppController],
   providers: [

@@ -183,3 +183,40 @@ model AiMessage {
 
   @@index([conversationId, createdAt])
 }
+
+// ==============================
+// 首页配置表
+// ==============================
+model HomeDecoration {
+  id         String          @id @db.VarChar(64)
+  name       String          @db.VarChar(100)
+  scene      String          @db.VarChar(32)
+  status     Int             @default(1)
+  sortNo     Int             @default(0) @map("sort_no")
+  remark     String?         @db.VarChar(255)
+  components HomeComponent[]
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  @@index([scene, status, sortNo])
+  @@map("home_decoration")
+}
+
+// ==============================
+// 首页组件表
+// ==============================
+model HomeComponent {
+  id           String         @id @db.VarChar(64)
+  decorationId String         @map("decoration_id") @db.VarChar(64)
+  decoration   HomeDecoration @relation(fields: [decorationId], references: [id], onDelete: Cascade)
+  templateId   String         @map("template_id") @db.VarChar(32)
+  templateName String?        @map("template_name") @db.VarChar(100)
+  info         Json
+  sortNo       Int            @default(0) @map("sort_no")
+  status       Int            @default(1)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  @@index([decorationId, status, sortNo])
+  @@map("home_component")
+}

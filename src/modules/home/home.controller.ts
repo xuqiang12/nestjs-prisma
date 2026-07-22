@@ -1,12 +1,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { Public } from '../../common/decorators/public.decorator'
-import {
-  CreateHomeComponentDto,
-  SortHomeComponentsDto,
-  UpdateHomeComponentDto,
-  UpdateHomeComponentStatusDto,
-} from './dto/component.dto'
+import { SaveHomeComponentsDto } from './dto/component.dto'
 import {
   CreateHomeDecorationDto,
   UpdateHomeDecorationDto,
@@ -76,27 +71,9 @@ export class HomeController {
     return this.homeService.listComponents(query.decorationId)
   }
 
-  @ApiOperation({ summary: '新增首页组件' })
-  @Post('components/create')
-  createComponent(@Body() dto: CreateHomeComponentDto) {
-    return this.homeService.createComponent(dto)
-  }
-
-  @ApiOperation({ summary: '修改首页组件' })
-  @Post('components/update')
-  updateComponent(@Body() dto: UpdateHomeComponentDto) {
-    return this.homeService.updateComponent(dto)
-  }
-
-  @ApiOperation({ summary: '修改首页组件状态' })
-  @Post('components/status')
-  updateComponentStatus(@Body() dto: UpdateHomeComponentStatusDto) {
-    return this.homeService.updateComponentStatus(dto)
-  }
-
-  @ApiOperation({ summary: '调整首页组件排序' })
-  @Post('components/sort')
-  sortComponents(@Body() dto: SortHomeComponentsDto) {
-    return this.homeService.sortComponents(dto)
+  @ApiOperation({ summary: '保存首页装修组件列表' })
+  @Post('decorations/save-components')
+  saveComponents(@Body() dto: SaveHomeComponentsDto) {
+    return this.homeService.saveComponents(dto)
   }
 }

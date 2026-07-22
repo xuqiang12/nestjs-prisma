@@ -3,9 +3,10 @@ import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator'
 import { HOME_SCENES } from '../home.constants'
 
 export class CreateHomeDecorationDto {
-  @ApiProperty({ description: '配置 ID' })
+  @ApiPropertyOptional({ description: '配置 ID' })
   @IsString()
-  id: string
+  @IsOptional()
+  id?: string
 
   @ApiProperty({ description: '配置名称' })
   @IsString()

@@ -1,19 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
+import { randomUUID } from 'crypto'
 import { PrismaService } from 'nestjs-prisma'
-import {
-  CreateHomeComponentDto,
-  SortHomeComponentsDto,
-  UpdateHomeComponentDto,
-  UpdateHomeComponentStatusDto,
-} from './dto/component.dto'
+import { SaveHomeComponentsDto } from './dto/component.dto'
 import {
   CreateHomeDecorationDto,
   UpdateHomeDecorationDto,
   UpdateHomeDecorationStatusDto,
 } from './dto/decoration.dto'
 import { HomeDecorationListQueryDto } from './dto/query.dto'
-import { HOME_STATUS } from './home.constants'
+import { HOME_SCENES, HOME_STATUS } from './home.constants'
 
 type HomeDecorationWithComponents = Prisma.HomeDecorationGetPayload<{
   include: {
@@ -67,32 +63,79 @@ export class HomeService {
   }
 
   async createDecoration(dto: CreateHomeDecorationDto) {
-    await this.prisma.homeDecoration.create({
-      data: {
-        id: dto.id,
-        name: dto.name,
-        scene: dto.scene,
-        status: dto.status ?? HOME_STATUS.enabled,
-        sortNo: dto.sortNo ?? 0,
-        remark: dto.remark,
-      },
-    })
+    const id = dto.id || randomUUID()
+    const data = {
+      id,
+      name: dto.name,
+      scene: dto.scene,
+      status: dto.status ?? HOME_STATUS.enabled,
+      sortNo: dto.sortNo ?? 0,
+      remark: dto.remark,
+    }
+    if (data.scene === HOME_SCENES[0] && data.status === HOME_STATUS.enabled) {
+      await this.prisma.$transaction([
+        this.prisma.homeDecoration.updateMany({
+          where: { scene: HOME_SCENES[0], id: { not: data.id } },
+          data: { status: HOME_STATUS.disabled },
+        }),
+        this.prisma.homeDecoration.create({ data }),
+      ])
+    } else {
+      await this.prisma.homeDecoration.create({ data })
+    }
     return '首页配置新增成功'
   }
 
   async updateDecoration(dto: UpdateHomeDecorationDto) {
     const { id, ...data } = dto
-    await this.ensureDecoration(id)
-    await this.prisma.homeDecoration.update({ where: { id }, data })
+    const decoration = await this.ensureDecoration(id)
+    const nextScene = data.scene ?? decoration.scene
+    const nextStatus = data.status ?? decoration.status
+    if (decoration.scene === HOME_SCENES[0] && decoration.status === HOME_STATUS.enabled) {
+      if (nextScene !== HOME_SCENES[0] || nextStatus === HOME_STATUS.disabled) {
+        throw new BadRequestException('当前首页主配置不可禁用')
+      }
+    }
+    if (nextScene === HOME_SCENES[0] && nextStatus === HOME_STATUS.enabled) {
+      await this.prisma.$transaction([
+        this.prisma.homeDecoration.updateMany({
+          where: { scene: HOME_SCENES[0], id: { not: id } },
+          data: { status: HOME_STATUS.disabled },
+        }),
+        this.prisma.homeDecoration.update({ where: { id }, data }),
+      ])
+    } else {
+      await this.prisma.homeDecoration.update({ where: { id }, data })
+    }
     return '首页配置修改成功'
   }
 
   async updateDecorationStatus(dto: UpdateHomeDecorationStatusDto) {
-    await this.ensureDecoration(dto.id)
-    await this.prisma.homeDecoration.update({
-      where: { id: dto.id },
-      data: { status: dto.status },
-    })
+    const decoration = await this.ensureDecoration(dto.id)
+    if (
+      decoration.scene === HOME_SCENES[0] &&
+      decoration.status === HOME_STATUS.enabled &&
+      dto.status === HOME_STATUS.disabled
+    ) {
+      throw new BadRequestException('当前首页主配置不可禁用')
+    }
+    if (decoration.scene === HOME_SCENES[0] && dto.status === HOME_STATUS.enabled) {
+      await this.prisma.$transaction([
+        this.prisma.homeDecoration.updateMany({
+          where: { scene: HOME_SCENES[0], id: { not: dto.id } },
+          data: { status: HOME_STATUS.disabled },
+        }),
+        this.prisma.homeDecoration.update({
+          where: { id: dto.id },
+          data: { status: dto.status },
+        }),
+      ])
+    } else {
+      await this.prisma.homeDecoration.update({
+        where: { id: dto.id },
+        data: { status: dto.status },
+      })
+    }
     return '首页配置状态修改成功'
   }
 
@@ -104,75 +147,58 @@ export class HomeService {
     })
   }
 
-  async createComponent(dto: CreateHomeComponentDto) {
+  async saveComponents(dto: SaveHomeComponentsDto) {
     await this.ensureDecoration(dto.decorationId)
-    await this.prisma.homeComponent.create({
-      data: {
-        id: dto.id,
-        decorationId: dto.decorationId,
-        templateId: dto.templateId,
-        templateName: dto.templateName,
-        info: dto.info as Prisma.InputJsonValue,
-        sortNo: dto.sortNo ?? 0,
-        status: dto.status ?? HOME_STATUS.enabled,
-      },
+    const existingComponents = await this.prisma.homeComponent.findMany({
+      where: { decorationId: dto.decorationId },
+      select: { id: true },
     })
-    return '首页组件新增成功'
-  }
-
-  async updateComponent(dto: UpdateHomeComponentDto) {
-    const { id, ...dtoData } = dto
-    await this.ensureComponent(id)
-    if (dtoData.decorationId) {
-      await this.ensureDecoration(dtoData.decorationId)
-    }
-
-    const data: Prisma.HomeComponentUpdateInput = {
-      decoration: dtoData.decorationId
-        ? {
-            connect: { id: dtoData.decorationId },
-          }
-        : undefined,
-      templateId: dtoData.templateId,
-      templateName: dtoData.templateName,
-      info: dtoData.info as Prisma.InputJsonValue,
-      sortNo: dtoData.sortNo,
-      status: dtoData.status,
-    }
-    await this.prisma.homeComponent.update({ where: { id }, data })
-    return '首页组件修改成功'
-  }
-
-  async updateComponentStatus(dto: UpdateHomeComponentStatusDto) {
-    await this.ensureComponent(dto.id)
-    await this.prisma.homeComponent.update({
-      where: { id: dto.id },
-      data: { status: dto.status },
-    })
-    return '首页组件状态修改成功'
-  }
-
-  async sortComponents(dto: SortHomeComponentsDto) {
-    await this.ensureDecoration(dto.decorationId)
-    const count = await this.prisma.homeComponent.count({
-      where: {
-        decorationId: dto.decorationId,
-        id: { in: dto.items.map((item) => item.id) },
-      },
-    })
-    if (count !== dto.items.length) {
+    const existingIds = new Set(existingComponents.map((item) => item.id))
+    const submittedIds = dto.components.map((item) => item.id).filter(Boolean) as string[]
+    const invalidId = submittedIds.find((id) => !existingIds.has(id))
+    if (invalidId) {
       throw new BadRequestException('存在不属于当前配置的组件')
     }
 
-    await this.prisma.$transaction(
-      dto.items.map((item) =>
-        this.prisma.homeComponent.update({
-          where: { id: item.id },
-          data: { sortNo: item.sortNo },
-        }),
-      ),
-    )
-    return '首页组件排序修改成功'
+    return this.prisma.$transaction(async (tx) => {
+      await tx.homeComponent.updateMany({
+        where: {
+          decorationId: dto.decorationId,
+          id: submittedIds.length ? { notIn: submittedIds } : undefined,
+        },
+        data: { status: HOME_STATUS.disabled },
+      })
+
+      for (let index = 0; index < dto.components.length; index += 1) {
+        const item = dto.components[index]
+        const data = {
+          templateId: item.templateId,
+          templateName: item.templateName,
+          info: item.info as Prisma.InputJsonValue,
+          sortNo: index,
+          status: HOME_STATUS.enabled,
+        }
+        if (item.id) {
+          await tx.homeComponent.update({
+            where: { id: item.id },
+            data,
+          })
+        } else {
+          await tx.homeComponent.create({
+            data: {
+              id: randomUUID(),
+              decorationId: dto.decorationId,
+              ...data,
+            },
+          })
+        }
+      }
+
+      return tx.homeComponent.findMany({
+        where: { decorationId: dto.decorationId, status: HOME_STATUS.enabled },
+        orderBy: [{ sortNo: 'asc' }, { id: 'asc' }],
+      })
+    })
   }
 
   private enabledComponentsInclude() {
@@ -215,11 +241,4 @@ export class HomeService {
     return decoration
   }
 
-  private async ensureComponent(id: string) {
-    const component = await this.prisma.homeComponent.findUnique({ where: { id } })
-    if (!component) {
-      throw new NotFoundException('首页组件不存在')
-    }
-    return component
-  }
 }

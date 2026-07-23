@@ -536,6 +536,11 @@ POST /home/components/sort
 | `iconType` | 魔方布局 | 是 | 决定小程序图片排列方式。 |
 | `bkColor` | 背景色 | 否 | 魔方区域背景色。 |
 | `isBglucency` | 背景是否透明 | 否 | 开启后背景按透明样式处理。 |
+| `marginTop / marginRight / marginBottom / marginLeft` | 外边距 | 否 | 控制魔方组件外层边距，后台用滑块维护。 |
+| `paddingTop / paddingRight / paddingBottom / paddingLeft` | 内边距 | 否 | 控制魔方组件内部留白，后台用滑块维护。 |
+| `gap` | 图片间距 | 否 | 控制魔方图片之间的间距，后台用滑块维护。 |
+| `borderRadius` | 组件圆角 | 否 | 控制魔方组件外层圆角，后台用滑块维护。 |
+| `itemBorderRadius` | 图片圆角 | 否 | 控制每张魔方图片圆角，后台用滑块维护。 |
 | `list` | 图片列表 | 是 | 根据布局维护对应图片。 |
 
 布局选项：
@@ -543,11 +548,10 @@ POST /home/components/sort
 - `TWO_ROW`
 - `THREE_ROW`
 - `FOUR_ROW`
-- `FIVE_ROW`
-- `TWO_FIVE_ROW`
 - `FOUR_GRID`
 - `ONE_UP_TWO_DOWN`
 - `ONE_LEFT_TWO_RIGHT`
+- `ONE_LEFT_RIGHT_TOP_TWO_BOTTOM`
 
 图片项字段：
 
@@ -556,6 +560,7 @@ POST /home/components/sort
 | `id` | 图片项 ID | 否 | 后台识别用。 |
 | `title` | 标题 | 否 | 后台识别或后续展示使用。 |
 | `imgUrl` | 图片地址 | 是 | 小程序展示图片。 |
+| `clickType` | 链接类型 | 否 | `0` 表示内容配置，`1` 表示直接跳转。 |
 | `url` | 跳转 URL | 否 | 跳转协议字段之一。 |
 | `path` | 小程序页面路径 | 否 | 跳转协议字段之一。 |
 | `uri` | 业务 URI | 否 | 跳转协议字段之一。 |
@@ -566,8 +571,9 @@ POST /home/components/sort
 
 - 图片列表支持新增、删除、排序。
 - 每个图片项都可以单独配置跳转。
-- 后台根据 `iconType` 给出建议图片数量提示，但第一版不强制限制数量。
+- 后台根据 `iconType` 给出建议图片数量提示，但不强制限制数量。
 - 运营切换布局时，不自动删除已有图片项。
+- 小程序按当前布局推荐数量取 `list` 前 N 张展示，多余图片保留。
 
 保存校验：
 
@@ -1151,13 +1157,24 @@ type NoticeItem = {
     | 'TWO_ROW'
     | 'THREE_ROW'
     | 'FOUR_ROW'
-    | 'FIVE_ROW'
-    | 'TWO_FIVE_ROW'
     | 'FOUR_GRID'
     | 'ONE_UP_TWO_DOWN'
     | 'ONE_LEFT_TWO_RIGHT'
+    | 'ONE_LEFT_RIGHT_TOP_TWO_BOTTOM'
+  sizeUnit?: 'rpx'
   bkColor?: string
   isBglucency?: boolean
+  marginTop?: number
+  marginRight?: number
+  marginBottom?: number
+  marginLeft?: number
+  paddingTop?: number
+  paddingRight?: number
+  paddingBottom?: number
+  paddingLeft?: number
+  gap?: number
+  borderRadius?: number
+  itemBorderRadius?: number
   list: CubeItem[]
 }
 ```
@@ -1167,6 +1184,7 @@ type CubeItem = {
   id?: string
   title?: string
   imgUrl: string
+  clickType?: '0' | '1'
   url?: string
   path?: string
   uri?: string

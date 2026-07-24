@@ -52,6 +52,7 @@ describe('MobileTabBarController (e2e)', () => {
         expect(body.message).toBe('success')
         expect(body.data).toMatchObject({
           name: '主导航栏',
+          tabBarMode: 'custom',
           bgColorMode: 'system',
           bgColor: '#ffffff',
           textColorMode: 'system',
@@ -72,6 +73,7 @@ describe('MobileTabBarController (e2e)', () => {
   it('saves one published tabbar config and returns it publicly', async () => {
     const config = {
       name: '主导航栏',
+      tabBarMode: 'native',
       bgColorMode: 'custom',
       bgColor: '#fefefe',
       textColorMode: 'custom',
@@ -116,6 +118,7 @@ describe('MobileTabBarController (e2e)', () => {
       .expect(({ body }) => {
         expect(body.data).toMatchObject({
           name: '主导航栏',
+          tabBarMode: 'native',
           bgColorMode: 'custom',
           bgColor: '#fefefe',
           textColorMode: 'custom',

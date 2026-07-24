@@ -11,6 +11,7 @@ import {
 } from 'class-validator'
 import {
   MOBILE_TABBAR_COLOR_MODES,
+  MOBILE_TABBAR_MODES,
   MOBILE_TABBAR_PAGE_OPTIONS,
   MOBILE_TABBAR_RADIUS_MODES,
 } from '../mobile-tabbar.constants'
@@ -55,6 +56,11 @@ export class SaveMobileTabBarConfigDto {
   @IsString()
   @MaxLength(15)
   name: string
+
+  @ApiPropertyOptional({ description: '导航栏类型', enum: MOBILE_TABBAR_MODES })
+  @IsIn(MOBILE_TABBAR_MODES)
+  @IsOptional()
+  tabBarMode?: string
 
   @ApiPropertyOptional({ description: '导航背景色模式', enum: MOBILE_TABBAR_COLOR_MODES })
   @IsIn(MOBILE_TABBAR_COLOR_MODES)

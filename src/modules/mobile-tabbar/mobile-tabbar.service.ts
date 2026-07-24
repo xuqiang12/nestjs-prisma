@@ -21,6 +21,7 @@ type MobileTabBarItem = {
 type MobileTabBarConfig = {
   id: string
   name: string
+  tabBarMode: string
   bgColorMode: string
   bgColor: string
   textColorMode: string
@@ -72,6 +73,7 @@ export class MobileTabBarService {
     return {
       id: MOBILE_TABBAR_CONFIG_ID,
       name: dto.name,
+      tabBarMode: dto.tabBarMode || DEFAULT_MOBILE_TABBAR_CONFIG.tabBarMode,
       bgColorMode: dto.bgColorMode || DEFAULT_MOBILE_TABBAR_CONFIG.bgColorMode,
       bgColor: dto.bgColor || DEFAULT_MOBILE_TABBAR_CONFIG.bgColor,
       textColorMode: dto.textColorMode || DEFAULT_MOBILE_TABBAR_CONFIG.textColorMode,

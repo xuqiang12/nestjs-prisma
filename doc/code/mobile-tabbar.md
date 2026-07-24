@@ -38,6 +38,7 @@
 type MobileTabBarConfig = {
   id: string
   name: string
+  tabBarMode: 'custom' | 'native'
   bgColorMode: 'system' | 'custom'
   bgColor: string
   textColorMode: 'system' | 'custom'
@@ -61,6 +62,8 @@ type MobileTabBarItem = {
 ## 关键规则
 
 - 菜单项数量必须为 2-5 个。
+- `tabBarMode: 'custom'` 时，小程序隐藏 uniapp 原生 tabBar，渲染后端配置的自定义底部导航。
+- `tabBarMode: 'native'` 时，小程序显示 `pages.json` 中发版固定的 uniapp 原生 tabBar，不承诺后台动态增删原生 tab 页面。
 - 当前仅支持 `linkType: 'page'`。
 - `pagePath` 必须在后端白名单内，避免小程序跳转到不存在页面。
 - 未保存过配置时，公开读取接口返回默认配置。

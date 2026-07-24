@@ -16,6 +16,7 @@ import { AIEngineModule } from './ai-engine/ai-engine.module'
 import { KnowledgeBotModule } from './modules/knowledge-bot/knowledge-bot.module'
 import { RoleModule } from './modules/role/role.module'
 import { HomeModule } from './modules/home/home.module'
+import { MobileTabBarModule } from './modules/mobile-tabbar/mobile-tabbar.module'
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { HomeModule } from './modules/home/home.module'
     MenuModule,
     RoleModule,
     HomeModule,
+    MobileTabBarModule,
   ],
   controllers: [AppController],
   providers: [

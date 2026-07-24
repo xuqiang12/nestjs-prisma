@@ -12,7 +12,7 @@ async function main() {
   const { role } = await seedRole()
 
   await seedUser(role.id)
-  await seedMenus(permissions)
+  await seedMenus(permissions, role.id)
 
   console.log('初始化完成')
 }

@@ -220,3 +220,17 @@ model HomeComponent {
   @@index([decorationId, status, sortNo])
   @@map("home_component")
 }
+
+// ==============================
+// 小程序底部导航配置表
+// ==============================
+model MobileTabBarConfig {
+  id        String   @id @db.VarChar(64)
+  name      String   @db.VarChar(100)
+  config    Json
+  status    Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("mobile_tabbar_config")
+}

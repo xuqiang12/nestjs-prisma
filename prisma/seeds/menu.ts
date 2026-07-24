@@ -90,6 +90,23 @@ const menuSeeds: MenuSeed[] = [
     type: MenuType.PAGE,
     parentPath: '/AIEngine',
   },
+  {
+    name: '移动端',
+    path: '/mobile',
+    component: 'Layout',
+    icon: 'el-icon-mobile-phone',
+    sort: 2,
+    type: MenuType.DIRECTORY,
+  },
+  {
+    name: '底部导航配置',
+    path: '/mobile/tabBar',
+    component: '/mobile/tabBar/index',
+    icon: 'el-icon-menu',
+    sort: 0,
+    type: MenuType.PAGE,
+    parentPath: '/mobile',
+  },
 ]
 
 const buttonSeeds: ButtonSeed[] = [
@@ -98,7 +115,7 @@ const buttonSeeds: ButtonSeed[] = [
   { menuPath: '/system/menu/index', permissionCode: 'system:menu:add', name: '新增', sort: 1 },
 ]
 
-export async function seedMenus(permissions: SeedPermission[] = []) {
+export async function seedMenus(permissions: SeedPermission[] = [], roleId?: number) {
   console.log('初始化菜单')
 
   const menuMap = new Map<string, { id: number }>()
@@ -142,6 +159,16 @@ export async function seedMenus(permissions: SeedPermission[] = []) {
         name: item.name,
         sort: item.sort,
       },
+    })
+  }
+
+  if (roleId) {
+    await prisma.menuRole.createMany({
+      data: Array.from(menuMap.values()).map((menu) => ({
+        menuId: menu.id,
+        roleId,
+      })),
+      skipDuplicates: true,
     })
   }
 }

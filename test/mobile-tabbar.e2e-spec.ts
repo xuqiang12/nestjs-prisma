@@ -12,6 +12,7 @@ describe('MobileTabBarController (e2e)', () => {
   let app: INestApplication
   let prisma: PrismaService
   let token: string
+  const e2eConfigIds = ['main-tabbar', 'tabbar-a', 'tabbar-b']
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -52,7 +53,7 @@ describe('MobileTabBarController (e2e)', () => {
         expect(body.message).toBe('success')
         expect(body.data).toMatchObject({
           name: '主导航栏',
-          tabBarMode: 'custom',
+          tabBarMode: 'native',
           bgColorMode: 'system',
           bgColor: '#ffffff',
           textColorMode: 'system',
@@ -72,6 +73,7 @@ describe('MobileTabBarController (e2e)', () => {
 
   it('saves one published tabbar config and returns it publicly', async () => {
     const config = {
+      id: 'main-tabbar',
       name: '主导航栏',
       tabBarMode: 'native',
       bgColorMode: 'custom',
@@ -113,6 +115,12 @@ describe('MobileTabBarController (e2e)', () => {
       })
 
     await request(app.getHttpServer())
+      .post('/mobile-tabbar/status')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 'main-tabbar', status: 1 })
+      .expect(201)
+
+    await request(app.getHttpServer())
       .get('/mobile-tabbar/config')
       .expect(200)
       .expect(({ body }) => {
@@ -127,6 +135,66 @@ describe('MobileTabBarController (e2e)', () => {
           radiusMode: 'largeRound',
         })
         expect(body.data.items).toEqual(config.items)
+      })
+  })
+
+  it('lists tabbar configs and keeps only one enabled', async () => {
+    await saveTabBarConfig('tabbar-a', '导航 A')
+    await saveTabBarConfig('tabbar-b', '导航 B')
+
+    await request(app.getHttpServer())
+      .post('/mobile-tabbar/status')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 'tabbar-a', status: 1 })
+      .expect(201)
+
+    await request(app.getHttpServer())
+      .post('/mobile-tabbar/status')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 'tabbar-b', status: 1 })
+      .expect(201)
+
+    await request(app.getHttpServer())
+      .get('/mobile-tabbar/list')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.map((item) => ({ id: item.id, status: item.status }))).toEqual([
+          { id: 'tabbar-a', status: 0 },
+          { id: 'tabbar-b', status: 1 },
+        ])
+      })
+
+    await request(app.getHttpServer())
+      .get('/mobile-tabbar/config')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.id).toBe('tabbar-b')
+        expect(body.data.name).toBe('导航 B')
+      })
+  })
+
+  it('allows disabling the last enabled tabbar and returns native default publicly', async () => {
+    await saveTabBarConfig('tabbar-a', '导航 A')
+
+    await request(app.getHttpServer())
+      .post('/mobile-tabbar/status')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 'tabbar-a', status: 1 })
+      .expect(201)
+
+    await request(app.getHttpServer())
+      .post('/mobile-tabbar/status')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 'tabbar-a', status: 0 })
+      .expect(201)
+
+    await request(app.getHttpServer())
+      .get('/mobile-tabbar/config')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.id).toBe('default')
+        expect(body.data.tabBarMode).toBe('native')
       })
   })
 
@@ -157,11 +225,29 @@ describe('MobileTabBarController (e2e)', () => {
 
   async function cleanMobileTabBarTables() {
     try {
-      await prisma.$executeRawUnsafe('DELETE FROM "mobile_tabbar_config"')
+      await prisma.$executeRawUnsafe(
+        'DELETE FROM "mobile_tabbar_config" WHERE "id" IN ($1, $2, $3)',
+        ...e2eConfigIds,
+      )
     } catch (error) {
       if (!String(error).includes('mobile_tabbar_config')) {
         throw error
       }
     }
+  }
+
+  async function saveTabBarConfig(id: string, name: string) {
+    await request(app.getHttpServer())
+      .post('/mobile-tabbar/save')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        id,
+        name,
+        items: [
+          { name: '首页', icon: '', activeIcon: '', linkType: 'page', pagePath: '/pages/index/index', sortNo: 0 },
+          { name: '我的', icon: '', activeIcon: '', linkType: 'page', pagePath: '/pages/mine/index', sortNo: 1 },
+        ],
+      })
+      .expect(201)
   }
 })

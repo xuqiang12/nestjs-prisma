@@ -14,6 +14,7 @@ type MenuSeed = {
   sort: number
   type: MenuType
   parentPath?: string
+  legacyPaths?: string[]
 }
 
 type ButtonSeed = {
@@ -99,13 +100,24 @@ const menuSeeds: MenuSeed[] = [
     type: MenuType.DIRECTORY,
   },
   {
-    name: '底部导航配置',
-    path: '/mobile/tabBar',
-    component: '/mobile/tabBar/index',
-    icon: 'el-icon-menu',
+    name: '首页配置',
+    path: '/mobile/homeConfig/index',
+    component: '/mobile/homeConfig/index',
+    icon: '',
     sort: 0,
     type: MenuType.PAGE,
     parentPath: '/mobile',
+    legacyPaths: ['/mobile/homeConfig'],
+  },
+  {
+    name: '底部导航配置',
+    path: '/mobile/tabBar/index',
+    component: '/mobile/tabBar/index',
+    icon: 'el-icon-menu',
+    sort: 1,
+    type: MenuType.PAGE,
+    parentPath: '/mobile',
+    legacyPaths: ['/mobile/tabBar'],
   },
 ]
 
@@ -122,7 +134,8 @@ export async function seedMenus(permissions: SeedPermission[] = [], roleId?: num
 
   for (const item of menuSeeds) {
     const parentId = item.parentPath ? menuMap.get(item.parentPath)?.id : null
-    const existed = await prisma.menu.findFirst({ where: { path: item.path } })
+    const searchPaths = [item.path].concat(item.legacyPaths || [])
+    const existed = await prisma.menu.findFirst({ where: { OR: searchPaths.map((path) => ({ path })) } })
     const data = {
       parentId,
       name: item.name,

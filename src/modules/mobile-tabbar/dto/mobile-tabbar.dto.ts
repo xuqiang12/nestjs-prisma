@@ -52,6 +52,11 @@ export class MobileTabBarItemDto {
 }
 
 export class SaveMobileTabBarConfigDto {
+  @ApiPropertyOptional({ description: '配置 ID，新增时可不传' })
+  @IsString()
+  @IsOptional()
+  id?: string
+
   @ApiProperty({ description: '导航名称，最多 15 个字' })
   @IsString()
   @MaxLength(15)
@@ -97,4 +102,20 @@ export class SaveMobileTabBarConfigDto {
   @ValidateNested({ each: true })
   @Type(() => MobileTabBarItemDto)
   items: MobileTabBarItemDto[]
+}
+
+export class MobileTabBarDetailQueryDto {
+  @ApiProperty({ description: '配置 ID' })
+  @IsString()
+  id: string
+}
+
+export class UpdateMobileTabBarStatusDto {
+  @ApiProperty({ description: '配置 ID' })
+  @IsString()
+  id: string
+
+  @ApiProperty({ description: '状态：1 启用，0 禁用', enum: [0, 1] })
+  @IsIn([0, 1])
+  status: number
 }

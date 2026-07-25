@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common'
-import { ChatMessage, LlmService } from '../llm/llm.service'
+import { BadRequestException, Injectable } from '@nestjs/common'
+import { ChatMessage, LlmOptions, LlmService } from '../llm/llm.service'
 import { SearchResult, VectorStoreService } from '../vector/vector-store.service'
 
 export type ChatMode = 'chat' | 'knowledge'
@@ -8,6 +8,11 @@ export type CompletionPlan = {
   route: ChatMode
   messages: ChatMessage[]
   sources: SearchResult[]
+}
+
+export type BuildCompletionOptions = {
+  systemPrompt?: string
+  allowedToolCodes?: string[]
 }
 
 @Injectable()
@@ -44,16 +49,19 @@ export class AiOrchestratorService {
     message: string,
     mode: ChatMode = 'chat',
     history: ChatMessage[] = [],
+    options: BuildCompletionOptions = {},
   ): Promise<CompletionPlan> {
     if (mode === 'knowledge') {
+      this.ensureToolAllowed('search_knowledge', options.allowedToolCodes)
       // 知识库模式需要先做向量检索，把命中的片段作为 system prompt 的事实依据。
       const sources = await this.vectorStoreService.similaritySearch(message, 5)
       const context = sources.map((item, index) => `【知识${index + 1}】${item.content}`).join('\n')
       const systemPrompt = [
+        options.systemPrompt,
         '你是知识库问答助手。',
         '优先根据给定知识片段回答；如果知识片段不足以回答，请明确说明知识库中没有足够信息。',
         `知识片段：\n${context || '未检索到相关知识片段'}`,
-      ].join('\n')
+      ].filter(Boolean).join('\n')
 
       return {
         route: 'knowledge',
@@ -64,23 +72,33 @@ export class AiOrchestratorService {
 
     return {
       route: 'chat',
-      messages: [...this.normalizeHistory(history), { role: 'user', content: message }],
+      messages: [
+        ...(options.systemPrompt ? [{ role: 'system' as const, content: options.systemPrompt }] : []),
+        ...this.normalizeHistory(history),
+        { role: 'user', content: message },
+      ],
       sources: [],
     }
   }
 
   // 根据已构建好的消息数组发起一次非流式模型调用。
-  async complete(messages: ChatMessage[]) {
-    return this.llmService.invokeWithMessages(messages)
+  async complete(messages: ChatMessage[], options?: LlmOptions) {
+    return this.llmService.invokeWithMessages(messages, options)
   }
 
   // 根据已构建好的消息数组发起一次流式模型调用。
-  streamCompletion(messages: ChatMessage[]) {
-    return this.llmService.streamWithMessages(messages)
+  streamCompletion(messages: ChatMessage[], options?: LlmOptions) {
+    return this.llmService.streamWithMessages(messages, options)
   }
 
   // 过滤历史消息，只保留模型支持的用户消息和助手消息。
   private normalizeHistory(history: ChatMessage[]) {
     return history.filter((item) => item.role === 'user' || item.role === 'assistant')
+  }
+
+  private ensureToolAllowed(toolCode: string, allowedToolCodes?: string[]) {
+    if (allowedToolCodes && !allowedToolCodes.includes(toolCode)) {
+      throw new BadRequestException(`智能体未授权工具：${toolCode}`)
+    }
   }
 }

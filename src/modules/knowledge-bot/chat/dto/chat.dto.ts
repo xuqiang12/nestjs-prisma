@@ -20,6 +20,11 @@ export class ChatRequestDto {
   @IsOptional()
   mode?: ChatMode
 
+  @ApiPropertyOptional({ description: '智能体编码；不传时保持默认对话行为' })
+  @IsString()
+  @IsOptional()
+  agentCode?: string
+
   @ApiPropertyOptional({ description: '用户 ID；不传时不读取或写入短期记忆' })
   @IsString()
   @IsOptional()

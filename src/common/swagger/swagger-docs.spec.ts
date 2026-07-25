@@ -6,6 +6,7 @@ import { RoleModule } from '../../modules/role/role.module'
 import { UserModule } from '../../modules/user/user.module'
 import { HomeModule } from '../../modules/home/home.module'
 import { MobileTabBarModule } from '../../modules/mobile-tabbar/mobile-tabbar.module'
+import { AiPlatformModule } from '../../modules/ai-platform/ai-platform.module'
 import { getKnife4jGroups, isApiDocsEnabled } from './swagger-docs'
 
 describe('swagger docs config', () => {
@@ -23,7 +24,7 @@ describe('swagger docs config', () => {
 
     expect(groups).toEqual([
       { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule, RoleModule, HomeModule, MobileTabBarModule] },
-      { name: 'AI模块', url: '/api-docs/ai-json', modules: [KnowledgeBotModule] },
+      { name: 'AI模块', url: '/api-docs/ai-json', modules: [KnowledgeBotModule, AiPlatformModule] },
     ])
     expect(groups.some((group) => group.url === '/api-json')).toBe(false)
   })

@@ -160,6 +160,7 @@ model AiConversation {
   user      User        @relation(fields: [userId], references: [id])
   title     String      // 会话标题
   mode      String      @default("chat") // 会话模式：chat / knowledge
+  agentCode String?     // 本会话使用的智能体编码
   messages  AiMessage[] // 会话消息
   isDeleted Boolean     @default(false) // 软删除标记
   deletedAt DateTime?   // 软删除时间
@@ -179,9 +180,191 @@ model AiMessage {
   role           String         // 消息角色：user / assistant
   content        String         // 消息内容
   sources        Json?          // 知识库问答引用来源
+  agentCode      String?        // 生成消息时使用的智能体编码
+  promptCode     String?        // 生成消息时使用的提示词编码
+  workflowCode   String?        // 生成消息时使用的工作流编码
   createdAt      DateTime       @default(now()) // 创建时间
 
   @@index([conversationId, createdAt])
+}
+
+// ==============================
+// AI 提示词配置表
+// ==============================
+model AiPrompt {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  scene     String
+  content   String
+  variables Json?
+  version   Int      @default(1)
+  status    Int      @default(1)
+  remark    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scene, status])
+}
+
+// ==============================
+// AI 敏感词配置表
+// ==============================
+model AiSensitiveWord {
+  id          String   @id @default(cuid())
+  word        String
+  category    String
+  action      String
+  replaceWith String?
+  scope       String
+  status      Int      @default(1)
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([word, scope])
+  @@index([scope, status])
+}
+
+// ==============================
+// AI 智能体配置表
+// ==============================
+model AiAgent {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  description      String?
+  promptCode       String
+  mode             String   @default("chat")
+  model            String?
+  temperature      Float?
+  topP             Float?
+  knowledgeEnabled Boolean  @default(false)
+  toolCodes        Json?
+  workflowCode     String?
+  status           Int      @default(1)
+  remark           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([mode, status])
+}
+
+// ==============================
+// AI 工作流配置表
+// ==============================
+model AiWorkflow {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  description String?
+  status      Int              @default(1)
+  version     Int              @default(1)
+  remark      String?
+  nodes       AiWorkflowNode[]
+  edges       AiWorkflowEdge[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([status, updatedAt])
+}
+
+// ==============================
+// AI 工作流节点表
+// ==============================
+model AiWorkflowNode {
+  id         String     @id @default(cuid())
+  workflowId String
+  workflow   AiWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  nodeKey    String
+  type       String
+  name       String
+  config     Json
+  sortNo     Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([workflowId, nodeKey])
+  @@index([workflowId, sortNo])
+}
+
+// ==============================
+// AI 工作流边表
+// ==============================
+model AiWorkflowEdge {
+  id          String     @id @default(cuid())
+  workflowId  String
+  workflow    AiWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  fromNodeKey String
+  toNodeKey   String
+  condition   Json?
+  sortNo      Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([workflowId, fromNodeKey, sortNo])
+}
+
+// ==============================
+// AI 技能包配置表
+// ==============================
+model AiSkillPackage {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  description   String?
+  promptCodes   Json?
+  toolCodes     Json?
+  workflowCode  String?
+  agentDefaults Json?
+  status        Int      @default(1)
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, updatedAt])
+}
+
+// ==============================
+// AI 工作流执行记录表
+// ==============================
+model AiWorkflowRun {
+  id             String              @id @default(cuid())
+  conversationId String?
+  messageId      String?
+  agentCode      String
+  workflowCode   String
+  status         String
+  input          Json
+  output         Json?
+  errorMessage   String?
+  startedAt      DateTime            @default(now())
+  finishedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  steps          AiWorkflowRunStep[]
+
+  @@index([agentCode, workflowCode, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+// ==============================
+// AI 工作流节点执行记录表
+// ==============================
+model AiWorkflowRunStep {
+  id           String        @id @default(cuid())
+  runId        String
+  run          AiWorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  nodeKey      String
+  nodeType     String
+  status       String
+  input        Json?
+  output       Json?
+  errorMessage String?
+  startedAt    DateTime      @default(now())
+  finishedAt   DateTime?
+  createdAt    DateTime      @default(now())
+
+  @@index([runId, createdAt])
 }
 
 // ==============================

@@ -17,6 +17,7 @@ import { KnowledgeBotModule } from './modules/knowledge-bot/knowledge-bot.module
 import { RoleModule } from './modules/role/role.module'
 import { HomeModule } from './modules/home/home.module'
 import { MobileTabBarModule } from './modules/mobile-tabbar/mobile-tabbar.module'
+import { AiPlatformModule } from './modules/ai-platform/ai-platform.module'
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { MobileTabBarModule } from './modules/mobile-tabbar/mobile-tabbar.module
     AuthModule,
     AIEngineModule,
     KnowledgeBotModule,
+    AiPlatformModule,
     // JwtModule.register({
     //   secret: 'YOUR_SECRET_KEY_2025', // 密钥
     //   signOptions: { expiresIn: '7d' }, // 7天过期

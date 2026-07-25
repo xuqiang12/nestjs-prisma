@@ -6,6 +6,12 @@ export type ChatMessage = {
   content: string
 }
 
+export type LlmOptions = {
+  model?: string
+  temperature?: number
+  topP?: number
+}
+
 @Injectable()
 export class LlmService {
   private readonly client = new OpenAI({
@@ -19,24 +25,24 @@ export class LlmService {
   }
 
   // 使用 OpenAI 兼容的 Chat Completions 接口发起一次非流式对话。
-  async invokeWithMessages(messages: ChatMessage[]): Promise<string> {
+  async invokeWithMessages(messages: ChatMessage[], options: LlmOptions = {}): Promise<string> {
     const res = await this.client.chat.completions.create({
-      model: process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
+      model: options.model || process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
       messages,
-      temperature: 0.2,
-      top_p: 0.8,
+      temperature: options.temperature ?? 0.2,
+      top_p: options.topP ?? 0.8,
     })
 
     return res.choices[0].message.content || ''
   }
 
   // 使用 OpenAI 兼容的流式接口逐段返回模型生成的文本内容。
-  async *streamWithMessages(messages: ChatMessage[]): AsyncIterable<string> {
+  async *streamWithMessages(messages: ChatMessage[], options: LlmOptions = {}): AsyncIterable<string> {
     const stream = await this.client.chat.completions.create({
-      model: process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
+      model: options.model || process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
       messages,
-      temperature: 0.2,
-      top_p: 0.8,
+      temperature: options.temperature ?? 0.2,
+      top_p: options.topP ?? 0.8,
       stream: true,
     })
 

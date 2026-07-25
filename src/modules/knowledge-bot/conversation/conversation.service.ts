@@ -101,7 +101,7 @@ export class ConversationService {
   // 发送消息前获取已有会话；没有传会话 ID 时自动创建一个新会话。
   async getOrCreateForMessage(
     userId: number,
-    params: { conversationId?: string; message: string; mode?: ChatMode },
+    params: { conversationId?: string; message: string; mode?: ChatMode; agentCode?: string },
   ) {
     if (params.conversationId) {
       const conversation = await this.prisma.aiConversation.findFirst({
@@ -119,7 +119,14 @@ export class ConversationService {
       return conversation
     }
 
-    return this.create(userId, params.mode || 'chat', this.buildTitle(params.message))
+    return this.prisma.aiConversation.create({
+      data: {
+        userId,
+        mode: params.mode || 'chat',
+        title: this.buildTitle(params.message),
+        agentCode: params.agentCode,
+      },
+    })
   }
 
   // 读取最近的历史消息，并转换为大模型可直接使用的 ChatMessage。
@@ -146,6 +153,7 @@ export class ConversationService {
     role: MessageRole,
     content: string,
     sources?: MessageSource[],
+    meta: { agentCode?: string; promptCode?: string; workflowCode?: string } = {},
   ) {
     return this.prisma.aiMessage.create({
       data: {
@@ -153,6 +161,9 @@ export class ConversationService {
         role,
         content,
         sources: sources && sources.length ? sources : undefined,
+        agentCode: meta.agentCode,
+        promptCode: meta.promptCode,
+        workflowCode: meta.workflowCode,
       },
     })
   }

@@ -32,11 +32,14 @@ export class AgentRuntimeService {
     if (!prompt) {
       throw new BadRequestException('智能体绑定的提示词不存在或未启用')
     }
-
     return {
       agentCode: agent.code,
       promptCode: prompt.code,
-      mode: agent.knowledgeEnabled ? 'knowledge' : agent.mode === 'knowledge' ? 'knowledge' : 'chat',
+      mode: agent.knowledgeEnabled
+        ? 'knowledge'
+        : agent.mode === 'knowledge'
+          ? 'knowledge'
+          : 'chat',
       systemPrompt: this.promptRenderer.render(
         prompt.content,
         this.normalizeVariables(prompt.variables),

@@ -45,3 +45,11 @@ export type WorkflowExecutionResult = {
   values: Record<string, any>
   runId?: string
 }
+
+export type WorkflowStreamEvent =
+  | { type: 'workflow_start'; runId: string; workflowCode: string }
+  | { type: 'node_start'; nodeKey: string; nodeType: string; name: string }
+  | { type: 'node_end'; nodeKey: string; nodeType: string; output: Record<string, any> }
+  | { type: 'content'; content: string }
+  | { type: 'sources'; sources: any[] }
+  | { type: 'workflow_done'; runId: string; answer: string }

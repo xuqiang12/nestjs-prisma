@@ -12,6 +12,7 @@ export type SensitiveWordHit = {
 export class SensitiveWordCheckerService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // 敏感词检查与处理：检查内容是否包含敏感词，根据配置执行拦截或替换
   async checkAndApply(content: string, scope: SensitiveWordScope) {
     const words = await this.prisma.aiSensitiveWord.findMany({
       where: {

@@ -20,6 +20,7 @@ export class ConversationService {
       userId,
       isDeleted: false,
       ...(query.mode ? { mode: query.mode } : {}),
+      ...(query.agentCode ? { agentCode: query.agentCode } : {}),
     }
 
     const [list, total] = await Promise.all([
@@ -32,6 +33,7 @@ export class ConversationService {
           id: true,
           title: true,
           mode: true,
+          agentCode: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -43,12 +45,13 @@ export class ConversationService {
   }
 
   // 创建新的 AI 会话，并统一清洗标题。
-  async create(userId: number, mode: ChatMode = 'chat', title = '新会话') {
+  async create(userId: number, mode: ChatMode = 'chat', title = '新会话', agentCode?: string) {
     return this.prisma.aiConversation.create({
       data: {
         userId,
         mode,
         title: this.normalizeTitle(title),
+        agentCode,
       },
     })
   }

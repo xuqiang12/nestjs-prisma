@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { AgentRuntimeService } from '../../../ai-engine/agent/agent-runtime.service'
 import { AiOrchestratorService } from '../../../ai-engine/orchestrator/ai-orchestrator.service'
 import { SensitiveWordCheckerService } from '../../../ai-engine/safety/sensitive-word-checker.service'
+import { WorkflowStreamEvent } from '../../../ai-engine/workflow/workflow.types'
 import { WorkflowRuntimeService } from '../../../ai-engine/workflow/workflow-runtime.service'
 import { ConversationService } from '../conversation/conversation.service'
 import { ChatMode, ChatRequestDto } from './dto/chat.dto'
@@ -9,6 +10,7 @@ import { ChatMode, ChatRequestDto } from './dto/chat.dto'
 export type ChatStreamEvent =
   | { type: 'content'; content: string }
   | { type: 'sources'; sources: any[] }
+  | WorkflowStreamEvent
 
 @Injectable()
 export class ChatService {
@@ -34,11 +36,17 @@ export class ChatService {
     })
     // 历史消息在写入当前用户问题前读取，避免当前问题在 prompt 中重复出现。
     const history = await this.conversationService.getHistoryMessages(conversation.id)
-    await this.conversationService.addMessage(conversation.id, 'user', checkedInput.content, undefined, {
-      agentCode: agent?.agentCode,
-      promptCode: agent?.promptCode,
-      workflowCode: agent?.workflowCode,
-    })
+    await this.conversationService.addMessage(
+      conversation.id,
+      'user',
+      checkedInput.content,
+      undefined,
+      {
+        agentCode: agent?.agentCode,
+        promptCode: agent?.promptCode,
+        workflowCode: agent?.workflowCode,
+      },
+    )
 
     if (agent?.workflowCode) {
       const workflowResult = await this.workflowRuntimeService.execute(agent.workflowCode, {
@@ -51,12 +59,21 @@ export class ChatService {
         allowedToolCodes: agent.toolCodes,
         llmOptions: agent.llmOptions,
       })
-      const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(workflowResult.answer, 'output')
-      await this.conversationService.addMessage(conversation.id, 'assistant', checkedOutput.content, workflowResult.sources, {
-        agentCode: agent.agentCode,
-        promptCode: agent.promptCode,
-        workflowCode: agent.workflowCode,
-      })
+      const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(
+        workflowResult.answer,
+        'output',
+      )
+      await this.conversationService.addMessage(
+        conversation.id,
+        'assistant',
+        checkedOutput.content,
+        workflowResult.sources,
+        {
+          agentCode: agent.agentCode,
+          promptCode: agent.promptCode,
+          workflowCode: agent.workflowCode,
+        },
+      )
       await this.conversationService.touchConversation(conversation.id)
 
       return {
@@ -79,11 +96,17 @@ export class ChatService {
     )
     const answer = await this.aiOrchestratorService.complete(plan.messages, agent?.llmOptions)
     const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
-    await this.conversationService.addMessage(conversation.id, 'assistant', checkedOutput.content, plan.sources, {
-      agentCode: agent?.agentCode,
-      promptCode: agent?.promptCode,
-      workflowCode: agent?.workflowCode,
-    })
+    await this.conversationService.addMessage(
+      conversation.id,
+      'assistant',
+      checkedOutput.content,
+      plan.sources,
+      {
+        agentCode: agent?.agentCode,
+        promptCode: agent?.promptCode,
+        workflowCode: agent?.workflowCode,
+      },
+    )
     await this.conversationService.touchConversation(conversation.id)
 
     return {
@@ -99,13 +122,13 @@ export class ChatService {
 
   // 处理流式聊天：边返回模型片段边累计完整答案，结束后再落库 assistant 消息。
   async *stream(body: ChatRequestDto, userId: number): AsyncIterable<ChatStreamEvent> {
+    // 敏感词检查与处理
     const checkedInput = await this.sensitiveWordCheckerService.checkAndApply(body.message, 'input')
+    // Agent 配置解析  包含提示词、模型、工具、工作流等配置
     const agent = await this.agentRuntimeService.resolve(body.agentCode, {
       question: checkedInput.content,
     })
-    if (agent?.workflowCode) {
-      throw new BadRequestException('工作流智能体暂不支持流式对话')
-    }
+    // 会话创建
     const conversation = await this.conversationService.getOrCreateForMessage(userId, {
       conversationId: body.conversationId,
       message: checkedInput.content,
@@ -114,11 +137,61 @@ export class ChatService {
     })
     // 流式链路同样先取历史再保存当前问题，保证上下文和非流式接口一致。
     const history = await this.conversationService.getHistoryMessages(conversation.id)
-    await this.conversationService.addMessage(conversation.id, 'user', checkedInput.content, undefined, {
-      agentCode: agent?.agentCode,
-      promptCode: agent?.promptCode,
-      workflowCode: agent?.workflowCode,
-    })
+    await this.conversationService.addMessage(
+      conversation.id,
+      'user',
+      checkedInput.content,
+      undefined,
+      {
+        agentCode: agent?.agentCode,
+        promptCode: agent?.promptCode,
+        workflowCode: agent?.workflowCode,
+      },
+    )
+
+    if (agent?.workflowCode) {
+      // 保存完整 AI 回复
+      let answer = ''
+      // 知识库来源
+      let sources: any[] = []
+      let hasSourcesEvent = false
+      for await (const event of await this.workflowRuntimeService.stream(agent.workflowCode, {
+        message: checkedInput.content,
+        userId,
+        history,
+        agentCode: agent.agentCode,
+        workflowCode: agent.workflowCode,
+        conversationId: conversation.id,
+        allowedToolCodes: agent.toolCodes,
+        llmOptions: agent.llmOptions,
+      })) {
+        if (event.type === 'content') {
+          answer += event.content
+        }
+        if (event.type === 'sources') {
+          sources = event.sources || []
+          hasSourcesEvent = true
+        }
+        yield event
+      }
+      const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
+      await this.conversationService.addMessage(
+        conversation.id,
+        'assistant',
+        checkedOutput.content,
+        sources,
+        {
+          agentCode: agent.agentCode,
+          promptCode: agent.promptCode,
+          workflowCode: agent.workflowCode,
+        },
+      )
+      await this.conversationService.touchConversation(conversation.id)
+      if (!hasSourcesEvent) {
+        yield { type: 'sources', sources }
+      }
+      return
+    }
 
     const plan = await this.aiOrchestratorService.buildCompletion(
       checkedInput.content,
@@ -128,18 +201,27 @@ export class ChatService {
     )
     let answer = ''
 
-    for await (const content of this.aiOrchestratorService.streamCompletion(plan.messages, agent?.llmOptions)) {
+    for await (const content of this.aiOrchestratorService.streamCompletion(
+      plan.messages,
+      agent?.llmOptions,
+    )) {
       answer += content
       yield { type: 'content', content }
     }
 
     // 模型流结束后保存完整答案，前端仍通过最后的 sources 事件拿到知识来源。
     const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
-    await this.conversationService.addMessage(conversation.id, 'assistant', checkedOutput.content, plan.sources, {
-      agentCode: agent?.agentCode,
-      promptCode: agent?.promptCode,
-      workflowCode: agent?.workflowCode,
-    })
+    await this.conversationService.addMessage(
+      conversation.id,
+      'assistant',
+      checkedOutput.content,
+      plan.sources,
+      {
+        agentCode: agent?.agentCode,
+        promptCode: agent?.promptCode,
+        workflowCode: agent?.workflowCode,
+      },
+    )
     await this.conversationService.touchConversation(conversation.id)
     yield { type: 'sources', sources: plan.sources }
   }

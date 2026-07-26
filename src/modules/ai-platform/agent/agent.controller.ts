@@ -31,6 +31,13 @@ export class AgentController {
     return this.agentService.enabledOptions()
   }
 
+  @ApiOperation({ summary: '查询智能体配置选项' })
+  @Permissions('ai:agent:list')
+  @Get('config-options')
+  configOptions() {
+    return this.agentService.configOptions()
+  }
+
   @ApiOperation({ summary: '新增智能体' })
   @Permissions('ai:agent:add')
   @Post()

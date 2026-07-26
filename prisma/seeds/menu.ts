@@ -110,7 +110,7 @@ const menuSeeds: MenuSeed[] = [
     parentPath: '/AIEngine',
   },
   {
-    name: '智能体管理',
+    name: '运行方案配置',
     path: '/AIEngine/agent/index',
     component: '/AIEngine/agent/index',
     icon: '',

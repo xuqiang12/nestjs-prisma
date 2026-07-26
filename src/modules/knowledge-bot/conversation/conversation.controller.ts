@@ -36,7 +36,7 @@ export class ConversationController {
   @Post('create')
   // 为当前登录用户创建一个新的 AI 会话。
   async create(@Body() body: CreateConversationDto, @Req() req: AuthenticatedRequest) {
-    return this.conversationService.create(req.user.userId, body.mode || 'chat', body.title)
+    return this.conversationService.create(req.user.userId, body.mode || 'chat', body.title, body.agentCode)
   }
 
   @ApiOperation({ summary: '查询 AI 会话详情' })

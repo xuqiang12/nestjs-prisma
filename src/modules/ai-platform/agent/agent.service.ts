@@ -48,8 +48,42 @@ export class AgentService {
         name: true,
         mode: true,
         description: true,
+        promptCode: true,
+        model: true,
+        knowledgeEnabled: true,
+        toolCodes: true,
+        workflowCode: true,
       },
     })
+  }
+
+  async configOptions() {
+    const [prompts, workflows] = await Promise.all([
+      this.prisma.aiPrompt.findMany({
+        where: { status: 1 },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          code: true,
+          name: true,
+          scene: true,
+        },
+      }),
+      this.prisma.aiWorkflow.findMany({
+        where: { status: 1 },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          code: true,
+          name: true,
+          description: true,
+        },
+      }),
+    ])
+
+    return {
+      prompts,
+      workflows,
+      tools: this.registry.getToolNames().map((code) => ({ code, name: code })),
+    }
   }
 
   async create(dto: CreateAgentDto) {

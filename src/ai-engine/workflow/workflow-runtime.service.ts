@@ -13,6 +13,16 @@ export class WorkflowRuntimeService {
   ) {}
 
   async execute(workflowCode: string, input: WorkflowExecutionInput) {
+    const graph = await this.loadEnabledGraph(workflowCode)
+    return this.executor.execute(graph, { ...input, workflowCode })
+  }
+
+  async stream(workflowCode: string, input: WorkflowExecutionInput) {
+    const graph = await this.loadEnabledGraph(workflowCode)
+    return this.executor.streamExecute(graph, { ...input, workflowCode })
+  }
+
+  private async loadEnabledGraph(workflowCode: string) {
     const workflow = await this.prisma.aiWorkflow.findFirst({
       where: { code: workflowCode, status: 1 },
       include: {
@@ -40,6 +50,6 @@ export class WorkflowRuntimeService {
       })),
     }
     this.validator.validateGraph(graph)
-    return this.executor.execute(graph, { ...input, workflowCode })
+    return graph
   }
 }

@@ -22,6 +22,11 @@ export class ConversationListDto {
   @IsIn(CHAT_MODES)
   @IsOptional()
   mode?: ChatMode
+
+  @ApiPropertyOptional({ description: '运行方案编码' })
+  @IsString()
+  @IsOptional()
+  agentCode?: string
 }
 
 export class CreateConversationDto {
@@ -34,6 +39,11 @@ export class CreateConversationDto {
   @IsString()
   @IsOptional()
   title?: string
+
+  @ApiPropertyOptional({ description: '运行方案编码' })
+  @IsString()
+  @IsOptional()
+  agentCode?: string
 }
 
 export class ConversationDetailDto {

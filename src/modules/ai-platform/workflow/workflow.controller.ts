@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common'
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Request } from 'express'
 import { Permissions } from '../../../common/decorators/permissions.decorator'
 import {
   CreateWorkflowDto,
@@ -12,6 +13,12 @@ import {
   WorkflowStatusDto,
 } from './dto/workflow.dto'
 import { WorkflowService } from './workflow.service'
+
+type AuthenticatedRequest = Request & {
+  user: {
+    userId: number
+  }
+}
 
 @ApiTags('AI配置模块')
 @ApiBearerAuth()
@@ -71,7 +78,7 @@ export class WorkflowController {
   @ApiOperation({ summary: '测试运行工作流' })
   @Permissions('ai:workflow:test')
   @Post('test-run')
-  testRun(@Body() dto: TestRunWorkflowDto) {
-    return this.workflowService.testRun(dto)
+  testRun(@Body() dto: TestRunWorkflowDto, @Req() req: AuthenticatedRequest) {
+    return this.workflowService.testRun(dto, req.user.userId)
   }
 }

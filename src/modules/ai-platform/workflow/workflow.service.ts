@@ -36,10 +36,20 @@ export class WorkflowService {
         skip: (pageNum - 1) * pageSize,
         take: pageSize,
         orderBy: { updatedAt: 'desc' },
+        include: {
+          _count: { select: { nodes: true, edges: true } },
+        },
       }),
       this.prisma.aiWorkflow.count({ where }),
     ])
-    return { list, total }
+    return {
+      list: list.map((item) => ({
+        ...item,
+        nodeCount: item._count.nodes,
+        edgeCount: item._count.edges,
+      })),
+      total,
+    }
   }
 
   async detail(id: string) {
@@ -142,9 +152,10 @@ export class WorkflowService {
     return { success: true }
   }
 
-  async testRun(dto: TestRunWorkflowDto) {
+  async testRun(dto: TestRunWorkflowDto, userId: number) {
     return this.workflowRuntime.execute(dto.workflowCode, {
       message: dto.message,
+      userId,
       agentCode: 'test-run',
       workflowCode: dto.workflowCode,
       allowedToolCodes: dto.toolCodes || [],

@@ -82,7 +82,10 @@ export class AgentService {
     return {
       prompts,
       workflows,
-      tools: this.registry.getToolNames().map((code) => ({ code, name: code })),
+      tools: this.registry.listTools().map((tool) => ({
+        code: tool.name,
+        name: tool.description || tool.name,
+      })),
     }
   }
 

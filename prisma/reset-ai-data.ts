@@ -58,8 +58,7 @@ async function seedAiData() {
         name: '客服接待提示词',
         scene: 'customer_service',
         content:
-          '你是云管理后台的客服接待助手。请先理解用户问题：{question}。回答要礼貌、简洁、可执行；涉及系统操作时按步骤说明；不确定时说明需要查看具体配置。',
-        variables: json([{ name: 'question', required: true }]),
+          '你是云管理后台的客服接待助手。回答要礼貌、简洁、可执行；涉及系统操作时按步骤说明；不确定时说明需要查看具体配置。',
         version: 1,
         status: 1,
         remark: '用于普通客服接待和问题分流',
@@ -69,8 +68,7 @@ async function seedAiData() {
         name: '知识库问答提示词',
         scene: 'knowledge_qa',
         content:
-          '你是企业知识库问答助手。请围绕用户问题：{question}，优先依据知识库检索结果回答。答案要给出结论、依据和下一步建议；如果检索结果不足，请明确提示补充资料。',
-        variables: json([{ name: 'question', required: true }]),
+          '你是企业知识库问答助手。优先依据知识库检索结果回答。答案要给出结论、依据和下一步建议；如果检索结果不足，请明确提示补充资料。',
         version: 1,
         status: 1,
         remark: '用于知识库检索后回答',
@@ -80,8 +78,7 @@ async function seedAiData() {
         name: '后台权限排查提示词',
         scene: 'admin_permission',
         content:
-          '你是后台权限排查助手。请根据用户问题：{question}，从菜单、按钮权限、角色授权、登录用户身份四个角度排查，并输出检查顺序和可能原因。',
-        variables: json([{ name: 'question', required: true }]),
+          '你是后台权限排查助手。请从菜单、按钮权限、角色授权、登录用户身份四个角度排查，并输出检查顺序和可能原因。',
         version: 1,
         status: 1,
         remark: '用于后台菜单和按钮权限诊断',
@@ -91,8 +88,7 @@ async function seedAiData() {
         name: '运营文案润色提示词',
         scene: 'content_operation',
         content:
-          '你是运营文案助手。请基于用户输入：{question}，输出更清晰、有行动指向、适合后台配置或小程序展示的中文文案，并保留关键信息。',
-        variables: json([{ name: 'question', required: true }]),
+          '你是运营文案助手。请输出更清晰、有行动指向、适合后台配置或小程序展示的中文文案，并保留关键信息。',
         version: 1,
         status: 1,
         remark: '用于公告、活动、首页配置文案润色',

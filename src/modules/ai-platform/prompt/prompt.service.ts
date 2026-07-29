@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
+import { randomUUID } from 'crypto'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
 import { CreatePromptDto, PromptListDto, PromptStatusDto, UpdatePromptDto } from './dto/prompt.dto'
@@ -35,14 +36,12 @@ export class PromptService {
   }
 
   async create(dto: CreatePromptDto) {
-    await this.ensureUniqueCode(dto.code)
     await this.prisma.aiPrompt.create({
       data: {
-        code: dto.code,
+        code: this.generatePromptCode(),
         name: dto.name,
         scene: dto.scene,
         content: dto.content,
-        variables: dto.variables as unknown as Prisma.InputJsonValue,
         version: dto.version || 1,
         status: dto.status ?? 1,
         remark: dto.remark,
@@ -52,19 +51,14 @@ export class PromptService {
   }
 
   async update(dto: UpdatePromptDto) {
-    const prompt = await this.ensurePrompt(dto.id)
-    if (dto.code && dto.code !== prompt.code) {
-      await this.ensureUniqueCode(dto.code, dto.id)
-    }
+    await this.ensurePrompt(dto.id)
 
     await this.prisma.aiPrompt.update({
       where: { id: dto.id },
       data: {
-        code: dto.code,
         name: dto.name,
         scene: dto.scene,
         content: dto.content,
-        variables: dto.variables as unknown as Prisma.InputJsonValue,
         version: dto.version,
         status: dto.status,
         remark: dto.remark,
@@ -96,15 +90,7 @@ export class PromptService {
     return prompt
   }
 
-  private async ensureUniqueCode(code: string, excludeId?: string) {
-    const existed = await this.prisma.aiPrompt.findFirst({
-      where: {
-        code,
-        ...(excludeId ? { id: { not: excludeId } } : {}),
-      },
-    })
-    if (existed) {
-      throw new BadRequestException('提示词编码已存在')
-    }
+  private generatePromptCode() {
+    return `prompt_${randomUUID().replace(/-/g, '')}`
   }
 }

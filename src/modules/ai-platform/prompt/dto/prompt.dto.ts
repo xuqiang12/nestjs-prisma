@@ -1,22 +1,8 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
-import { IsArray, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator'
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Type } from 'class-transformer'
 
-export class PromptVariableDto {
-  @ApiProperty({ description: '变量名' })
-  @IsString()
-  name: string
-
-  @ApiPropertyOptional({ description: '是否必填' })
-  @IsOptional()
-  required?: boolean
-}
-
 export class CreatePromptDto {
-  @ApiProperty({ description: '提示词编码' })
-  @IsString()
-  code: string
-
   @ApiProperty({ description: '提示词名称' })
   @IsString()
   name: string
@@ -28,13 +14,6 @@ export class CreatePromptDto {
   @ApiProperty({ description: '提示词内容' })
   @IsString()
   content: string
-
-  @ApiPropertyOptional({ description: '变量定义', type: [PromptVariableDto] })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => PromptVariableDto)
-  @IsOptional()
-  variables?: PromptVariableDto[]
 
   @ApiPropertyOptional({ description: '版本号', default: 1 })
   @IsInt()

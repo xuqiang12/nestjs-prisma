@@ -7,7 +7,6 @@ import { DefaultToolExecutor } from './tools/tool.executor'
 import { LlmService } from './llm/llm.service'
 import { VectorStoreService } from './vector/vector-store.service'
 import { AgentRuntimeService } from './agent/agent-runtime.service'
-import { PromptRendererService } from './prompt/prompt-renderer.service'
 import { SensitiveWordCheckerService } from './safety/sensitive-word-checker.service'
 import { WorkflowExecutorService } from './workflow/workflow-executor.service'
 import { WorkflowRunLoggerService } from './workflow/workflow-run-logger.service'
@@ -21,7 +20,6 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
     EmbeddingService,
     VectorStoreService,
     AgentRuntimeService,
-    PromptRendererService,
     SensitiveWordCheckerService,
     WorkflowValidatorService,
     WorkflowRuntimeService,
@@ -44,7 +42,6 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
     VectorStoreService,
     AiOrchestratorService,
     AgentRuntimeService,
-    PromptRendererService,
     SensitiveWordCheckerService,
     WorkflowValidatorService,
     WorkflowRuntimeService,

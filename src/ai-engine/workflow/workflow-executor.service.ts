@@ -2,7 +2,6 @@ import { BadRequestException, Injectable } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
 import { DefaultToolExecutor } from '../tools/tool.executor'
 import { LlmService } from '../llm/llm.service'
-import { PromptRendererService, PromptVariable } from '../prompt/prompt-renderer.service'
 import { VectorStoreService } from '../vector/vector-store.service'
 import { WorkflowExecutionInput, WorkflowExecutionResult, WorkflowGraph, WorkflowNode, WorkflowStreamEvent } from './workflow.types'
 import { WorkflowRunLoggerService } from './workflow-run-logger.service'
@@ -11,7 +10,6 @@ import { WorkflowRunLoggerService } from './workflow-run-logger.service'
 export class WorkflowExecutorService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly promptRenderer: PromptRendererService,
     private readonly vectorStore: VectorStoreService,
     private readonly llmService: LlmService,
     private readonly toolExecutor: DefaultToolExecutor,
@@ -189,7 +187,7 @@ export class WorkflowExecutorService {
       if (!prompt) {
         throw new BadRequestException(`提示词不存在或未启用：${config.promptCode}`)
       }
-      const content = this.promptRenderer.render(prompt.content, this.normalizeVariables(prompt.variables as any), values)
+      const content = prompt.content
       values[config.outputField] = content
       return { [config.outputField]: content }
     }
@@ -296,13 +294,5 @@ export class WorkflowExecutorService {
 
   private readValue(values: Record<string, any>, field: string) {
     return field.split('.').reduce((current, key) => current?.[key], values)
-  }
-
-  private normalizeVariables(value: any): PromptVariable[] {
-    return Array.isArray(value)
-      ? value
-          .filter((item) => item && typeof item === 'object' && typeof item.name === 'string')
-          .map((item) => ({ name: item.name, required: Boolean(item.required) }))
-      : []
   }
 }

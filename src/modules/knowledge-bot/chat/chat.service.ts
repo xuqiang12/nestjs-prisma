@@ -26,9 +26,7 @@ export class ChatService {
   // 处理非流式聊天：维护会话、读取历史、调用 AI，并保存完整问答记录。
   async chat(body: ChatRequestDto, userId: number) {
     const checkedInput = await this.sensitiveWordCheckerService.checkAndApply(body.message, 'input')
-    const agent = await this.agentRuntimeService.resolve(body.agentCode, {
-      question: checkedInput.content,
-    })
+    const agent = await this.agentRuntimeService.resolve(body.agentCode)
     const conversation = await this.conversationService.getOrCreateForMessage(userId, {
       conversationId: body.conversationId,
       message: checkedInput.content,
@@ -126,9 +124,7 @@ export class ChatService {
     // 敏感词检查与处理
     const checkedInput = await this.sensitiveWordCheckerService.checkAndApply(body.message, 'input')
     // Agent 配置解析  包含提示词、模型、工具、工作流等配置
-    const agent = await this.agentRuntimeService.resolve(body.agentCode, {
-      question: checkedInput.content,
-    })
+    const agent = await this.agentRuntimeService.resolve(body.agentCode)
     // 会话创建
     const conversation = await this.conversationService.getOrCreateForMessage(userId, {
       conversationId: body.conversationId,

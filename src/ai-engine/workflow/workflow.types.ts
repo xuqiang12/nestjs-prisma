@@ -26,7 +26,7 @@ export type WorkflowGraph = {
 
 export type WorkflowExecutionInput = {
   message: string
-  userId?: number
+  userId?: string
   history?: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
   agentCode: string
   workflowCode: string

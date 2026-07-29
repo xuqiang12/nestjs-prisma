@@ -7,7 +7,7 @@ import { Permissions } from '../../../common/decorators/permissions.decorator'
 
 type AuthenticatedRequest = Request & {
   user: {
-    userId: number
+    userId: string
   }
 }
 

@@ -16,11 +16,11 @@ export class CreateSkillPackageDto {
   @IsOptional()
   description?: string
 
-  @ApiPropertyOptional({ description: '提示词编码列表' })
+  @ApiPropertyOptional({ description: '提示词ID列表' })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
-  promptCodes?: string[]
+  promptIds?: string[]
 
   @ApiPropertyOptional({ description: '工具编码列表' })
   @IsArray()

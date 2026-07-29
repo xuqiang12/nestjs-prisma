@@ -13,7 +13,7 @@ export class GetUserMenuPermissionsTool {
     return {
       name: 'get_user_menu_permissions',
       description: '查询指定用户拥有的菜单权限',
-      params: { userId: '用户ID（整数）' },
+      params: { userId: '用户ID' },
       handler: async (params: any) => {
         return this.execute(params)
       },
@@ -21,14 +21,11 @@ export class GetUserMenuPermissionsTool {
   }
 
   // 执行工具逻辑
-  async execute(params: { userId: number | string }) {
+  async execute(params: { userId: string }) {
     try {
-      // 确保 userId 是数字
-      const userId = typeof params.userId === 'string' ? parseInt(params.userId, 10) : params.userId
-
       // 查询用户拥有的菜单权限
       const userWithMenus = await this.prisma.user.findUnique({
-        where: { id: userId },
+        where: { id: params.userId },
         include: {
           roles: {
             include: {
@@ -51,7 +48,7 @@ export class GetUserMenuPermissionsTool {
       }
 
       // 收集所有菜单（去重）
-      const menuSet = new Set<number>()
+      const menuSet = new Set<string>()
       const menus: any[] = []
 
       userWithMenus.roles.forEach((userRole) => {
@@ -80,7 +77,7 @@ export class GetUserMenuPermissionsTool {
   }
 
   // 构建菜单树
-  private buildMenuTree(menus: any[], parentId: number | null = null) {
+  private buildMenuTree(menus: any[], parentId: string | null = null) {
     return menus
       .filter((item) => item.parentId === parentId)
       .map((item) => ({

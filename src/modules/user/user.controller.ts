@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { UserService } from './user.service'
 import { RegisterDto } from './dto/register.dto'
@@ -25,7 +25,7 @@ export class UserController {
   @ApiOperation({ summary: '查询用户详情' })
   @Permissions('system:user:detail')
   @Get(':id')
-  getUserDetail(@Param('id', ParseIntPipe) id: number) {
+  getUserDetail(@Param('id') id: string) {
     return this.userService.getUserDetail(id)
   }
 
@@ -41,7 +41,7 @@ export class UserController {
   @ApiOperation({ summary: '后台修改用户' })
   @Permissions('system:user:edit')
   @Patch(':id')
-  updateAdminUser(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAdminUserDto) {
+  updateAdminUser(@Param('id') id: string, @Body() dto: UpdateAdminUserDto) {
     return this.userService.updateAdminUser(id, dto)
   }
 
@@ -49,7 +49,7 @@ export class UserController {
   @ApiOperation({ summary: '后台删除用户' })
   @Permissions('system:user:delete')
   @Delete(':id')
-  deleteAdminUser(@Param('id', ParseIntPipe) id: number) {
+  deleteAdminUser(@Param('id') id: string) {
     return this.userService.deleteAdminUser(id)
   }
 

@@ -17,9 +17,9 @@ export class CreateAgentDto {
   @IsOptional()
   description?: string
 
-  @ApiProperty({ description: '绑定提示词编码' })
+  @ApiProperty({ description: '绑定提示词ID' })
   @IsString()
-  promptCode: string
+  promptId: string
 
   @ApiPropertyOptional({ description: '默认模式', enum: CHAT_MODES, default: 'chat' })
   @IsIn(CHAT_MODES)

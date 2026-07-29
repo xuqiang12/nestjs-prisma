@@ -2,7 +2,7 @@
 import { prisma } from '../client'
 import * as bcrypt from 'bcryptjs'
 
-export async function seedUser(roleId: number) {
+export async function seedUser(roleId: string) {
   console.log('初始化用户')
 
   const hashedPassword = await bcrypt.hash('xq19980212521', 10)

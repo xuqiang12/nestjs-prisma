@@ -26,7 +26,7 @@ export class RoleService {
     }))
   }
 
-  async getRoleDetail(id: number) {
+  async getRoleDetail(id: string) {
     const role = await this.prisma.role.findUnique({
       where: { id },
       include: {
@@ -115,7 +115,7 @@ export class RoleService {
     return '角色授权保存成功'
   }
 
-  private async findRoleOrThrow(id: number) {
+  private async findRoleOrThrow(id: string) {
     const role = await this.prisma.role.findUnique({
       where: { id },
     })

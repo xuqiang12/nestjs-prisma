@@ -9,8 +9,8 @@ type MenuButtonLike = {
 }
 
 type MenuLike = {
-  id: number
-  parentId: number | null
+  id: string
+  parentId: string | null
   name: string
   path: string | null
   component: string | null

@@ -48,7 +48,7 @@ export class AgentService {
         name: true,
         mode: true,
         description: true,
-        promptCode: true,
+        promptId: true,
         model: true,
         knowledgeEnabled: true,
         toolCodes: true,
@@ -63,6 +63,7 @@ export class AgentService {
         where: { status: 1 },
         orderBy: { updatedAt: 'desc' },
         select: {
+          id: true,
           code: true,
           name: true,
           scene: true,
@@ -91,7 +92,7 @@ export class AgentService {
 
   async create(dto: CreateAgentDto) {
     await this.ensureUniqueCode(dto.code)
-    await this.ensureEnabledPrompt(dto.promptCode)
+    await this.ensureEnabledPrompt(dto.promptId)
     if (dto.workflowCode) {
       await this.ensureEnabledWorkflow(dto.workflowCode)
     }
@@ -108,8 +109,8 @@ export class AgentService {
     if (dto.code && dto.code !== agent.code) {
       await this.ensureUniqueCode(dto.code, dto.id)
     }
-    if (dto.promptCode) {
-      await this.ensureEnabledPrompt(dto.promptCode)
+    if (dto.promptId) {
+      await this.ensureEnabledPrompt(dto.promptId)
     }
     if (dto.workflowCode) {
       await this.ensureEnabledWorkflow(dto.workflowCode)
@@ -137,7 +138,7 @@ export class AgentService {
       code: dto.code,
       name: dto.name,
       description: dto.description,
-      promptCode: dto.promptCode,
+      promptId: dto.promptId,
       mode: dto.mode,
       model: dto.model,
       temperature: dto.temperature,
@@ -170,9 +171,9 @@ export class AgentService {
     }
   }
 
-  private async ensureEnabledPrompt(promptCode: string) {
+  private async ensureEnabledPrompt(promptId: string) {
     const prompt = await this.prisma.aiPrompt.findFirst({
-      where: { code: promptCode, status: 1 },
+      where: { id: promptId, status: 1 },
     })
     if (!prompt) {
       throw new BadRequestException('绑定的提示词不存在或未启用')

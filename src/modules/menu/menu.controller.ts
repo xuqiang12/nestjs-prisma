@@ -1,4 +1,4 @@
-import { Body, Controller, Get, ParseIntPipe, Post, Query } from '@nestjs/common'
+import { Body, Controller, Get, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { MenuService } from './menu.service'
 import { CreateDto, DeleteDto, UpdateDto } from './dto/menu.dto'
@@ -43,7 +43,7 @@ export class MenuController {
   // 获取按钮列表
   @ApiOperation({ summary: '获取菜单按钮列表' })
   @Get('button/list')
-  getButtonList(@Query('menuId', ParseIntPipe) menuId: number) {
+  getButtonList(@Query('menuId') menuId: string) {
     return this.menuService.getButtonList({ menuId })
   }
   // 新增按钮

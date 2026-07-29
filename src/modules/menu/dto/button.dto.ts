@@ -3,8 +3,8 @@ import { ApiProperty } from '@nestjs/swagger'
 
 export class ButtonListDto {
   @ApiProperty({ description: '所属菜单ID' })
-  @IsInt()
-  menuId: number
+  @IsString()
+  menuId: string
 }
 
 export class CreateButtonDto extends ButtonListDto {
@@ -26,12 +26,12 @@ export class CreateButtonDto extends ButtonListDto {
 
 export class UpdateButtonDto extends CreateButtonDto {
   @ApiProperty({ description: 'ID 必填' })
-  @IsInt()
-  id: number // 修改按钮必须传 id
+  @IsString()
+  id: string // 修改按钮必须传 id
 }
 
 export class DeleteButtonDto {
   @ApiProperty({ description: 'ID 必填' })
-  @IsInt()
-  id: number // 删除按钮必须传 id
+  @IsString()
+  id: string // 删除按钮必须传 id
 }

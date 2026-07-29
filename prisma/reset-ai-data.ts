@@ -33,6 +33,12 @@ loadLocalEnv()
 const prisma = new PrismaClient()
 
 const json = (value: unknown) => value as Prisma.InputJsonValue
+const PROMPT_CODES = {
+  customerReception: 'TSC0000000000000001',
+  knowledgeAnswer: 'TSC0000000000000002',
+  permissionHelper: 'TSC0000000000000003',
+  contentPolish: 'TSC0000000000000004',
+}
 
 async function clearAiData() {
   await prisma.$transaction([
@@ -54,7 +60,7 @@ async function seedAiData() {
   await prisma.aiPrompt.createMany({
     data: [
       {
-        code: 'customer_reception_prompt',
+        code: PROMPT_CODES.customerReception,
         name: '客服接待提示词',
         scene: 'customer_service',
         content:
@@ -64,7 +70,7 @@ async function seedAiData() {
         remark: '用于普通客服接待和问题分流',
       },
       {
-        code: 'knowledge_answer_prompt',
+        code: PROMPT_CODES.knowledgeAnswer,
         name: '知识库问答提示词',
         scene: 'knowledge_qa',
         content:
@@ -74,7 +80,7 @@ async function seedAiData() {
         remark: '用于知识库检索后回答',
       },
       {
-        code: 'permission_helper_prompt',
+        code: PROMPT_CODES.permissionHelper,
         name: '后台权限排查提示词',
         scene: 'admin_permission',
         content:
@@ -84,7 +90,7 @@ async function seedAiData() {
         remark: '用于后台菜单和按钮权限诊断',
       },
       {
-        code: 'content_polish_prompt',
+        code: PROMPT_CODES.contentPolish,
         name: '运营文案润色提示词',
         scene: 'content_operation',
         content:
@@ -95,6 +101,19 @@ async function seedAiData() {
       },
     ],
   })
+
+  const prompts = await prisma.aiPrompt.findMany({
+    where: { code: { in: Object.values(PROMPT_CODES) } },
+    select: { id: true, code: true },
+  })
+  const promptIdByCode = new Map(prompts.map((item) => [item.code, item.id]))
+  const promptId = (code: string) => {
+    const id = promptIdByCode.get(code)
+    if (!id) {
+      throw new Error(`提示词种子不存在：${code}`)
+    }
+    return id
+  }
 
   await prisma.aiSensitiveWord.createMany({
     data: [
@@ -118,7 +137,7 @@ async function seedAiData() {
       nodes: {
         create: [
           { nodeKey: 'start', type: 'start', name: '接收问题', config: json({ inputField: 'question' }), sortNo: 1 },
-          { nodeKey: 'prompt', type: 'prompt', name: '生成系统提示', config: json({ promptCode: 'customer_reception_prompt', outputField: 'systemPrompt' }), sortNo: 2 },
+          { nodeKey: 'prompt', type: 'prompt', name: '生成系统提示', config: json({ promptId: promptId(PROMPT_CODES.customerReception), outputField: 'systemPrompt' }), sortNo: 2 },
           { nodeKey: 'llm', type: 'llm', name: '生成答复', config: json({ systemPromptField: 'systemPrompt', userMessageField: 'question', outputField: 'answer' }), sortNo: 3 },
           { nodeKey: 'output', type: 'output', name: '输出答案', config: json({ outputField: 'answer' }), sortNo: 4 },
         ],
@@ -145,7 +164,7 @@ async function seedAiData() {
         create: [
           { nodeKey: 'start', type: 'start', name: '接收问题', config: json({ inputField: 'question' }), sortNo: 1 },
           { nodeKey: 'knowledge', type: 'knowledge', name: '检索知识库', config: json({ queryField: 'question', outputField: 'sources', limit: 5 }), sortNo: 2 },
-          { nodeKey: 'prompt', type: 'prompt', name: '生成问答提示', config: json({ promptCode: 'knowledge_answer_prompt', outputField: 'systemPrompt' }), sortNo: 3 },
+          { nodeKey: 'prompt', type: 'prompt', name: '生成问答提示', config: json({ promptId: promptId(PROMPT_CODES.knowledgeAnswer), outputField: 'systemPrompt' }), sortNo: 3 },
           { nodeKey: 'llm', type: 'llm', name: '生成知识库答复', config: json({ systemPromptField: 'systemPrompt', userMessageField: 'question', outputField: 'answer' }), sortNo: 4 },
           { nodeKey: 'output', type: 'output', name: '输出答案', config: json({ outputField: 'answer' }), sortNo: 5 },
         ],
@@ -167,7 +186,7 @@ async function seedAiData() {
         code: 'customer_service_agent',
         name: '客服接待助手',
         description: '用于日常客户咨询、后台操作说明和问题分流。',
-        promptCode: 'customer_reception_prompt',
+        promptId: promptId(PROMPT_CODES.customerReception),
         mode: 'chat',
         model: 'Qwen/Qwen2.5-7B-Instruct',
         temperature: 0.3,
@@ -182,7 +201,7 @@ async function seedAiData() {
         code: 'knowledge_qa_agent',
         name: '知识库问答助手',
         description: '用于制度、帮助文档、操作手册类问题，优先走知识库检索。',
-        promptCode: 'knowledge_answer_prompt',
+        promptId: promptId(PROMPT_CODES.knowledgeAnswer),
         mode: 'knowledge',
         model: 'Qwen/Qwen2.5-7B-Instruct',
         temperature: 0.2,
@@ -197,7 +216,7 @@ async function seedAiData() {
         code: 'permission_check_agent',
         name: '权限排查助手',
         description: '用于后台菜单不可见、按钮无权限、角色授权异常等排查。',
-        promptCode: 'permission_helper_prompt',
+        promptId: promptId(PROMPT_CODES.permissionHelper),
         mode: 'chat',
         model: 'Qwen/Qwen2.5-7B-Instruct',
         temperature: 0.2,
@@ -212,7 +231,7 @@ async function seedAiData() {
         code: 'content_polish_agent',
         name: '运营文案助手',
         description: '用于公告、活动、首页配置说明等中文文案优化。',
-        promptCode: 'content_polish_prompt',
+        promptId: promptId(PROMPT_CODES.contentPolish),
         mode: 'chat',
         model: 'Qwen/Qwen2.5-7B-Instruct',
         temperature: 0.6,
@@ -231,11 +250,11 @@ async function seedAiData() {
       code: 'customer_service_basic_package',
       name: '客服基础能力包',
       description: '面向客服接待和知识库问答的基础能力组合，包含接待提示词、知识库提示词和知识库检索工具。',
-      promptCodes: json(['customer_reception_prompt', 'knowledge_answer_prompt']),
+      promptIds: json([promptId(PROMPT_CODES.customerReception), promptId(PROMPT_CODES.knowledgeAnswer)]),
       toolCodes: json(['search_knowledge']),
       workflowCode: 'knowledge_service_flow',
       agentDefaults: json({
-        promptCode: 'knowledge_answer_prompt',
+        promptId: promptId(PROMPT_CODES.knowledgeAnswer),
         mode: 'knowledge',
         model: 'Qwen/Qwen2.5-7B-Instruct',
         temperature: 0.2,

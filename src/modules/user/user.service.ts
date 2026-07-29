@@ -65,7 +65,7 @@ export class UserService {
   }
 
   // 用户详情
-  async getUserDetail(id: number) {
+  async getUserDetail(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, isDeleted: false },
       include: {
@@ -130,7 +130,7 @@ export class UserService {
   }
 
   // 后台修改用户
-  async updateAdminUser(id: number, dto: UpdateAdminUserDto) {
+  async updateAdminUser(id: string, dto: UpdateAdminUserDto) {
     await this.findActiveUserOrThrow(id)
     await this.checkUserUnique(dto, id)
 
@@ -164,7 +164,7 @@ export class UserService {
   }
 
   // 后台删除用户：软删除，不物理删除数据
-  async deleteAdminUser(id: number) {
+  async deleteAdminUser(id: string) {
     await this.findActiveUserOrThrow(id)
     await this.prisma.user.update({
       where: { id },
@@ -200,7 +200,7 @@ export class UserService {
     return '注册成功'
   }
 
-  private async findActiveUserOrThrow(id: number) {
+  private async findActiveUserOrThrow(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
     })
@@ -212,7 +212,7 @@ export class UserService {
     return user
   }
 
-  private async checkUserUnique(dto: Partial<CreateAdminUserDto | UpdateAdminUserDto>, ignoreId?: number) {
+  private async checkUserUnique(dto: Partial<CreateAdminUserDto | UpdateAdminUserDto>, ignoreId?: string) {
     const OR = [
       dto.username ? { username: dto.username } : undefined,
       dto.email ? { email: dto.email } : undefined,

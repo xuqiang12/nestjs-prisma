@@ -11,7 +11,7 @@ const promptPage = fs.readFileSync(
 )
 
 assert(!promptDto.includes("code: string"), 'create/update prompt dto should not expose writable code')
-assert(promptService.includes('generatePromptCode'), 'prompt service should generate prompt code on create')
+assert(promptService.includes('nextPromptCode'), 'prompt service should request generated prompt code on create')
 assert(!promptService.includes('ensureUniqueCode(dto.code'), 'prompt create should not require user-provided code')
 assert(!promptService.includes('code: dto.code'), 'prompt update should not modify code')
 assert(

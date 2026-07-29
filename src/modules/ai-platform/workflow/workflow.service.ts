@@ -152,7 +152,7 @@ export class WorkflowService {
     return { success: true }
   }
 
-  async testRun(dto: TestRunWorkflowDto, userId: number) {
+  async testRun(dto: TestRunWorkflowDto, userId: string) {
     return this.workflowRuntime.execute(dto.workflowCode, {
       message: dto.message,
       userId,

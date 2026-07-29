@@ -25,7 +25,7 @@ type ButtonSeed = {
 }
 
 type SeedPermission = {
-  id: number
+  id: string
   code: string
 }
 
@@ -221,10 +221,10 @@ const buttonSeeds: ButtonSeed[] = [
   { menuPath: '/AIEngine/workflowRun/index', permissionCode: 'ai:workflow-run:detail', name: '详情', sort: 2 },
 ]
 
-export async function seedMenus(permissions: SeedPermission[] = [], roleId?: number) {
+export async function seedMenus(permissions: SeedPermission[] = [], roleId?: string) {
   console.log('初始化菜单')
 
-  const menuMap = new Map<string, { id: number }>()
+  const menuMap = new Map<string, { id: string }>()
 
   for (const item of menuSeeds) {
     const parentId = item.parentPath ? menuMap.get(item.parentPath)?.id : null

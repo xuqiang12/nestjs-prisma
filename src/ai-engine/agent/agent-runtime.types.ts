@@ -3,7 +3,7 @@ import { LlmOptions } from '../llm/llm.service'
 
 export type AgentRuntimeConfig = {
   agentCode: string
-  promptCode: string
+  promptId: string
   mode: ChatMode
   systemPrompt: string
   llmOptions: LlmOptions

@@ -16,7 +16,7 @@ import { WorkflowService } from './workflow.service'
 
 type AuthenticatedRequest = Request & {
   user: {
-    userId: number
+    userId: string
   }
 }
 

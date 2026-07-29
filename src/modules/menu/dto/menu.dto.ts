@@ -1,4 +1,4 @@
-import { IsArray, IsInt, IsOptional, IsString } from 'class-validator'
+import { IsInt, IsOptional, IsString } from 'class-validator'
 import { ApiProperty, PartialType } from '@nestjs/swagger'
 export enum MenuType {
   DIRECTORY = 'DIRECTORY',
@@ -7,9 +7,9 @@ export enum MenuType {
 
 export class CreateDto {
   @ApiProperty({ description: '父菜单ID，0=顶级', default: null })
-  @IsInt()
+  @IsString()
   @IsOptional()
-  parentId?: number
+  parentId?: string
 
   @ApiProperty({ description: '菜单名称' })
   @IsString()
@@ -41,12 +41,12 @@ export class CreateDto {
 }
 export class UpdateDto extends PartialType(CreateDto) {
   @ApiProperty({ description: 'ID 必填' })
-  @IsInt()
-  id: number // 修改必须传 id
+  @IsString()
+  id: string // 修改必须传 id
 }
 
 export class DeleteDto {
   @ApiProperty({ description: 'ID 必填' })
-  @IsInt()
-  id: number // 删除必须传 id
+  @IsString()
+  id: string // 删除必须传 id
 }

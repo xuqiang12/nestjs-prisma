@@ -13,7 +13,7 @@ import {
 
 type AuthenticatedRequest = Request & {
   user: {
-    userId: number
+    userId: string
   }
 }
 

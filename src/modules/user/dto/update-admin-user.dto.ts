@@ -1,15 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
-import { Type } from 'class-transformer'
 import {
   ArrayUnique,
   IsArray,
   IsBoolean,
   IsEmail,
-  IsInt,
   IsOptional,
   IsPhoneNumber,
   IsString,
-  Min,
 } from 'class-validator'
 
 export class UpdateAdminUserDto {
@@ -43,12 +40,10 @@ export class UpdateAdminUserDto {
   @IsOptional()
   isSuperAdmin?: boolean
 
-  @ApiPropertyOptional({ description: '角色 ID 列表', type: [Number] })
+  @ApiPropertyOptional({ description: '角色 ID 列表', type: [String] })
   @IsArray()
   @ArrayUnique()
-  @Type(() => Number)
-  @IsInt({ each: true })
-  @Min(1, { each: true })
+  @IsString({ each: true })
   @IsOptional()
-  roleIds?: number[]
+  roleIds?: string[]
 }

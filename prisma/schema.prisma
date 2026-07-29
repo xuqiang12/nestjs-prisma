@@ -29,7 +29,7 @@ enum MenuType { // ⭐修改：替换原来的 Int type
 // 用户表
 // ==============================
 model User {
-  id             Int        @id @default(autoincrement()) // 用户ID
+  id             String     @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 用户ID
   username       String     @unique // 用户名（唯一）
   email          String     @unique // 邮箱（唯一）
   phone          String     @unique // ⭐修改：手机号唯一（如果用于登录）
@@ -48,7 +48,7 @@ model User {
 // 角色表
 // ==============================
 model Role {
-  id          Int              @id @default(autoincrement()) // 角色ID
+  id          String           @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 角色ID
   name        String           @unique // 角色名：admin/common
   users       UserRole[] // 关联用户
   permissions RolePermission[] // ⭐修改：Permissions -> permissions（规范命名）
@@ -59,7 +59,7 @@ model Role {
 // 权限表（按钮/操作权限）
 // ==============================
 model Permission {
-  id          Int              @id @default(autoincrement()) // 权限ID
+  id          String           @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 权限ID
   code        String           @unique // 权限码：system:user:add
   name        String // 权限名称：新增用户
   roles       RolePermission[] // 关联角色
@@ -70,8 +70,8 @@ model Permission {
 // 用户 ↔ 角色 关联表
 // ==============================
 model UserRole {
-  userId Int // 用户ID
-  roleId Int // 角色ID
+  userId String @db.VarChar(32) // 用户ID
+  roleId String @db.VarChar(32) // 角色ID
   user   User @relation(fields: [userId], references: [id])
   role   Role @relation(fields: [roleId], references: [id])
 
@@ -82,8 +82,8 @@ model UserRole {
 // 角色 ↔ 权限 关联表
 // ==============================
 model RolePermission {
-  roleId       Int // 角色ID
-  permissionId Int // 权限ID
+  roleId       String @db.VarChar(32) // 角色ID
+  permissionId String @db.VarChar(32) // 权限ID
   role         Role       @relation(fields: [roleId], references: [id])
   permission   Permission @relation(fields: [permissionId], references: [id])
 
@@ -94,8 +94,8 @@ model RolePermission {
 // ⭐新增：角色 ↔ 菜单（控制菜单显示）
 // ==============================
 model MenuRole {
-  menuId Int
-  roleId Int
+  menuId String @db.VarChar(32)
+  roleId String @db.VarChar(32)
 
   menu Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -107,8 +107,8 @@ model MenuRole {
 // 菜单/页面表
 // ==============================
 model Menu {
-  id        Int        @id @default(autoincrement()) // 菜单ID
-  parentId  Int? // ⭐修改：去掉 @default(0)，顶级用 null
+  id        String     @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 菜单ID
+  parentId  String?    @db.VarChar(32) // ⭐修改：去掉 @default(0)，顶级用 null
   name      String // 菜单/页面名称：用户管理
   path      String? // 前端路由
   component String? // 前端组件路径
@@ -125,10 +125,10 @@ model Menu {
 // 菜单按钮表（页面 ↔ 按钮）
 // ==============================
 model MenuButton {
-  id           Int        @id @default(autoincrement()) // 按钮ID
-  menuId       Int // 所属页面ID
+  id           String     @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 按钮ID
+  menuId       String     @db.VarChar(32) // 所属页面ID
   menu         Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
-  permissionId Int        @unique // 权限ID
+  permissionId String     @unique @db.VarChar(32) // 权限ID
   permission   Permission @relation(fields: [permissionId], references: [id])
   name         String? // 按钮名称
   sort         Int?       @default(0)
@@ -141,7 +141,7 @@ model MenuButton {
 // 向量数据库表
 // ==============================
 model Document {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
   content   String   // 原始文本（必须有）
   metadata  Json?    // 附加信息（可选）例如：{  "source": "vue.md",  "page": 3,  "type": "doc"}
 
@@ -155,8 +155,8 @@ model Document {
 // AI 会话表
 // ==============================
 model AiConversation {
-  id        String      @id @default(cuid()) // 会话ID
-  userId    Int         // 所属用户ID
+  id        String      @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 会话ID
+  userId    String      @db.VarChar(32) // 所属用户ID
   user      User        @relation(fields: [userId], references: [id])
   title     String      // 会话标题
   mode      String      @default("chat") // 会话模式：chat / knowledge
@@ -174,14 +174,14 @@ model AiConversation {
 // AI 会话消息表
 // ==============================
 model AiMessage {
-  id             String         @id @default(cuid()) // 消息ID
-  conversationId String         // 所属会话ID
+  id             String         @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 消息ID
+  conversationId String         @db.VarChar(32) // 所属会话ID
   conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           String         // 消息角色：user / assistant
   content        String         // 消息内容
   sources        Json?          // 知识库问答引用来源
   agentCode      String?        // 生成消息时使用的智能体编码
-  promptCode     String?        // 生成消息时使用的提示词编码
+  promptId       String?        @db.VarChar(32) // 生成消息时使用的提示词ID
   workflowCode   String?        // 生成消息时使用的工作流编码
   createdAt      DateTime       @default(now()) // 创建时间
 
@@ -192,7 +192,7 @@ model AiMessage {
 // AI 提示词配置表
 // ==============================
 model AiPrompt {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
   code      String   @unique
   name      String
   scene     String
@@ -200,6 +200,7 @@ model AiPrompt {
   version   Int      @default(1)
   status    Int      @default(1)
   remark    String?
+  agents    AiAgent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -210,7 +211,7 @@ model AiPrompt {
 // AI 敏感词配置表
 // ==============================
 model AiSensitiveWord {
-  id          String   @id @default(cuid())
+  id          String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
   word        String
   category    String
   action      String
@@ -229,11 +230,12 @@ model AiSensitiveWord {
 // AI 智能体配置表
 // ==============================
 model AiAgent {
-  id               String   @id @default(cuid())
+  id               String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
   code             String   @unique
   name             String
   description      String?
-  promptCode       String
+  promptId         String   @db.VarChar(32)
+  prompt           AiPrompt @relation(fields: [promptId], references: [id])
   mode             String   @default("chat")
   model            String?
   temperature      Float?
@@ -247,13 +249,14 @@ model AiAgent {
   updatedAt        DateTime @updatedAt
 
   @@index([mode, status])
+  @@index([promptId])
 }
 
 // ==============================
 // AI 工作流配置表
 // ==============================
 model AiWorkflow {
-  id          String           @id @default(cuid())
+  id          String           @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
   code        String           @unique
   name        String
   description String?
@@ -272,8 +275,8 @@ model AiWorkflow {
 // AI 工作流节点表
 // ==============================
 model AiWorkflowNode {
-  id         String     @id @default(cuid())
-  workflowId String
+  id         String     @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  workflowId String     @db.VarChar(32)
   workflow   AiWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   nodeKey    String
   type       String
@@ -291,8 +294,8 @@ model AiWorkflowNode {
 // AI 工作流边表
 // ==============================
 model AiWorkflowEdge {
-  id          String     @id @default(cuid())
-  workflowId  String
+  id          String     @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  workflowId  String     @db.VarChar(32)
   workflow    AiWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   fromNodeKey String
   toNodeKey   String
@@ -308,11 +311,11 @@ model AiWorkflowEdge {
 // AI 技能包配置表
 // ==============================
 model AiSkillPackage {
-  id            String   @id @default(cuid())
+  id            String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
   code          String   @unique
   name          String
   description   String?
-  promptCodes   Json?
+  promptIds     Json?
   toolCodes     Json?
   workflowCode  String?
   agentDefaults Json?
@@ -328,9 +331,9 @@ model AiSkillPackage {
 // AI 工作流执行记录表
 // ==============================
 model AiWorkflowRun {
-  id             String              @id @default(cuid())
-  conversationId String?
-  messageId      String?
+  id             String              @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  conversationId String?             @db.VarChar(32)
+  messageId      String?             @db.VarChar(32)
   agentCode      String
   workflowCode   String
   status         String
@@ -350,8 +353,8 @@ model AiWorkflowRun {
 // AI 工作流节点执行记录表
 // ==============================
 model AiWorkflowRunStep {
-  id           String        @id @default(cuid())
-  runId        String
+  id           String        @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  runId        String        @db.VarChar(32)
   run          AiWorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
   nodeKey      String
   nodeType     String
@@ -370,7 +373,7 @@ model AiWorkflowRunStep {
 // 首页配置表
 // ==============================
 model HomeDecoration {
-  id         String          @id @db.VarChar(64)
+  id         String          @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
   name       String          @db.VarChar(100)
   scene      String          @db.VarChar(32)
   status     Int             @default(1)
@@ -388,8 +391,8 @@ model HomeDecoration {
 // 首页组件表
 // ==============================
 model HomeComponent {
-  id           String         @id @db.VarChar(64)
-  decorationId String         @map("decoration_id") @db.VarChar(64)
+  id           String         @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  decorationId String         @map("decoration_id") @db.VarChar(32)
   decoration   HomeDecoration @relation(fields: [decorationId], references: [id], onDelete: Cascade)
   templateId   String         @map("template_id") @db.VarChar(32)
   templateName String?        @map("template_name") @db.VarChar(100)
@@ -407,7 +410,7 @@ model HomeComponent {
 // 小程序底部导航配置表
 // ==============================
 model MobileTabBarConfig {
-  id        String   @id @db.VarChar(64)
+  id        String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
   name      String   @db.VarChar(100)
   config    Json
   status    Int      @default(1)

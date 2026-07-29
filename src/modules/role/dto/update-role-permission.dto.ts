@@ -1,27 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { Type } from 'class-transformer'
-import { ArrayUnique, IsArray, IsInt, Min } from 'class-validator'
+import { ArrayUnique, IsArray, IsString } from 'class-validator'
 
 export class UpdateRolePermissionDto {
   @ApiProperty({ description: '角色ID' })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  id: number
+  @IsString()
+  id: string
 
-  @ApiProperty({ description: '菜单 ID 列表', type: [Number] })
+  @ApiProperty({ description: '菜单 ID 列表', type: [String] })
   @IsArray()
   @ArrayUnique()
-  @Type(() => Number)
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  menuIds: number[]
+  @IsString({ each: true })
+  menuIds: string[]
 
-  @ApiProperty({ description: '按钮权限 ID 列表', type: [Number] })
+  @ApiProperty({ description: '按钮权限 ID 列表', type: [String] })
   @IsArray()
   @ArrayUnique()
-  @Type(() => Number)
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  permissionIds: number[]
+  @IsString({ each: true })
+  permissionIds: string[]
 }

@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
-import { randomUUID } from 'crypto'
 import { PrismaService } from 'nestjs-prisma'
 import { SaveHomeComponentsDto } from './dto/component.dto'
 import {
@@ -63,9 +62,7 @@ export class HomeService {
   }
 
   async createDecoration(dto: CreateHomeDecorationDto) {
-    const id = dto.id || randomUUID()
     const data = {
-      id,
       name: dto.name,
       scene: dto.scene,
       status: dto.status ?? HOME_STATUS.enabled,
@@ -75,7 +72,7 @@ export class HomeService {
     if (data.scene === HOME_SCENES[0] && data.status === HOME_STATUS.enabled) {
       await this.prisma.$transaction([
         this.prisma.homeDecoration.updateMany({
-          where: { scene: HOME_SCENES[0], id: { not: data.id } },
+          where: { scene: HOME_SCENES[0] },
           data: { status: HOME_STATUS.disabled },
         }),
         this.prisma.homeDecoration.create({ data }),
@@ -186,7 +183,6 @@ export class HomeService {
         } else {
           await tx.homeComponent.create({
             data: {
-              id: randomUUID(),
               decorationId: dto.decorationId,
               ...data,
             },

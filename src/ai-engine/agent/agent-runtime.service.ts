@@ -20,14 +20,14 @@ export class AgentRuntimeService {
     }
 
     const prompt = await this.prisma.aiPrompt.findFirst({
-      where: { code: agent.promptCode, status: 1 },
+      where: { id: agent.promptId, status: 1 },
     })
     if (!prompt) {
       throw new BadRequestException('智能体绑定的提示词不存在或未启用')
     }
     return {
       agentCode: agent.code,
-      promptCode: prompt.code,
+      promptId: prompt.id,
       mode: agent.knowledgeEnabled
         ? 'knowledge'
         : agent.mode === 'knowledge'

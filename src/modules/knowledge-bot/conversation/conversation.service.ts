@@ -13,7 +13,7 @@ export class ConversationService {
   constructor(private readonly prisma: PrismaService) {}
 
   // 查询当前用户的会话列表，并支持按聊天模式过滤。
-  async list(userId: number, query: ConversationListDto) {
+  async list(userId: string, query: ConversationListDto) {
     const pageNum = Number(query.pageNum || 1)
     const pageSize = Number(query.pageSize || 20)
     const where = {
@@ -45,7 +45,7 @@ export class ConversationService {
   }
 
   // 创建新的 AI 会话，并统一清洗标题。
-  async create(userId: number, mode: ChatMode = 'chat', title = '新会话', agentCode?: string) {
+  async create(userId: string, mode: ChatMode = 'chat', title = '新会话', agentCode?: string) {
     return this.prisma.aiConversation.create({
       data: {
         userId,
@@ -57,7 +57,7 @@ export class ConversationService {
   }
 
   // 查询当前用户拥有的会话详情，并按时间正序带出消息记录。
-  async detail(userId: number, id: string) {
+  async detail(userId: string, id: string) {
     const conversation = await this.prisma.aiConversation.findFirst({
       where: {
         id,
@@ -79,7 +79,7 @@ export class ConversationService {
   }
 
   // 重命名当前用户拥有的会话。
-  async rename(userId: number, id: string, title: string) {
+  async rename(userId: string, id: string, title: string) {
     await this.ensureOwnedConversation(userId, id)
     return this.prisma.aiConversation.update({
       where: { id },
@@ -88,7 +88,7 @@ export class ConversationService {
   }
 
   // 软删除当前用户拥有的会话，保留历史数据用于后续审计或恢复。
-  async delete(userId: number, id: string) {
+  async delete(userId: string, id: string) {
     await this.ensureOwnedConversation(userId, id)
     await this.prisma.aiConversation.update({
       where: { id },
@@ -103,7 +103,7 @@ export class ConversationService {
 
   // 发送消息前获取已有会话；没有传会话 ID 时自动创建一个新会话。
   async getOrCreateForMessage(
-    userId: number,
+    userId: string,
     params: { conversationId?: string; message: string; mode?: ChatMode; agentCode?: string },
   ) {
     if (params.conversationId) {
@@ -156,7 +156,7 @@ export class ConversationService {
     role: MessageRole,
     content: string,
     sources?: MessageSource[],
-    meta: { agentCode?: string; promptCode?: string; workflowCode?: string } = {},
+    meta: { agentCode?: string; promptId?: string; workflowCode?: string } = {},
   ) {
     return this.prisma.aiMessage.create({
       data: {
@@ -165,7 +165,7 @@ export class ConversationService {
         content,
         sources: sources && sources.length ? sources : undefined,
         agentCode: meta.agentCode,
-        promptCode: meta.promptCode,
+        promptId: meta.promptId,
         workflowCode: meta.workflowCode,
       },
     })
@@ -180,7 +180,7 @@ export class ConversationService {
   }
 
   // 校验会话是否属于当前用户，避免跨用户读取或修改。
-  private async ensureOwnedConversation(userId: number, id: string) {
+  private async ensureOwnedConversation(userId: string, id: string) {
     const conversation = await this.prisma.aiConversation.findFirst({
       where: {
         id,

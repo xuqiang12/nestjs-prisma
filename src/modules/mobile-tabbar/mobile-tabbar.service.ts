@@ -80,7 +80,7 @@ export class MobileTabBarService {
   }
 
   async saveConfig(dto: SaveMobileTabBarConfigDto) {
-    const id = dto.id || randomUUID()
+    const id = dto.id || (await this.nextSnowflakeId())
     const config = this.normalizeConfig(dto, id)
     const existingRows = await this.prisma.$queryRaw<{ status: number }[]>`
       SELECT "status" FROM "mobile_tabbar_config" WHERE "id" = ${id} LIMIT 1
@@ -177,5 +177,10 @@ export class MobileTabBarService {
       throw new NotFoundException('底部导航配置不存在')
     }
     return row
+  }
+
+  private async nextSnowflakeId() {
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`SELECT next_snowflake_id() AS id`
+    return rows[0].id
   }
 }

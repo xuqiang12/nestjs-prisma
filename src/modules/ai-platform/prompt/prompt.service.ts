@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { randomUUID } from 'crypto'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
 import { CreatePromptDto, PromptListDto, PromptStatusDto, UpdatePromptDto } from './dto/prompt.dto'
@@ -36,9 +35,10 @@ export class PromptService {
   }
 
   async create(dto: CreatePromptDto) {
+    const code = await this.nextPromptCode()
     await this.prisma.aiPrompt.create({
       data: {
-        code: this.generatePromptCode(),
+        code,
         name: dto.name,
         scene: dto.scene,
         content: dto.content,
@@ -90,7 +90,8 @@ export class PromptService {
     return prompt
   }
 
-  private generatePromptCode() {
-    return `prompt_${randomUUID().replace(/-/g, '')}`
+  private async nextPromptCode() {
+    const rows = await this.prisma.$queryRaw<{ code: string }[]>`SELECT next_prompt_code() AS code`
+    return rows[0].code
   }
 }

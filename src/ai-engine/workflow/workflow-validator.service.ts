@@ -54,7 +54,7 @@ export class WorkflowValidatorService {
       requireString('inputField')
     }
     if (node.type === 'prompt') {
-      requireString('promptCode')
+      requireString('promptId')
       requireString('outputField')
     }
     if (node.type === 'knowledge') {

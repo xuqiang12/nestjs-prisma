@@ -84,12 +84,12 @@ export class SkillPackageService {
     }
 
     const defaults: Record<string, any> = this.isRecord(skillPackage.agentDefaults) ? skillPackage.agentDefaults : {}
-    const promptCodes = this.normalizeStringArray(skillPackage.promptCodes)
+    const promptIds = this.normalizeStringArray(skillPackage.promptIds)
     const toolCodes = this.normalizeStringArray(skillPackage.toolCodes)
     await this.prisma.aiAgent.update({
       where: { id: dto.agentId },
       data: {
-        promptCode: typeof defaults.promptCode === 'string' ? defaults.promptCode : promptCodes[0] || agent.promptCode,
+        promptId: typeof defaults.promptId === 'string' ? defaults.promptId : promptIds[0] || agent.promptId,
         mode: typeof defaults.mode === 'string' ? defaults.mode : agent.mode,
         model: typeof defaults.model === 'string' ? defaults.model : agent.model,
         temperature: typeof defaults.temperature === 'number' ? defaults.temperature : agent.temperature,
@@ -107,7 +107,7 @@ export class SkillPackageService {
       code: dto.code,
       name: dto.name,
       description: dto.description,
-      promptCodes: dto.promptCodes as Prisma.InputJsonValue,
+      promptIds: dto.promptIds as Prisma.InputJsonValue,
       toolCodes: dto.toolCodes as Prisma.InputJsonValue,
       workflowCode: dto.workflowCode,
       agentDefaults: dto.agentDefaults as Prisma.InputJsonValue,
@@ -117,11 +117,11 @@ export class SkillPackageService {
   }
 
   private async validateReferences(dto: CreateSkillPackageDto | UpdateSkillPackageDto) {
-    if (dto.promptCodes?.length) {
+    if (dto.promptIds?.length) {
       const count = await this.prisma.aiPrompt.count({
-        where: { code: { in: dto.promptCodes }, status: 1 },
+        where: { id: { in: dto.promptIds }, status: 1 },
       })
-      if (count !== new Set(dto.promptCodes).size) {
+      if (count !== new Set(dto.promptIds).size) {
         throw new BadRequestException('技能包引用了不存在或未启用的提示词')
       }
     }

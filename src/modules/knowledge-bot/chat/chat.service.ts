@@ -24,7 +24,7 @@ export class ChatService {
   ) {}
 
   // 处理非流式聊天：维护会话、读取历史、调用 AI，并保存完整问答记录。
-  async chat(body: ChatRequestDto, userId: number) {
+  async chat(body: ChatRequestDto, userId: string) {
     const checkedInput = await this.sensitiveWordCheckerService.checkAndApply(body.message, 'input')
     const agent = await this.agentRuntimeService.resolve(body.agentCode)
     const conversation = await this.conversationService.getOrCreateForMessage(userId, {
@@ -42,7 +42,7 @@ export class ChatService {
       undefined,
       {
         agentCode: agent?.agentCode,
-        promptCode: agent?.promptCode,
+        promptId: agent?.promptId,
         workflowCode: agent?.workflowCode,
       },
     )
@@ -69,7 +69,7 @@ export class ChatService {
         workflowResult.sources,
         {
           agentCode: agent.agentCode,
-          promptCode: agent.promptCode,
+          promptId: agent.promptId,
           workflowCode: agent.workflowCode,
         },
       )
@@ -79,7 +79,7 @@ export class ChatService {
         conversationId: conversation.id,
         mode: conversation.mode,
         agentCode: agent.agentCode,
-        promptCode: agent.promptCode,
+        promptId: agent.promptId,
         workflowCode: agent.workflowCode,
         answer: checkedOutput.content,
         route: 'workflow',
@@ -102,7 +102,7 @@ export class ChatService {
       plan.sources,
       {
         agentCode: agent?.agentCode,
-        promptCode: agent?.promptCode,
+        promptId: agent?.promptId,
         workflowCode: agent?.workflowCode,
       },
     )
@@ -112,7 +112,7 @@ export class ChatService {
       conversationId: conversation.id,
       mode: conversation.mode,
       agentCode: agent?.agentCode,
-      promptCode: agent?.promptCode,
+      promptId: agent?.promptId,
       answer: checkedOutput.content,
       route: plan.route,
       sources: plan.sources,
@@ -120,7 +120,7 @@ export class ChatService {
   }
 
   // 处理流式聊天：边返回模型片段边累计完整答案，结束后再落库 assistant 消息。
-  async *stream(body: ChatRequestDto, userId: number): AsyncIterable<ChatStreamEvent> {
+  async *stream(body: ChatRequestDto, userId: string): AsyncIterable<ChatStreamEvent> {
     // 敏感词检查与处理
     const checkedInput = await this.sensitiveWordCheckerService.checkAndApply(body.message, 'input')
     // Agent 配置解析  包含提示词、模型、工具、工作流等配置
@@ -141,7 +141,7 @@ export class ChatService {
       undefined,
       {
         agentCode: agent?.agentCode,
-        promptCode: agent?.promptCode,
+        promptId: agent?.promptId,
         workflowCode: agent?.workflowCode,
       },
     )
@@ -179,7 +179,7 @@ export class ChatService {
         sources,
         {
           agentCode: agent.agentCode,
-          promptCode: agent.promptCode,
+          promptId: agent.promptId,
           workflowCode: agent.workflowCode,
         },
       )
@@ -215,7 +215,7 @@ export class ChatService {
       plan.sources,
       {
         agentCode: agent?.agentCode,
-        promptCode: agent?.promptCode,
+        promptId: agent?.promptId,
         workflowCode: agent?.workflowCode,
       },
     )

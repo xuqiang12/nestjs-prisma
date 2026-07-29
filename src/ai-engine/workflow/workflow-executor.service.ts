@@ -182,10 +182,10 @@ export class WorkflowExecutorService {
 
     if (node.type === 'prompt') {
       const prompt = await this.prisma.aiPrompt.findFirst({
-        where: { code: config.promptCode, status: 1 },
+        where: { id: config.promptId, status: 1 },
       })
       if (!prompt) {
-        throw new BadRequestException(`提示词不存在或未启用：${config.promptCode}`)
+        throw new BadRequestException(`提示词不存在或未启用：${config.promptId}`)
       }
       const content = prompt.content
       values[config.outputField] = content

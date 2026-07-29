@@ -19,7 +19,7 @@ test('workflow test-run keeps authenticated user context', () => {
 
   assert.match(controller, /@Req\(\)\s*req:\s*AuthenticatedRequest/)
   assert.match(controller, /this\.workflowService\.testRun\(dto,\s*req\.user\.userId\)/)
-  assert.match(service, /async testRun\(dto:\s*TestRunWorkflowDto,\s*userId:\s*number\)/)
+  assert.match(service, /async testRun\(dto:\s*TestRunWorkflowDto,\s*userId:\s*string\)/)
   assert.match(service, /userId,/)
 })
 

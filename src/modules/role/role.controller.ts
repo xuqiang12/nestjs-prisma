@@ -1,4 +1,4 @@
-import { Body, Controller, Get, ParseIntPipe, Post, Query } from '@nestjs/common'
+import { Body, Controller, Get, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { CreateRoleDto } from './dto/create-role.dto'
 import { DeleteRoleDto } from './dto/delete-role.dto'
@@ -20,7 +20,7 @@ export class RoleController {
 
   @ApiOperation({ summary: '查询角色详情' })
   @Get('detail')
-  getRoleDetail(@Query('id', ParseIntPipe) id: number) {
+  getRoleDetail(@Query('id') id: string) {
     return this.roleService.getRoleDetail(id)
   }
 

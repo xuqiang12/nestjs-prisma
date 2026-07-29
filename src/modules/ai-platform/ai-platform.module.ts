@@ -5,8 +5,6 @@ import { PromptController } from './prompt/prompt.controller'
 import { PromptService } from './prompt/prompt.service'
 import { SensitiveWordController } from './sensitive-word/sensitive-word.controller'
 import { SensitiveWordService } from './sensitive-word/sensitive-word.service'
-import { SkillPackageController } from './skill-package/skill-package.controller'
-import { SkillPackageService } from './skill-package/skill-package.service'
 import { ToolController } from './tool/tool.controller'
 import { ToolService } from './tool/tool.service'
 import { WorkflowRunController } from './workflow-run/workflow-run.controller'
@@ -20,7 +18,6 @@ import { WorkflowService } from './workflow/workflow.service'
     SensitiveWordController,
     AgentController,
     WorkflowController,
-    SkillPackageController,
     WorkflowRunController,
     ToolController,
   ],
@@ -29,7 +26,6 @@ import { WorkflowService } from './workflow/workflow.service'
     SensitiveWordService,
     AgentService,
     WorkflowService,
-    SkillPackageService,
     WorkflowRunService,
     ToolService,
   ],
@@ -38,7 +34,6 @@ import { WorkflowService } from './workflow/workflow.service'
     SensitiveWordService,
     AgentService,
     WorkflowService,
-    SkillPackageService,
     WorkflowRunService,
     ToolService,
   ],

@@ -308,26 +308,6 @@ model AiWorkflowEdge {
 }
 
 // ==============================
-// AI 技能包配置表
-// ==============================
-model AiSkillPackage {
-  id            String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
-  code          String   @unique
-  name          String
-  description   String?
-  promptIds     Json?
-  toolCodes     Json?
-  workflowCode  String?
-  agentDefaults Json?
-  status        Int      @default(1)
-  remark        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([status, updatedAt])
-}
-
-// ==============================
 // AI 工作流执行记录表
 // ==============================
 model AiWorkflowRun {

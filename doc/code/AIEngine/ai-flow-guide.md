@@ -27,10 +27,9 @@ flowchart TD
 
   ConfigApi --> Prompt["AiPrompt 提示词"]
   ConfigApi --> Sensitive["AiSensitiveWord 敏感词"]
-  ConfigApi --> Agent["AiAgent 运行方案"]
+  ConfigApi --> Agent["AiAgent 智能体"]
   ConfigApi --> Workflow["AiWorkflow 工作流"]
   ConfigApi --> Tool["AIRegistry 工具注册中心"]
-  ConfigApi --> Skill["AiSkillPackage 技能包"]
 
   ChatApi --> ChatService["ChatService"]
   ChatService --> AgentRuntime["AgentRuntimeService 解析 agentCode"]
@@ -50,7 +49,7 @@ flowchart TD
 
 一句话理解：
 
-> 配置端通过 `AiAgent` 把提示词、模型参数、知识库开关、工具白名单、可选工作流组合成一个运行方案；对话端只要发送 `agentCode`，后端就能解析出完整运行配置，然后决定走普通聊天、知识库问答或工作流。
+> 配置端通过 `AiAgent` 把提示词、模型参数、知识库开关、工具白名单、可选工作流组合成一个智能体；对话端只要发送 `agentCode`，后端就能解析出完整运行配置，然后决定走普通聊天、知识库问答或工作流。
 
 ### 1.1 AI 对话详细分支流程图
 
@@ -61,7 +60,7 @@ flowchart TD
   A["AI 对话页面<br/>chat/index.vue"] --> A1{"用户选择哪种入口"}
   A1 -- "基础对话<br/>mode = chat" --> A2["handleSendMessage()<br/>组装 message + mode"]
   A1 -- "知识库问答<br/>mode = knowledge" --> A2
-  A1 -- "任务流方案<br/>选择 agentCode" --> A3["handleAgentChange()<br/>按 AiAgent 同步 mode"]
+  A1 -- "工作流智能体<br/>选择 agentCode" --> A3["handleAgentChange()<br/>按 AiAgent 同步 mode"]
   A3 --> A2
 
   A2 --> A4{"是否已有会话"}
@@ -75,7 +74,7 @@ flowchart TD
   D --> E["SensitiveWordCheckerService.checkAndApply(input)<br/>检查用户输入敏感词"]
   E --> E1{"输入是否命中 block"}
   E1 -- "是" --> ERR["ChatController 捕获异常<br/>写 type=error + [DONE]"]
-  E1 -- "否或 replace" --> F["AgentRuntimeService.resolve(agentCode)<br/>解析运行方案"]
+  E1 -- "否或 replace" --> F["AgentRuntimeService.resolve(agentCode)<br/>解析智能体配置"]
 
   F --> F1{"是否传 agentCode"}
   F1 -- "未传" --> F2["agent = null<br/>使用请求里的 mode"]
@@ -238,12 +237,12 @@ flowchart TD
 
 | 入口 | 前端怎么选 | Agent 要不要配 | 必要配置 | 常见失败点 |
 | --- | --- | --- | --- | --- |
-| 基础对话 | 选择“普通聊天”，也可以不选运行方案 | 可选 | 模型环境变量或 agent 的 `model` | 模型密钥、模型名、网络不可用 |
+| 基础对话 | 选择“普通聊天”，也可以不选智能体 | 可选 | 模型环境变量或 agent 的 `model` | 模型密钥、模型名、网络不可用 |
 | 带提示词的基础对话 | 选择一个无 `workflowCode`、`mode = chat` 的 agent | 必须 | 启用的 `AiAgent` + 启用的 `AiPrompt` | agent 未启用、prompt 未启用、提示词变量缺失 |
 | 知识库问答 | 选择“知识库问答”，或选择 `knowledgeEnabled = true` 的 agent | 可选 | `documents` 中有向量数据，Embedding 可用 | 无知识数据、向量维度不匹配、检索为空 |
 | 带 agent 的知识库问答 | 选择 `mode = knowledge` 或 `knowledgeEnabled = true` 的 agent | 必须 | agent 的 `toolCodes` 包含 `search_knowledge` | 报“智能体未授权工具：search_knowledge” |
-| 任务流/工作流 | 选择绑定了 `workflowCode` 的 agent | 必须 | 启用的 agent、启用的 workflow、合法节点和连线 | 工作流未启用、图校验失败、工具未授权 |
-| 流式任务流 | 聊天页选择任务流 agent 后发送 | 必须 | 工作流最多一个 `llm` 节点 | 多个 LLM 节点会报“当前版本仅支持一个流式 LLM 节点” |
+| 任务流/工作流 | 选择绑定了 `workflowCode` 的智能体 | 必须 | 启用的 agent、启用的 workflow、合法节点和连线 | 工作流未启用、图校验失败、工具未授权 |
+| 流式任务流 | 聊天页选择工作流智能体后发送 | 必须 | 工作流最多一个 `llm` 节点 | 多个 LLM 节点会报“当前版本仅支持一个流式 LLM 节点” |
 
 ## 2. 核心数据模型
 
@@ -253,14 +252,13 @@ flowchart TD
 | --- | --- | --- |
 | `Document` | 知识库切片和向量 | `content`、`metadata`、`embedding` |
 | `AiConversation` | 用户会话 | `userId`、`title`、`mode`、`agentCode`、`isDeleted` |
-| `AiMessage` | 会话消息 | `role`、`content`、`sources`、`agentCode`、`promptCode`、`workflowCode` |
+| `AiMessage` | 会话消息 | `role`、`content`、`sources`、`agentCode`、`promptId`、`workflowCode` |
 | `AiPrompt` | 提示词配置 | `code`、`name`、`scene`、`content`、`variables`、`status` |
 | `AiSensitiveWord` | 输入/输出敏感词 | `word`、`action`、`replaceWith`、`scope`、`status` |
-| `AiAgent` | 运行方案 | `code`、`promptCode`、`mode`、`model`、`knowledgeEnabled`、`toolCodes`、`workflowCode` |
+| `AiAgent` | 智能体运行配置 | `code`、`promptId`、`mode`、`model`、`knowledgeEnabled`、`toolCodes`、`workflowCode` |
 | `AiWorkflow` | 工作流基础信息 | `code`、`name`、`status`、`version` |
 | `AiWorkflowNode` | 工作流节点 | `workflowId`、`nodeKey`、`type`、`name`、`config`、`sortNo` |
 | `AiWorkflowEdge` | 工作流连线 | `workflowId`、`fromNodeKey`、`toNodeKey`、`condition`、`sortNo` |
-| `AiSkillPackage` | 技能包 | `promptCodes`、`toolCodes`、`workflowCode`、`agentDefaults` |
 | `AiWorkflowRun` | 工作流运行记录 | `conversationId`、`agentCode`、`workflowCode`、`status`、`input`、`output` |
 | `AiWorkflowRunStep` | 工作流节点运行记录 | `runId`、`nodeKey`、`nodeType`、`status`、`output`、`errorMessage` |
 
@@ -280,7 +278,7 @@ flowchart LR
   Sensitive --> Tool["3. 确认工具 AIRegistry"]
   Tool --> Workflow["4. 配工作流 AiWorkflow"]
   Workflow --> Agent["5. 配智能体 AiAgent"]
-  Agent --> Chat["6. 对话页选择运行方案"]
+  Agent --> Chat["6. 对话页选择智能体"]
 ```
 
 如果只是普通聊天，工作流可以不配。
@@ -309,7 +307,7 @@ flowchart LR
 
 运行时使用：
 
-- `AgentRuntimeService.resolve()` 根据 `AiAgent.promptCode` 找启用的 `AiPrompt`。
+- `AgentRuntimeService.resolve()` 根据 `AiAgent.promptId` 找启用的 `AiPrompt`。
 - `PromptRendererService.render()` 用请求上下文变量替换提示词里的 `{变量名}`。
 
 当前对话链路里传给提示词的变量主要是：
@@ -370,9 +368,18 @@ flowchart LR
 
 工具不是直接从数据库表里执行，而是来自运行时 `AIRegistry` 注册中心。也就是说：
 
-- agent 或技能包里的 `toolCodes` 只是白名单配置。
+- agent 里的 `toolCodes` 只是白名单配置。
 - 真正可执行的工具必须已经注册到 `AIRegistry`。
 - `AgentService` 保存 agent 时会校验 `toolCodes` 是否存在于 `AIRegistry.getToolNames()`。
+
+工作流和工具白名单是两层配置：
+
+- `workflowCode` 只决定使用哪张节点图。
+- 工作流里的 `knowledge` 节点固定需要 `search_knowledge` 授权。
+- 工作流里的 `tool` 节点需要授权对应 `toolCode`。
+- 聊天链路执行工作流时，授权来源就是当前 agent 的 `toolCodes`。
+
+所以新增智能体时即使已经选择了工作流，也仍然要配置工具；否则工作流可以被绑定，但执行到知识库或工具节点时会因为未授权失败。
 
 当前默认工具执行器会注册基础工具：
 
@@ -412,8 +419,8 @@ flowchart LR
 | 字段 | 说明 | 影响 |
 | --- | --- | --- |
 | `code` | 智能体编码 | 前端发送对话时的 `agentCode` |
-| `name` | 运行方案名称 | 前端下拉选择展示 |
-| `promptCode` | 绑定提示词 | 决定 system prompt |
+| `name` | 智能体名称 | 前端下拉选择展示 |
+| `promptId` | 绑定提示词 ID | 决定 system prompt |
 | `mode` | 默认模式 | `chat` 普通聊天，`knowledge` 知识库问答 |
 | `model` | 模型名称 | 传给 `LlmService`，为空则走环境变量默认模型 |
 | `temperature` | 生成随机性 | 传给大模型 |
@@ -425,31 +432,7 @@ flowchart LR
 
 `GET /ai-platform/agent/config-options` 会返回可选的提示词、工作流和工具，用于 agent 表单配置。
 
-`GET /ai-platform/agent/enabled-options` 会返回聊天页可选择的启用运行方案。
-
-### 3.6 技能包配置
-
-前端页面：
-
-- `vue-element-admin-dev/src/views/AIEngine/skillPackage/index.vue`
-
-后端接口：
-
-- `GET /ai-platform/skill-package/list`
-- `GET /ai-platform/skill-package/detail`
-- `POST /ai-platform/skill-package`
-- `POST /ai-platform/skill-package/update`
-- `POST /ai-platform/skill-package/status`
-- `POST /ai-platform/skill-package/install-to-agent`
-
-技能包可以理解为一组配置模板，它可以包含：
-
-- 多个 `promptCodes`
-- 多个 `toolCodes`
-- 一个 `workflowCode`
-- 一组 `agentDefaults`
-
-安装到 agent 时，会把技能包中的默认配置写回 `AiAgent`。最终对话仍然是通过 `AiAgent` 生效，不是直接通过技能包生效。
+`GET /ai-platform/agent/enabled-options` 会返回聊天页可选择的启用智能体。
 
 ## 4. 对话流程
 
@@ -469,10 +452,10 @@ flowchart LR
 
 页面初始化时：
 
-1. 调用 `getAgentEnabledOptions()` 获取可选运行方案。
+1. 调用 `getAgentEnabledOptions()` 获取可选智能体。
 2. 调用 `getAiConversationList()` 获取会话列表。
 
-切换运行方案时：
+切换智能体时：
 
 1. 更新 `selectedAgentCode`。
 2. 如果 agent 指定了 `knowledgeEnabled` 或 `mode`，同步当前模式。
@@ -546,11 +529,11 @@ flowchart TD
 
 1. 输入敏感词检查发生在创建会话和保存用户消息之前。
 2. 历史消息在保存当前用户消息之前读取，避免当前问题在 prompt 中重复出现。
-3. 用户消息和助手消息都会保存 `agentCode`、`promptCode`、`workflowCode` 这些审计字段。
+3. 用户消息和助手消息都会保存 `agentCode`、`promptId`、`workflowCode` 这些审计字段。
 4. 只要解析出的 agent 有 `workflowCode`，就会走工作流分支。
 5. 没有 `agentCode` 时，`AgentRuntimeService.resolve()` 返回 `null`，保持默认聊天行为。
 
-### 4.4 AgentRuntimeService 如何解析运行方案
+### 4.4 AgentRuntimeService 如何解析智能体
 
 服务：
 
@@ -560,14 +543,14 @@ flowchart TD
 
 1. 没传 `agentCode`：返回 `null`。
 2. 传了 `agentCode`：查 `AiAgent`，要求 `status = 1`。
-3. 根据 `AiAgent.promptCode` 查启用的 `AiPrompt`。
+3. 根据 `AiAgent.promptId` 查启用的 `AiPrompt`。
 4. 渲染 prompt 内容，把 `{question}` 等变量替换成运行时值。
 5. 返回运行时配置：
 
 ```ts
 {
   agentCode,
-  promptCode,
+  promptId,
   mode,
   systemPrompt,
   llmOptions,
@@ -763,7 +746,7 @@ ChatService.stream()
 | 类型 | 中文含义 | 必填配置 | 运行时行为 |
 | --- | --- | --- | --- |
 | `start` | 开始节点 | `inputField` | 把用户消息写入变量池指定字段 |
-| `prompt` | 提示词节点 | `promptCode`、`outputField` | 读取启用提示词，按变量池渲染后写入输出字段 |
+| `prompt` | 提示词节点 | `promptId`、`outputField` | 读取启用提示词，按变量池渲染后写入输出字段 |
 | `knowledge` | 知识库检索节点 | `queryField`、`outputField` | 读取查询字段，执行向量检索，写入 sources |
 | `llm` | 大模型节点 | `userMessageField`、`outputField` | 读取用户消息字段和可选系统提示字段，调用大模型 |
 | `tool` | 工具节点 | `toolCode`、`outputField` | 调用工具执行器，结果写入输出字段 |
@@ -807,14 +790,14 @@ values.message = input.message
 
 ```json
 {
-  "promptCode": "CUSTOMER_SERVICE_PROMPT",
+  "promptId": "prompt-id",
   "outputField": "systemPrompt"
 }
 ```
 
 运行效果：
 
-1. 根据 `promptCode` 查询启用的 `AiPrompt`。
+1. 根据 `promptId` 查询启用的 `AiPrompt`。
 2. 用当前变量池渲染提示词。
 3. 把结果写入 `values.systemPrompt`。
 
@@ -989,7 +972,7 @@ flowchart LR
 | nodeKey | type | name | config |
 | --- | --- | --- | --- |
 | `start` | `start` | 开始 | `{"inputField":"message"}` |
-| `prompt` | `prompt` | 生成系统提示 | `{"promptCode":"CUSTOMER_SERVICE_PROMPT","outputField":"systemPrompt"}` |
+| `prompt` | `prompt` | 生成系统提示 | `{"promptId":"prompt-id","outputField":"systemPrompt"}` |
 | `knowledge` | `knowledge` | 检索知识库 | `{"queryField":"message","outputField":"knowledgeList","limit":5}` |
 | `llm` | `llm` | 大模型回答 | `{"systemPromptField":"systemPrompt","userMessageField":"message","outputField":"answer"}` |
 | `output` | `output` | 输出 | `{"outputField":"answer"}` |
@@ -1005,7 +988,7 @@ flowchart LR
 
 配置要求：
 
-1. `CUSTOMER_SERVICE_PROMPT` 必须存在且启用。
+1. `prompt-id` 对应的提示词必须存在且启用。
 2. 绑定该工作流的 agent 必须勾选 `search_knowledge` 工具。
 3. 知识库 `documents` 表中需要有已向量化的数据。
 4. agent 绑定该工作流的 `workflowCode`。
@@ -1117,7 +1100,7 @@ type WorkflowStreamEvent =
 1. 前端请求体是否带了正确 `agentCode`。
 2. `/ai-platform/agent/enabled-options` 是否返回该 agent。
 3. `AiAgent.status` 是否为 1。
-4. `AiAgent.promptCode` 对应的 `AiPrompt` 是否存在且启用。
+4. `AiAgent.promptId` 对应的 `AiPrompt` 是否存在且启用。
 5. 提示词变量是否都能由运行时提供。
 
 ### 7.2 知识库问答报未授权工具
@@ -1175,7 +1158,7 @@ type WorkflowStreamEvent =
 
 1. 去工作流运行记录页面查看 `AiWorkflowRun.status` 和 `errorMessage`。
 2. 打开详情查看哪个 `AiWorkflowRunStep` 失败。
-3. 如果是 `prompt` 节点，检查 `promptCode` 和变量。
+3. 如果是 `prompt` 节点，检查 `promptId` 和变量。
 4. 如果是 `knowledge` 节点，检查 `search_knowledge` 是否在 agent 工具白名单里。
 5. 如果是 `tool` 节点，检查工具是否注册到 `AIRegistry`，且 agent 是否授权。
 6. 如果是 `llm` 节点，检查模型环境变量、模型名称、网络和密钥。
@@ -1219,7 +1202,6 @@ type WorkflowStreamEvent =
 | `src/modules/ai-platform/sensitive-word/sensitive-word.service.ts` | 敏感词配置 CRUD |
 | `src/modules/ai-platform/workflow/workflow.service.ts` | 工作流 CRUD、图保存、图校验、测试运行 |
 | `src/modules/ai-platform/tool/tool.service.ts` | 工具列表 |
-| `src/modules/ai-platform/skill-package/skill-package.service.ts` | 技能包配置和安装到 agent |
 
 后端对话：
 

@@ -36,11 +36,42 @@ export class ChatController {
     res.setHeader('Cache-Control', 'no-cache')
     res.setHeader('Connection', 'keep-alive')
 
-    for await (const event of this.chatService.stream(body, req.user.userId)) {
-      res.write(`data: ${JSON.stringify(event)}\n\n`)
+    try {
+      for await (const event of this.chatService.stream(body, req.user.userId)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`)
+      }
+    } catch (error) {
+      res.write(`data: ${JSON.stringify(this.toStreamErrorEvent(error))}\n\n`)
     }
 
     res.write('data: [DONE]\n\n')
     res.end()
+  }
+
+  private toStreamErrorEvent(error: unknown) {
+    const message = error instanceof Error ? error.message : 'AI 流式响应异常，请稍后重试'
+    return {
+      type: 'error',
+      code: this.toStreamErrorCode(message),
+      message: this.toPublicStreamErrorMessage(message),
+    }
+  }
+
+  private toStreamErrorCode(message: string) {
+    if (message.includes('敏感词')) return 'SENSITIVE_WORD_BLOCKED'
+    if (message.includes('智能体不存在或未启用')) return 'AGENT_NOT_AVAILABLE'
+    if (message.includes('提示词不存在或未启用')) return 'PROMPT_NOT_AVAILABLE'
+    if (message.includes('工作流不存在或未启用')) return 'WORKFLOW_NOT_AVAILABLE'
+    if (message.includes('未授权工具')) return 'TOOL_NOT_ALLOWED'
+    return 'CHAT_STREAM_ERROR'
+  }
+
+  private toPublicStreamErrorMessage(message: string) {
+    if (message.includes('敏感词')) return '内容包含敏感词，已拦截'
+    if (message.includes('智能体不存在或未启用')) return '智能体不存在或未启用'
+    if (message.includes('提示词不存在或未启用')) return '智能体绑定的提示词不存在或未启用'
+    if (message.includes('工作流不存在或未启用')) return '工作流不存在或未启用'
+    if (message.includes('未授权工具')) return '智能体未授权工具'
+    return 'AI 流式响应异常，请稍后重试'
   }
 }

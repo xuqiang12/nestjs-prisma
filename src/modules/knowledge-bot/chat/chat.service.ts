@@ -10,6 +10,7 @@ import { ChatMode, ChatRequestDto } from './dto/chat.dto'
 export type ChatStreamEvent =
   | { type: 'content'; content: string }
   | { type: 'sources'; sources: any[] }
+  | { type: 'error'; code: string; message: string }
   | WorkflowStreamEvent
 
 @Injectable()

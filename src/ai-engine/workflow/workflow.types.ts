@@ -32,6 +32,8 @@ export type WorkflowExecutionInput = {
   workflowCode: string
   conversationId?: string
   allowedToolCodes: string[]
+  knowledgeStrict?: boolean
+  promptEnhancement?: string
   llmOptions?: {
     model?: string
     temperature?: number

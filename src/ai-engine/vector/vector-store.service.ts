@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
 import { EmbeddingService } from '../embedding/embedding.service'
 import { splitText } from '../infra/text-chunker'
@@ -20,6 +21,10 @@ export type KnowledgeDocumentListItem = {
   content: string
   metadata?: Record<string, any>
   createdAt: Date
+}
+
+type SearchOptions = {
+  tags?: string[]
 }
 
 @Injectable()
@@ -52,8 +57,25 @@ export class VectorStoreService {
   }
 
   // 根据查询文本生成向量，并按 pgvector 距离从近到远返回相似知识片段。
-  async similaritySearch(query: string, limit = 5): Promise<SearchResult[]> {
+  async similaritySearch(query: string, limit = 5, options: SearchOptions = {}): Promise<SearchResult[]> {
     const embedding = await this.embeddingService.createEmbedding(query)
+    const tags = Array.from(new Set((options.tags || []).map((tag) => tag.trim()).filter(Boolean)))
+    if (tags.length) {
+      const scopedResult = await this.prisma.$queryRaw`
+        SELECT
+          id,
+          content,
+          metadata,
+          embedding <=> ${JSON.stringify(embedding)}::vector AS distance
+        FROM documents
+        WHERE COALESCE(metadata->'tags', '[]'::jsonb) ?| ARRAY[${Prisma.join(tags)}]::text[]
+        ORDER BY distance ASC
+        LIMIT ${limit}
+      `
+
+      return scopedResult as SearchResult[]
+    }
+
     // <=> 是 pgvector 的距离运算符，距离越小表示语义越接近。
     const result = await this.prisma.$queryRaw`
       SELECT

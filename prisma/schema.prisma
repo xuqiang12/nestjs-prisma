@@ -234,13 +234,21 @@ model AiAgent {
   code             String   @unique
   name             String
   description      String?
+  avatar           String?
+  welcomeMessage   String?
+  recommendedQuestions Json?
+  tags             Json?
   promptId         String   @db.VarChar(32)
   prompt           AiPrompt @relation(fields: [promptId], references: [id])
+  promptSyncEnabled Boolean @default(true)
+  promptSnapshot    String?
+  promptEnhancement String?
   mode             String   @default("chat")
   model            String?
   temperature      Float?
   topP             Float?
   knowledgeEnabled Boolean  @default(false)
+  knowledgeStrict  Boolean  @default(false)
   toolCodes        Json?
   workflowCode     String?
   status           Int      @default(1)
@@ -305,6 +313,26 @@ model AiWorkflowEdge {
   updatedAt   DateTime   @updatedAt
 
   @@index([workflowId, fromNodeKey, sortNo])
+}
+
+// ==============================
+// AI 技能包配置表
+// ==============================
+model AiSkillPackage {
+  id            String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  code          String   @unique
+  name          String
+  description   String?
+  promptIds     Json?
+  toolCodes     Json?
+  workflowCode  String?
+  agentDefaults Json?
+  status        Int      @default(1)
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, updatedAt])
 }
 
 // ==============================

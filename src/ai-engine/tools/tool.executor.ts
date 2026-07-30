@@ -4,10 +4,7 @@ import { AIRegistry } from '../core/ai.registry'
 
 @Injectable()
 export class DefaultToolExecutor implements IToolExecutor {
-  // 初始化工具执行器，并注册默认内置工具。
-  constructor(private registry: AIRegistry) {
-    this.registerDefaultTools()
-  }
+  constructor(private registry: AIRegistry) {}
 
   // 兼容旧调用方的单个工具注册方式，实际仍统一写入 AIRegistry。
   // 兼容旧的注册方式
@@ -32,28 +29,6 @@ export class DefaultToolExecutor implements IToolExecutor {
     const result = await tool.handler(params)
 
     return result
-  }
-
-  // 注册基础演示工具，保证没有业务工具时工具执行器也有默认能力。
-  private registerDefaultTools() {
-    this.registry.registerTool({
-      name: 'search_web',
-      description: '搜索网络信息',
-      params: { query: '搜索关键词' },
-      handler: async (params: any) => {
-        return { result: `搜索结果: ${params.query}` }
-      },
-    })
-
-    this.registry.registerTool({
-      name: 'get_time',
-      description: '获取当前时间',
-      params: {},
-      handler: async () => {
-        const time = new Date().toISOString()
-        return { time }
-      },
-    })
   }
 }
 

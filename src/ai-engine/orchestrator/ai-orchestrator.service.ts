@@ -8,12 +8,17 @@ export type CompletionPlan = {
   route: ChatMode
   messages: ChatMessage[]
   sources: SearchResult[]
+  directAnswer?: string
 }
 
 export type BuildCompletionOptions = {
   systemPrompt?: string
   allowedToolCodes?: string[]
+  knowledgeStrict?: boolean
 }
+
+const STRICT_KNOWLEDGE_MAX_DISTANCE = 0.45
+const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
 
 @Injectable()
 export class AiOrchestratorService {
@@ -54,12 +59,25 @@ export class AiOrchestratorService {
     if (mode === 'knowledge') {
       this.ensureToolAllowed('search_knowledge', options.allowedToolCodes)
       // 知识库模式需要先做向量检索，把命中的片段作为 system prompt 的事实依据。
-      const sources = await this.vectorStoreService.similaritySearch(message, 5)
+      const matchedSources = await this.vectorStoreService.similaritySearch(message, 5)
+      const sources = options.knowledgeStrict
+        ? matchedSources.filter((item) => item.distance <= STRICT_KNOWLEDGE_MAX_DISTANCE)
+        : matchedSources
+      if (options.knowledgeStrict && !sources.length) {
+        return {
+          route: 'knowledge',
+          messages: [],
+          sources: [],
+          directAnswer: STRICT_KNOWLEDGE_FALLBACK,
+        }
+      }
       const context = sources.map((item, index) => `【知识${index + 1}】${item.content}`).join('\n')
       const systemPrompt = [
         options.systemPrompt,
         '你是知识库问答助手。',
-        '优先根据给定知识片段回答；如果知识片段不足以回答，请明确说明知识库中没有足够信息。',
+        options.knowledgeStrict
+          ? '只能根据给定知识片段回答；如果知识片段不足以回答，只能回答“未找到相关制度。”'
+          : '优先根据给定知识片段回答；如果知识片段不足以回答，请明确说明知识库中没有足够信息。',
         `知识片段：\n${context || '未检索到相关知识片段'}`,
       ].filter(Boolean).join('\n')
 

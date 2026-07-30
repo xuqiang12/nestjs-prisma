@@ -25,6 +25,9 @@ export class AgentRuntimeService {
     if (!prompt) {
       throw new BadRequestException('智能体绑定的提示词不存在或未启用')
     }
+    const basePrompt = agent.promptSyncEnabled === false && agent.promptSnapshot
+      ? agent.promptSnapshot
+      : prompt.content
     return {
       agentCode: agent.code,
       promptId: prompt.id,
@@ -33,13 +36,15 @@ export class AgentRuntimeService {
         : agent.mode === 'knowledge'
           ? 'knowledge'
           : 'chat',
-      systemPrompt: prompt.content,
+      systemPrompt: this.joinPrompt(basePrompt, agent.promptEnhancement),
       llmOptions: {
         model: agent.model || undefined,
         temperature: agent.temperature ?? undefined,
         topP: agent.topP ?? undefined,
       },
       toolCodes: this.normalizeToolCodes(agent.toolCodes),
+      knowledgeStrict: agent.knowledgeStrict,
+      promptEnhancement: agent.promptEnhancement || undefined,
       workflowCode: agent.workflowCode || undefined,
     }
   }
@@ -50,4 +55,10 @@ export class AgentRuntimeService {
     return value.filter((item): item is string => typeof item === 'string')
   }
 
+  private joinPrompt(...parts: Array<string | null | undefined>) {
+    return parts
+      .map((item) => (typeof item === 'string' ? item.trim() : ''))
+      .filter(Boolean)
+      .join('\n\n')
+  }
 }

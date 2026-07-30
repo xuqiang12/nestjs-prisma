@@ -107,7 +107,7 @@ flowchart TD
 
   R1 --> R2{"是否需要校验 search_knowledge"}
   R2 -- "选择了 agent<br/>有工具白名单" --> R3{"toolCodes 是否包含 search_knowledge"}
-  R2 -- "未选择 agent<br/>无白名单" --> R5["VectorStoreService.similaritySearch()<br/>直接向量检索"]
+  R2 -- "未选择 agent<br/>无白名单" --> R5["VectorStoreService.similaritySearch()<br/>无标签范围则全局检索"]
   R3 -- "否" --> ERR
   R3 -- "是" --> R5
   R5 --> R6["EmbeddingService.createEmbedding()<br/>把问题转成向量"]
@@ -177,7 +177,7 @@ flowchart TD
 
   K1 --> K2{"agent.toolCodes 是否允许 search_knowledge"}
   K2 -- "否" --> K3["抛出错误<br/>智能体未授权工具"]
-  K2 -- "是" --> K4["VectorStoreService.similaritySearch()<br/>按 queryField 检索知识库"]
+  K2 -- "是" --> K4["VectorStoreService.similaritySearch()<br/>按 queryField 和 agent 知识标签检索"]
   K4 --> K5["写入 outputField 和 values.sources<br/>保存知识来源"]
 
   L1 --> L2{"是否流式执行"}
@@ -240,7 +240,7 @@ flowchart TD
 | 基础对话 | 选择“普通聊天”，也可以不选智能体 | 可选 | 模型环境变量或 agent 的 `model` | 模型密钥、模型名、网络不可用 |
 | 带提示词的基础对话 | 选择一个无 `workflowCode`、`mode = chat` 的 agent | 必须 | 启用的 `AiAgent` + 启用的 `AiPrompt` | agent 未启用、prompt 未启用、提示词变量缺失 |
 | 知识库问答 | 选择“知识库问答”，或选择 `knowledgeEnabled = true` 的 agent | 可选 | `documents` 中有向量数据，Embedding 可用 | 无知识数据、向量维度不匹配、检索为空 |
-| 带 agent 的知识库问答 | 选择 `mode = knowledge` 或 `knowledgeEnabled = true` 的 agent | 必须 | agent 的 `toolCodes` 包含 `search_knowledge` | 报“智能体未授权工具：search_knowledge” |
+| 带 agent 的知识库问答 | 选择 `mode = knowledge` 或 `knowledgeEnabled = true` 的 agent | 必须 | agent 的 `toolCodes` 包含 `search_knowledge`；如配置 `knowledgeTags`，文档 `metadata.tags` 需要命中 | 报“智能体未授权工具：search_knowledge”或检索范围内无结果 |
 | 任务流/工作流 | 选择绑定了 `workflowCode` 的智能体 | 必须 | 启用的 agent、启用的 workflow、合法节点和连线 | 工作流未启用、图校验失败、工具未授权 |
 | 流式任务流 | 聊天页选择工作流智能体后发送 | 必须 | 工作流最多一个 `llm` 节点 | 多个 LLM 节点会报“当前版本仅支持一个流式 LLM 节点” |
 
@@ -255,7 +255,7 @@ flowchart TD
 | `AiMessage` | 会话消息 | `role`、`content`、`sources`、`agentCode`、`promptId`、`workflowCode` |
 | `AiPrompt` | 提示词配置 | `code`、`name`、`scene`、`content`、`variables`、`status` |
 | `AiSensitiveWord` | 输入/输出敏感词 | `word`、`action`、`replaceWith`、`scope`、`status` |
-| `AiAgent` | 智能体运行配置 | `code`、`promptId`、`mode`、`model`、`knowledgeEnabled`、`toolCodes`、`workflowCode` |
+| `AiAgent` | 智能体运行配置 | `code`、`promptId`、`mode`、`model`、`knowledgeEnabled`、`knowledgeTags`、`toolCodes`、`workflowCode` |
 | `AiWorkflow` | 工作流基础信息 | `code`、`name`、`status`、`version` |
 | `AiWorkflowNode` | 工作流节点 | `workflowId`、`nodeKey`、`type`、`name`、`config`、`sortNo` |
 | `AiWorkflowEdge` | 工作流连线 | `workflowId`、`fromNodeKey`、`toNodeKey`、`condition`、`sortNo` |
@@ -379,16 +379,18 @@ flowchart LR
 - 工作流里的 `tool` 节点需要授权对应 `toolCode`。
 - 聊天链路执行工作流时，授权来源就是当前 agent 的 `toolCodes`。
 
-所以新增智能体时即使已经选择了工作流，也仍然要配置工具；否则工作流可以被绑定，但执行到知识库或工具节点时会因为未授权失败。
+`GET /ai-platform/agent/config-options` 会返回每个启用工作流的 `requiredToolCodes` 和 `promptIds`。后台选择工作流后会自动合并必需工具，并禁用这些必需工具选项；用户只能收窄额外工具，不能去掉工作流必需工具。
 
-当前默认工具执行器会注册基础工具：
+后端新增/编辑智能体时也会校验工作流必需工具。如果 `toolCodes` 缺少工作流里 `knowledge` 或 `tool` 节点依赖的工具，会直接保存失败，错误提示会列出缺失工具。
+
+当前工具执行器只执行已经注册到 `AIRegistry` 的真实业务工具：
 
 | 工具 | 说明 |
 | --- | --- |
-| `search_web` | 演示用网络搜索工具 |
-| `get_time` | 获取当前时间 |
+| `search_knowledge` | 调用向量知识库检索 |
+| `get_user_menu_permissions` | 查询当前用户菜单权限 |
 
-`knowledge-bot` 模块还会注册业务相关工具，例如知识库搜索、添加文档、获取用户菜单权限。排查工具是否能用时，看两个位置：
+`knowledge-bot` 模块会注册业务相关工具。排查工具是否能用时，看两个位置：
 
 1. `/ai-platform/tool/list` 是否能看到这个工具。
 2. 当前 agent 的 `toolCodes` 是否包含这个工具。
@@ -426,13 +428,16 @@ flowchart LR
 | `temperature` | 生成随机性 | 传给大模型 |
 | `topP` | 采样范围 | 传给大模型 |
 | `knowledgeEnabled` | 是否强制知识库模式 | 为 true 时，运行时 mode 固定为 `knowledge` |
-| `toolCodes` | 工具白名单 | 控制知识库检索和工具节点是否允许执行 |
+| `knowledgeTags` | 知识库检索标签范围 | 为空时全局检索；有值时只检索 `Document.metadata.tags` 命中的知识 |
+| `toolCodes` | 工具白名单 | 控制知识库检索和工具节点是否允许执行；绑定工作流时必须包含工作流必需工具 |
 | `workflowCode` | 绑定工作流 | 有值时，对话会转到工作流执行 |
 | `status` | 启停状态 | 只有启用状态可被聊天解析 |
 
-`GET /ai-platform/agent/config-options` 会返回可选的提示词、工作流和工具，用于 agent 表单配置。
+`GET /ai-platform/agent/config-options` 会返回可选的提示词、工作流、工作流依赖和工具，用于 agent 表单配置。
 
 `GET /ai-platform/agent/enabled-options` 会返回聊天页可选择的启用智能体。
+
+后台智能体页面的“知识范围”会维护 `knowledgeTags`。这个字段不会创建新的知识库集合表，而是复用知识文档的 `metadata.tags`：创建或上传知识时给文档打标签，智能体配置相同标签后，普通 RAG 和工作流 `knowledge` 节点都会按这些标签过滤。未配置 `knowledgeTags` 的旧智能体保持全局检索行为。
 
 ## 4. 对话流程
 
@@ -629,8 +634,8 @@ flowchart TD
   A["ChatService"] --> B["AiOrchestratorService.buildCompletion(mode=knowledge)"]
   B --> C["校验工具 search_knowledge 是否授权"]
   C --> D["EmbeddingService.createEmbedding(message)"]
-  D --> E["VectorStoreService.similaritySearch(message, 5)"]
-  E --> F["pgvector documents 按距离排序"]
+  D --> E["VectorStoreService.similaritySearch(message, 5, knowledgeTags)"]
+  E --> F["pgvector documents 按标签范围过滤并按距离排序"]
   F --> G["把命中片段拼进 systemPrompt"]
   G --> H["LlmService 调模型"]
   H --> I["保存 answer 和 sources"]
@@ -652,6 +657,8 @@ flowchart TD
 ```
 
 如果没有选择 agent，只是手动选择知识库模式，当前代码不会传入工具白名单，所以不会触发该授权拦截。
+
+如果选择了 agent，且 agent 配置了 `knowledgeTags`，检索会增加 `Document.metadata.tags` 过滤条件；只要文档标签命中任一 `knowledgeTags`，才会进入相似度排序。`knowledgeTags` 为空时不加过滤条件，继续保持全局知识库检索。
 
 ### 4.7 工作流对话分支
 
@@ -824,6 +831,8 @@ values.message = input.message
 
 注意：该节点要求 `allowedToolCodes` 包含 `search_knowledge`。也就是绑定这个工作流的 agent 必须勾选 `search_knowledge` 工具。
 
+如果当前 agent 配置了 `knowledgeTags`，该节点会把标签范围传给向量检索，只返回 `Document.metadata.tags` 命中的知识片段；未配置时保持全局检索。
+
 #### llm 节点
 
 配置示例：
@@ -858,7 +867,7 @@ values.message = input.message
 
 ```json
 {
-  "toolCode": "get_time",
+  "toolCode": "get_user_menu_permissions",
   "paramsField": "toolParams",
   "outputField": "toolResult"
 }

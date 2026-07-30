@@ -8,5 +8,7 @@ export type AgentRuntimeConfig = {
   systemPrompt: string
   llmOptions: LlmOptions
   toolCodes: string[]
+  knowledgeStrict: boolean
+  promptEnhancement?: string
   workflowCode?: string
 }

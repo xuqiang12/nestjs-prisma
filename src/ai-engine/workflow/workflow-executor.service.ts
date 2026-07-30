@@ -6,6 +6,9 @@ import { VectorStoreService } from '../vector/vector-store.service'
 import { WorkflowExecutionInput, WorkflowExecutionResult, WorkflowGraph, WorkflowNode, WorkflowStreamEvent } from './workflow.types'
 import { WorkflowRunLoggerService } from './workflow-run-logger.service'
 
+const STRICT_KNOWLEDGE_MAX_DISTANCE = 0.45
+const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
+
 @Injectable()
 export class WorkflowExecutorService {
   constructor(
@@ -187,7 +190,7 @@ export class WorkflowExecutorService {
       if (!prompt) {
         throw new BadRequestException(`提示词不存在或未启用：${config.promptId}`)
       }
-      const content = prompt.content
+      const content = this.joinPrompt(prompt.content, input.promptEnhancement)
       values[config.outputField] = content
       return { [config.outputField]: content }
     }
@@ -195,13 +198,20 @@ export class WorkflowExecutorService {
     if (node.type === 'knowledge') {
       this.ensureToolAllowed('search_knowledge', input.allowedToolCodes)
       const query = this.readValue(values, config.queryField)
-      const sources = await this.vectorStore.similaritySearch(String(query || ''), config.limit ? Number(config.limit) : 5)
+      const matchedSources = await this.vectorStore.similaritySearch(String(query || ''), config.limit ? Number(config.limit) : 5)
+      const sources = input.knowledgeStrict
+        ? matchedSources.filter((item) => item.distance <= STRICT_KNOWLEDGE_MAX_DISTANCE)
+        : matchedSources
       values[config.outputField] = sources
       values.sources = sources
       return { [config.outputField]: sources }
     }
 
     if (node.type === 'llm') {
+      if (input.knowledgeStrict && Array.isArray(values.sources) && !values.sources.length) {
+        values[config.outputField] = STRICT_KNOWLEDGE_FALLBACK
+        return { [config.outputField]: STRICT_KNOWLEDGE_FALLBACK }
+      }
       const messages = this.buildLlmMessages(config, values, input)
       const answer = await this.llmService.invokeWithMessages(messages, input.llmOptions)
       values[config.outputField] = answer
@@ -229,6 +239,11 @@ export class WorkflowExecutorService {
 
   private async *streamLlmNode(node: WorkflowNode, values: Record<string, any>, input: WorkflowExecutionInput) {
     const config = node.config || {}
+    if (input.knowledgeStrict && Array.isArray(values.sources) && !values.sources.length) {
+      values[config.outputField] = STRICT_KNOWLEDGE_FALLBACK
+      yield { type: 'content' as const, content: STRICT_KNOWLEDGE_FALLBACK }
+      return { [config.outputField]: STRICT_KNOWLEDGE_FALLBACK }
+    }
     const messages = this.buildLlmMessages(config, values, input)
     let answer = ''
     for await (const content of this.llmService.streamWithMessages(messages, input.llmOptions)) {
@@ -294,5 +309,12 @@ export class WorkflowExecutorService {
 
   private readValue(values: Record<string, any>, field: string) {
     return field.split('.').reduce((current, key) => current?.[key], values)
+  }
+
+  private joinPrompt(...parts: Array<string | null | undefined>) {
+    return parts
+      .map((item) => (typeof item === 'string' ? item.trim() : ''))
+      .filter(Boolean)
+      .join('\n\n')
   }
 }

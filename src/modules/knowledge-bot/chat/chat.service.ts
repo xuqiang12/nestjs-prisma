@@ -56,6 +56,8 @@ export class ChatService {
         workflowCode: agent.workflowCode,
         conversationId: conversation.id,
         allowedToolCodes: agent.toolCodes,
+        knowledgeStrict: agent.knowledgeStrict,
+        promptEnhancement: agent.promptEnhancement,
         llmOptions: agent.llmOptions,
       })
       const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(
@@ -91,9 +93,9 @@ export class ChatService {
       checkedInput.content,
       agent?.mode || this.normalizeMode(conversation.mode),
       history,
-      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes },
+      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict },
     )
-    const answer = await this.aiOrchestratorService.complete(plan.messages, agent?.llmOptions)
+    const answer = plan.directAnswer || await this.aiOrchestratorService.complete(plan.messages, agent?.llmOptions)
     const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
     await this.conversationService.addMessage(
       conversation.id,
@@ -160,6 +162,8 @@ export class ChatService {
         workflowCode: agent.workflowCode,
         conversationId: conversation.id,
         allowedToolCodes: agent.toolCodes,
+        knowledgeStrict: agent.knowledgeStrict,
+        promptEnhancement: agent.promptEnhancement,
         llmOptions: agent.llmOptions,
       })) {
         if (event.type === 'content') {
@@ -194,9 +198,29 @@ export class ChatService {
       checkedInput.content,
       agent?.mode || this.normalizeMode(conversation.mode),
       history,
-      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes },
+      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict },
     )
     let answer = ''
+
+    if (plan.directAnswer) {
+      answer = plan.directAnswer
+      yield { type: 'content', content: plan.directAnswer }
+      const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
+      await this.conversationService.addMessage(
+        conversation.id,
+        'assistant',
+        checkedOutput.content,
+        plan.sources,
+        {
+          agentCode: agent?.agentCode,
+          promptId: agent?.promptId,
+          workflowCode: agent?.workflowCode,
+        },
+      )
+      await this.conversationService.touchConversation(conversation.id)
+      yield { type: 'sources', sources: plan.sources }
+      return
+    }
 
     for await (const content of this.aiOrchestratorService.streamCompletion(
       plan.messages,

@@ -33,6 +33,11 @@ const permissionSeeds = [
   { code: 'ai:workflow:update', name: '修改工作流' },
   { code: 'ai:workflow:status', name: '修改工作流状态' },
   { code: 'ai:workflow:test', name: '测试运行工作流' },
+  { code: 'ai:skill-package:list', name: '查询技能包列表' },
+  { code: 'ai:skill-package:add', name: '新增技能包' },
+  { code: 'ai:skill-package:update', name: '修改技能包' },
+  { code: 'ai:skill-package:status', name: '修改技能包状态' },
+  { code: 'ai:skill-package:install', name: '安装技能包' },
   { code: 'ai:workflow-run:list', name: '查询工作流运行记录' },
   { code: 'ai:workflow-run:detail', name: '查询工作流运行详情' },
 ]

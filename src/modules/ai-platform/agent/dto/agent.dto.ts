@@ -4,9 +4,10 @@ import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, M
 import { CHAT_MODES } from '../../../knowledge-bot/chat/dto/chat.dto'
 
 export class CreateAgentDto {
-  @ApiProperty({ description: '智能体编码' })
+  @ApiPropertyOptional({ description: '智能体编码，新增时由系统自动生成' })
   @IsString()
-  code: string
+  @IsOptional()
+  code?: string
 
   @ApiProperty({ description: '智能体名称' })
   @IsString()
@@ -17,9 +18,46 @@ export class CreateAgentDto {
   @IsOptional()
   description?: string
 
+  @ApiPropertyOptional({ description: '智能体头像地址' })
+  @IsString()
+  @IsOptional()
+  avatar?: string
+
+  @ApiPropertyOptional({ description: '欢迎语' })
+  @IsString()
+  @IsOptional()
+  welcomeMessage?: string
+
+  @ApiPropertyOptional({ description: '默认推荐问题' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  recommendedQuestions?: string[]
+
+  @ApiPropertyOptional({ description: '智能体标签' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  tags?: string[]
+
   @ApiProperty({ description: '绑定提示词ID' })
   @IsString()
   promptId: string
+
+  @ApiPropertyOptional({ description: '是否随提示词模板变化', default: true })
+  @IsBoolean()
+  @IsOptional()
+  promptSyncEnabled?: boolean
+
+  @ApiPropertyOptional({ description: '提示词模板快照' })
+  @IsString()
+  @IsOptional()
+  promptSnapshot?: string
+
+  @ApiPropertyOptional({ description: '智能体补充提示词' })
+  @IsString()
+  @IsOptional()
+  promptEnhancement?: string
 
   @ApiPropertyOptional({ description: '默认模式', enum: CHAT_MODES, default: 'chat' })
   @IsIn(CHAT_MODES)
@@ -51,6 +89,11 @@ export class CreateAgentDto {
   @IsBoolean()
   @IsOptional()
   knowledgeEnabled?: boolean
+
+  @ApiPropertyOptional({ description: '是否仅依据知识库回答', default: false })
+  @IsBoolean()
+  @IsOptional()
+  knowledgeStrict?: boolean
 
   @ApiPropertyOptional({ description: '允许使用的工具编码' })
   @IsArray()

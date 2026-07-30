@@ -1,0 +1,40 @@
+const assert = require('node:assert/strict')
+const { existsSync, readFileSync } = require('node:fs')
+const { test } = require('node:test')
+const { join } = require('node:path')
+
+const rootDir = join(__dirname, '..')
+
+test('ai agent stores knowledge tag scope', () => {
+  const schema = readFileSync(join(rootDir, 'prisma/schema.prisma'), 'utf8')
+  const dto = readFileSync(join(rootDir, 'src/modules/ai-platform/agent/dto/agent.dto.ts'), 'utf8')
+  const service = readFileSync(join(rootDir, 'src/modules/ai-platform/agent/agent.service.ts'), 'utf8')
+  const migration = join(rootDir, 'prisma/migrations/20260729040000_add_ai_agent_knowledge_tags/migration.sql')
+
+  assert.match(schema, /knowledgeTags\s+Json\?/)
+  assert.match(dto, /knowledgeTags\?:\s*string\[\]/)
+  assert.match(service, /knowledgeTags:\s*true/)
+  assert.match(service, /knowledgeTags:\s*dto\.knowledgeTags as Prisma\.InputJsonValue/)
+  assert.ok(existsSync(migration), 'migration should add agent knowledge tag scope')
+})
+
+test('agent runtime passes knowledge tags into rag and workflow searches', () => {
+  const runtimeTypes = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.types.ts'), 'utf8')
+  const runtimeService = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.service.ts'), 'utf8')
+  const chatService = readFileSync(join(rootDir, 'src/modules/knowledge-bot/chat/chat.service.ts'), 'utf8')
+  const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
+  const workflowTypes = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow.types.ts'), 'utf8')
+  const workflowExecutor = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow-executor.service.ts'), 'utf8')
+  const vectorStore = readFileSync(join(rootDir, 'src/ai-engine/vector/vector-store.service.ts'), 'utf8')
+
+  assert.match(runtimeTypes, /knowledgeTags:\s*string\[\]/)
+  assert.match(runtimeService, /knowledgeTags:\s*this\.normalizeStringArray\(agent\.knowledgeTags\)/)
+  assert.match(chatService, /knowledgeTags:\s*agent\.knowledgeTags/)
+  assert.match(orchestrator, /knowledgeTags\?:\s*string\[\]/)
+  assert.match(orchestrator, /similaritySearch\(message,\s*5,\s*\{\s*tags:\s*options\.knowledgeTags\s*\}\)/)
+  assert.match(workflowTypes, /knowledgeTags\?:\s*string\[\]/)
+  assert.match(workflowExecutor, /similaritySearch\(String\(query \|\| ''\),\s*config\.limit \? Number\(config\.limit\) : 5,\s*\{\s*tags:\s*input\.knowledgeTags\s*\}\)/)
+  assert.match(vectorStore, /type SearchOptions = \{\s*tags\?: string\[\]\s*\}/)
+  assert.match(vectorStore, /metadata->'tags'/)
+  assert.match(vectorStore, /\?\|/)
+})

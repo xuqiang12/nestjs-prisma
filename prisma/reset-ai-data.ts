@@ -49,6 +49,7 @@ async function clearAiData() {
     prisma.aiWorkflowEdge.deleteMany(),
     prisma.aiWorkflowNode.deleteMany(),
     prisma.aiWorkflow.deleteMany(),
+    prisma.aiSkillPackage.deleteMany(),
     prisma.aiAgent.deleteMany(),
     prisma.aiSensitiveWord.deleteMany(),
     prisma.aiPrompt.deleteMany(),
@@ -243,6 +244,27 @@ async function seedAiData() {
       },
     ],
   })
+
+  await prisma.aiSkillPackage.create({
+    data: {
+      code: 'customer_service_basic_package',
+      name: '客服基础能力包',
+      description: '面向客服接待和知识库问答的基础能力组合，包含接待提示词、知识库提示词和知识库检索工具。',
+      promptIds: json([promptId(PROMPT_CODES.customerReception), promptId(PROMPT_CODES.knowledgeAnswer)]),
+      toolCodes: json(['search_knowledge']),
+      workflowCode: 'knowledge_service_flow',
+      agentDefaults: json({
+        promptId: promptId(PROMPT_CODES.knowledgeAnswer),
+        mode: 'knowledge',
+        model: 'Qwen/Qwen2.5-7B-Instruct',
+        temperature: 0.2,
+        topP: 0.75,
+        knowledgeEnabled: true,
+      }),
+      status: 1,
+      remark: '可安装到需要知识库能力的运行方案',
+    },
+  })
 }
 
 async function printCounts() {
@@ -253,6 +275,7 @@ async function printCounts() {
     workflows: await prisma.aiWorkflow.count(),
     workflowNodes: await prisma.aiWorkflowNode.count(),
     workflowEdges: await prisma.aiWorkflowEdge.count(),
+    skillPackages: await prisma.aiSkillPackage.count(),
     conversations: await prisma.aiConversation.count(),
     messages: await prisma.aiMessage.count(),
     workflowRuns: await prisma.aiWorkflowRun.count(),

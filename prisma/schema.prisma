@@ -21,7 +21,7 @@ generator client {
 // 枚举（⭐新增：让类型更清晰）
 // ==============================
 enum MenuType { // ⭐修改：替换原来的 Int type
-  DIRECTORY
+  MENU
   PAGE
 }
 
@@ -114,7 +114,7 @@ model Menu {
   component String? // 前端组件路径
   icon      String? // 菜单图标
   sort      Int?       @default(0) // 排序
-  type      MenuType   @default(PAGE) // ⭐修改：用 enum
+  type      MenuType   @default(MENU) // MENU=侧边栏菜单，PAGE=详情页
   buttons   MenuButton[] // 页面按钮
   roles     MenuRole[] // ⭐新增：关联角色（控制菜单权限）
   createdAt DateTime   @default(now())
@@ -197,7 +197,6 @@ model AiPrompt {
   name      String
   scene     String
   content   String
-  version   Int      @default(1)
   status    Int      @default(1)
   remark    String?
   agents    AiAgent[]

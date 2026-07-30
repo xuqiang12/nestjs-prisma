@@ -2,7 +2,7 @@
 import { prisma } from '../client'
 
 export enum MenuType {
-  DIRECTORY = 'DIRECTORY',
+  MENU = 'MENU',
   PAGE = 'PAGE',
 }
 
@@ -36,7 +36,7 @@ const menuSeeds: MenuSeed[] = [
     component: 'Layout',
     icon: 'el-icon-set-up',
     sort: 1,
-    type: MenuType.DIRECTORY,
+    type: MenuType.MENU,
   },
   {
     name: '菜单管理',
@@ -44,7 +44,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/system/menu/index',
     icon: 'HomeOutlined',
     sort: 0,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/system',
   },
   {
@@ -53,7 +53,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/system/user/index',
     icon: 'HomeOutlined',
     sort: 1,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/system',
   },
   {
@@ -62,7 +62,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/system/role/index',
     icon: 'HomeOutlined',
     sort: 2,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/system',
   },
   {
@@ -71,7 +71,7 @@ const menuSeeds: MenuSeed[] = [
     component: 'Layout',
     icon: 'cms-ai',
     sort: 0,
-    type: MenuType.DIRECTORY,
+    type: MenuType.MENU,
   },
   {
     name: 'AI对话',
@@ -79,7 +79,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/chat/index',
     icon: '',
     sort: 0,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -88,7 +88,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/knowledge/index',
     icon: '',
     sort: 0,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -97,7 +97,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/prompt/index',
     icon: '',
     sort: 1,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -106,7 +106,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/sensitiveWord/index',
     icon: '',
     sort: 2,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -115,7 +115,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/agent/index',
     icon: '',
     sort: 3,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -124,7 +124,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/tool/index',
     icon: '',
     sort: 4,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -133,7 +133,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/workflow/index',
     icon: '',
     sort: 5,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -142,7 +142,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/skillPackage/index',
     icon: '',
     sort: 6,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -151,7 +151,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/AIEngine/workflowRun/index',
     icon: '',
     sort: 7,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/AIEngine',
   },
   {
@@ -160,7 +160,7 @@ const menuSeeds: MenuSeed[] = [
     component: 'Layout',
     icon: 'el-icon-mobile-phone',
     sort: 2,
-    type: MenuType.DIRECTORY,
+    type: MenuType.MENU,
   },
   {
     name: '首页配置',
@@ -168,7 +168,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/mobile/homeConfig/index',
     icon: '',
     sort: 0,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/mobile',
     legacyPaths: ['/mobile/homeConfig'],
   },
@@ -178,7 +178,7 @@ const menuSeeds: MenuSeed[] = [
     component: '/mobile/tabBar/index',
     icon: 'el-icon-menu',
     sort: 1,
-    type: MenuType.PAGE,
+    type: MenuType.MENU,
     parentPath: '/mobile',
     legacyPaths: ['/mobile/tabBar'],
   },
@@ -198,6 +198,7 @@ const buttonSeeds: ButtonSeed[] = [
   { menuPath: '/AIEngine/prompt/index', permissionCode: 'ai:prompt:add', name: '新增', sort: 2 },
   { menuPath: '/AIEngine/prompt/index', permissionCode: 'ai:prompt:update', name: '修改', sort: 3 },
   { menuPath: '/AIEngine/prompt/index', permissionCode: 'ai:prompt:status', name: '启停', sort: 4 },
+  { menuPath: '/AIEngine/prompt/index', permissionCode: 'ai:prompt:delete', name: '删除', sort: 5 },
   { menuPath: '/AIEngine/sensitiveWord/index', permissionCode: 'ai:sensitive-word:list', name: '查询', sort: 1 },
   { menuPath: '/AIEngine/sensitiveWord/index', permissionCode: 'ai:sensitive-word:add', name: '新增', sort: 2 },
   { menuPath: '/AIEngine/sensitiveWord/index', permissionCode: 'ai:sensitive-word:update', name: '修改', sort: 3 },

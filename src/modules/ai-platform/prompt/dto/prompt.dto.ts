@@ -15,12 +15,6 @@ export class CreatePromptDto {
   @IsString()
   content: string
 
-  @ApiPropertyOptional({ description: '版本号', default: 1 })
-  @IsInt()
-  @Min(1)
-  @IsOptional()
-  version?: number
-
   @ApiPropertyOptional({ description: '状态：1 启用，0 停用', default: 1 })
   @IsInt()
   @Min(0)
@@ -95,4 +89,10 @@ export class PromptStatusDto {
   @Min(0)
   @Max(1)
   status: number
+}
+
+export class DeletePromptDto {
+  @ApiProperty({ description: '提示词 ID' })
+  @IsString()
+  id: string
 }

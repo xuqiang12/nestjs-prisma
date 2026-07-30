@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
 import { CreatePromptDto, PromptListDto, PromptStatusDto, UpdatePromptDto } from './dto/prompt.dto'
@@ -42,7 +42,6 @@ export class PromptService {
         name: dto.name,
         scene: dto.scene,
         content: dto.content,
-        version: dto.version || 1,
         status: dto.status ?? 1,
         remark: dto.remark,
       },
@@ -59,7 +58,6 @@ export class PromptService {
         name: dto.name,
         scene: dto.scene,
         content: dto.content,
-        version: dto.version,
         status: dto.status,
         remark: dto.remark,
       },
@@ -75,6 +73,16 @@ export class PromptService {
       data: { status: dto.status },
     })
     return '提示词状态修改成功'
+  }
+
+  async delete(id: string) {
+    await this.ensurePrompt(id)
+    const agentCount = await this.prisma.aiAgent.count({ where: { promptId: id } })
+    if (agentCount > 0) {
+      throw new BadRequestException('提示词已绑定智能体，不能删除')
+    }
+    await this.prisma.aiPrompt.delete({ where: { id } })
+    return '提示词删除成功'
   }
 
   async findEnabledByCode(code: string) {

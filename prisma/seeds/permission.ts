@@ -19,6 +19,7 @@ const permissionSeeds = [
   { code: 'ai:prompt:add', name: '新增提示词' },
   { code: 'ai:prompt:update', name: '修改提示词' },
   { code: 'ai:prompt:status', name: '修改提示词状态' },
+  { code: 'ai:prompt:delete', name: '删除提示词' },
   { code: 'ai:sensitive-word:list', name: '查询敏感词列表' },
   { code: 'ai:sensitive-word:add', name: '新增敏感词' },
   { code: 'ai:sensitive-word:update', name: '修改敏感词' },

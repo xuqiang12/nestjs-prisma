@@ -1,0 +1,1 @@
+ALTER TABLE "AiPrompt" DROP COLUMN IF EXISTS "version";

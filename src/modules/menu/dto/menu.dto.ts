@@ -1,7 +1,7 @@
 import { IsInt, IsOptional, IsString } from 'class-validator'
 import { ApiProperty, PartialType } from '@nestjs/swagger'
 export enum MenuType {
-  DIRECTORY = 'DIRECTORY',
+  MENU = 'MENU',
   PAGE = 'PAGE',
 }
 
@@ -35,7 +35,7 @@ export class CreateDto {
   @IsOptional()
   sort?: number
 
-  @ApiProperty({ description: '类型 DIRECTORY=菜单 PAGE=页面', default: MenuType.PAGE })
+  @ApiProperty({ description: '类型 MENU=菜单 PAGE=详情页', default: MenuType.MENU })
   @IsString()
   type: MenuType
 }

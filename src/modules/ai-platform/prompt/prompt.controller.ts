@@ -1,7 +1,14 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { Permissions } from '../../../common/decorators/permissions.decorator'
-import { CreatePromptDto, PromptDetailDto, PromptListDto, PromptStatusDto, UpdatePromptDto } from './dto/prompt.dto'
+import {
+  CreatePromptDto,
+  DeletePromptDto,
+  PromptDetailDto,
+  PromptListDto,
+  PromptStatusDto,
+  UpdatePromptDto,
+} from './dto/prompt.dto'
 import { PromptService } from './prompt.service'
 
 @ApiTags('AI配置模块')
@@ -43,5 +50,12 @@ export class PromptController {
   @Post('status')
   updateStatus(@Body() dto: PromptStatusDto) {
     return this.promptService.updateStatus(dto)
+  }
+
+  @ApiOperation({ summary: '删除提示词' })
+  @Permissions('ai:prompt:delete')
+  @Post('delete')
+  delete(@Body() dto: DeletePromptDto) {
+    return this.promptService.delete(dto.id)
   }
 }

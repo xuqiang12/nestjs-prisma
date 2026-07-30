@@ -57,7 +57,7 @@ export class ChatService {
         conversationId: conversation.id,
         allowedToolCodes: agent.toolCodes,
         knowledgeStrict: agent.knowledgeStrict,
-        promptEnhancement: agent.promptEnhancement,
+        knowledgeTags: agent.knowledgeTags,
         llmOptions: agent.llmOptions,
       })
       const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(
@@ -93,7 +93,7 @@ export class ChatService {
       checkedInput.content,
       agent?.mode || this.normalizeMode(conversation.mode),
       history,
-      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict },
+      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict, knowledgeTags: agent?.knowledgeTags },
     )
     const answer = plan.directAnswer || await this.aiOrchestratorService.complete(plan.messages, agent?.llmOptions)
     const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
@@ -163,7 +163,7 @@ export class ChatService {
         conversationId: conversation.id,
         allowedToolCodes: agent.toolCodes,
         knowledgeStrict: agent.knowledgeStrict,
-        promptEnhancement: agent.promptEnhancement,
+        knowledgeTags: agent.knowledgeTags,
         llmOptions: agent.llmOptions,
       })) {
         if (event.type === 'content') {
@@ -198,7 +198,7 @@ export class ChatService {
       checkedInput.content,
       agent?.mode || this.normalizeMode(conversation.mode),
       history,
-      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict },
+      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict, knowledgeTags: agent?.knowledgeTags },
     )
     let answer = ''
 

@@ -10,12 +10,14 @@ test('ai agent stores knowledge tag scope', () => {
   const dto = readFileSync(join(rootDir, 'src/modules/ai-platform/agent/dto/agent.dto.ts'), 'utf8')
   const service = readFileSync(join(rootDir, 'src/modules/ai-platform/agent/agent.service.ts'), 'utf8')
   const migration = join(rootDir, 'prisma/migrations/20260729040000_add_ai_agent_knowledge_tags/migration.sql')
+  const restoreMigration = join(rootDir, 'prisma/migrations/20260730000000_restore_ai_agent_knowledge_tags/migration.sql')
 
   assert.match(schema, /knowledgeTags\s+Json\?/)
   assert.match(dto, /knowledgeTags\?:\s*string\[\]/)
   assert.match(service, /knowledgeTags:\s*true/)
   assert.match(service, /knowledgeTags:\s*dto\.knowledgeTags as Prisma\.InputJsonValue/)
   assert.ok(existsSync(migration), 'migration should add agent knowledge tag scope')
+  assert.ok(existsSync(restoreMigration), 'migration should restore agent knowledge tag scope after prompt policy change')
 })
 
 test('agent runtime passes knowledge tags into rag and workflow searches', () => {

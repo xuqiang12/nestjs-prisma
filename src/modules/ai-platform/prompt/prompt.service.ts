@@ -64,6 +64,7 @@ export class PromptService {
         remark: dto.remark,
       },
     })
+    await this.syncAgentPromptSnapshots(dto.id, dto.content)
     return '提示词修改成功'
   }
 
@@ -93,5 +94,15 @@ export class PromptService {
   private async nextPromptCode() {
     const rows = await this.prisma.$queryRaw<{ code: string }[]>`SELECT next_prompt_code() AS code`
     return rows[0].code
+  }
+
+  private async syncAgentPromptSnapshots(promptId: string, content?: string) {
+    if (content === undefined) {
+      return
+    }
+    await this.prisma.aiAgent.updateMany({
+      where: { promptId, promptSyncEnabled: true },
+      data: { promptSnapshot: content },
+    })
   }
 }

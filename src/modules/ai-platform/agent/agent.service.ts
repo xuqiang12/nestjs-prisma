@@ -68,6 +68,7 @@ export class AgentService {
         model: true,
         knowledgeEnabled: true,
         knowledgeStrict: true,
+        knowledgeTags: true,
         toolCodes: true,
         workflowCode: true,
       },
@@ -140,7 +141,7 @@ export class AgentService {
   }
 
   async update(dto: UpdateAgentDto) {
-    await this.ensureAgent(dto.id)
+    const agent = await this.ensureAgent(dto.id)
     if (dto.promptId) {
       await this.ensureEnabledPrompt(dto.promptId)
     }
@@ -150,7 +151,7 @@ export class AgentService {
     this.ensureKnownTools(dto.toolCodes)
     await this.ensureWorkflowRequiredTools(dto.workflowCode, dto.toolCodes)
 
-    const data = await this.toAgentData(dto)
+    const data = await this.toAgentData(dto, agent.promptId)
     await this.prisma.aiAgent.update({
       where: { id: dto.id },
       data: data as Prisma.AiAgentUncheckedUpdateInput,
@@ -167,7 +168,8 @@ export class AgentService {
     return '智能体状态修改成功'
   }
 
-  private async toAgentData(dto: CreateAgentDto | UpdateAgentDto) {
+  private async toAgentData(dto: CreateAgentDto | UpdateAgentDto, fallbackPromptId?: string) {
+    const promptId = dto.promptId || fallbackPromptId
     const data: Record<string, any> = {
       name: dto.name,
       description: dto.description,
@@ -184,15 +186,14 @@ export class AgentService {
       topP: dto.topP,
       knowledgeEnabled: dto.knowledgeEnabled,
       knowledgeStrict: dto.knowledgeStrict,
+      knowledgeTags: dto.knowledgeTags as Prisma.InputJsonValue,
       toolCodes: dto.toolCodes as Prisma.InputJsonValue,
       workflowCode: dto.workflowCode,
       status: dto.status,
       remark: dto.remark,
     }
-    if (dto.promptSyncEnabled === false || dto.promptSnapshot !== undefined) {
-      data.promptSnapshot = dto.promptSyncEnabled === false
-        ? await this.resolvePromptSnapshot(dto.promptId, dto.promptSnapshot)
-        : null
+    if (!('id' in dto) || dto.promptId !== undefined || dto.promptSnapshot !== undefined) {
+      data.promptSnapshot = await this.resolvePromptSnapshot(promptId, dto.promptSnapshot)
     }
     return data
   }

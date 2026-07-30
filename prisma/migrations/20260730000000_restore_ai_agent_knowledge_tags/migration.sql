@@ -1,0 +1,2 @@
+ALTER TABLE "AiAgent"
+  ADD COLUMN IF NOT EXISTS "knowledgeTags" JSONB;

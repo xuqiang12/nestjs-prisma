@@ -249,6 +249,7 @@ model AiAgent {
   topP             Float?
   knowledgeEnabled Boolean  @default(false)
   knowledgeStrict  Boolean  @default(false)
+  knowledgeTags    Json?
   toolCodes        Json?
   workflowCode     String?
   status           Int      @default(1)

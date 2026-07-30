@@ -25,9 +25,7 @@ export class AgentRuntimeService {
     if (!prompt) {
       throw new BadRequestException('智能体绑定的提示词不存在或未启用')
     }
-    const basePrompt = agent.promptSyncEnabled === false && agent.promptSnapshot
-      ? agent.promptSnapshot
-      : prompt.content
+    const basePrompt = agent.promptSnapshot || prompt.content
     return {
       agentCode: agent.code,
       promptId: prompt.id,
@@ -36,7 +34,7 @@ export class AgentRuntimeService {
         : agent.mode === 'knowledge'
           ? 'knowledge'
           : 'chat',
-      systemPrompt: this.joinPrompt(basePrompt, agent.promptEnhancement),
+      systemPrompt: basePrompt,
       llmOptions: {
         model: agent.model || undefined,
         temperature: agent.temperature ?? undefined,
@@ -44,10 +42,18 @@ export class AgentRuntimeService {
       },
       toolCodes: this.normalizeToolCodes(agent.toolCodes),
       knowledgeStrict: agent.knowledgeStrict,
-      promptEnhancement: agent.promptEnhancement || undefined,
+      knowledgeTags: this.normalizeStringArray(agent.knowledgeTags),
       workflowCode: agent.workflowCode || undefined,
     }
   }
+
+  private normalizeStringArray(value: Prisma.JsonValue): string[] {
+    if (!Array.isArray(value)) {
+      return []
+    }
+    return value.filter((item): item is string => typeof item === 'string' && !!item.trim())
+  }
+
   private normalizeToolCodes(value: Prisma.JsonValue): string[] {
     if (!Array.isArray(value)) {
       return []
@@ -55,10 +61,4 @@ export class AgentRuntimeService {
     return value.filter((item): item is string => typeof item === 'string')
   }
 
-  private joinPrompt(...parts: Array<string | null | undefined>) {
-    return parts
-      .map((item) => (typeof item === 'string' ? item.trim() : ''))
-      .filter(Boolean)
-      .join('\n\n')
-  }
 }

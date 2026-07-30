@@ -15,6 +15,7 @@ export type BuildCompletionOptions = {
   systemPrompt?: string
   allowedToolCodes?: string[]
   knowledgeStrict?: boolean
+  knowledgeTags?: string[]
 }
 
 const STRICT_KNOWLEDGE_MAX_DISTANCE = 0.45
@@ -59,7 +60,7 @@ export class AiOrchestratorService {
     if (mode === 'knowledge') {
       this.ensureToolAllowed('search_knowledge', options.allowedToolCodes)
       // 知识库模式需要先做向量检索，把命中的片段作为 system prompt 的事实依据。
-      const matchedSources = await this.vectorStoreService.similaritySearch(message, 5)
+      const matchedSources = await this.vectorStoreService.similaritySearch(message, 5, { tags: options.knowledgeTags })
       const sources = options.knowledgeStrict
         ? matchedSources.filter((item) => item.distance <= STRICT_KNOWLEDGE_MAX_DISTANCE)
         : matchedSources

@@ -190,7 +190,7 @@ export class WorkflowExecutorService {
       if (!prompt) {
         throw new BadRequestException(`提示词不存在或未启用：${config.promptId}`)
       }
-      const content = this.joinPrompt(prompt.content, input.promptEnhancement)
+      const content = prompt.content
       values[config.outputField] = content
       return { [config.outputField]: content }
     }
@@ -198,7 +198,7 @@ export class WorkflowExecutorService {
     if (node.type === 'knowledge') {
       this.ensureToolAllowed('search_knowledge', input.allowedToolCodes)
       const query = this.readValue(values, config.queryField)
-      const matchedSources = await this.vectorStore.similaritySearch(String(query || ''), config.limit ? Number(config.limit) : 5)
+      const matchedSources = await this.vectorStore.similaritySearch(String(query || ''), config.limit ? Number(config.limit) : 5, { tags: input.knowledgeTags })
       const sources = input.knowledgeStrict
         ? matchedSources.filter((item) => item.distance <= STRICT_KNOWLEDGE_MAX_DISTANCE)
         : matchedSources
@@ -311,10 +311,4 @@ export class WorkflowExecutorService {
     return field.split('.').reduce((current, key) => current?.[key], values)
   }
 
-  private joinPrompt(...parts: Array<string | null | undefined>) {
-    return parts
-      .map((item) => (typeof item === 'string' ? item.trim() : ''))
-      .filter(Boolean)
-      .join('\n\n')
-  }
 }

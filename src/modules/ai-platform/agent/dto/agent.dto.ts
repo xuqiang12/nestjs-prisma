@@ -95,6 +95,12 @@ export class CreateAgentDto {
   @IsOptional()
   knowledgeStrict?: boolean
 
+  @ApiPropertyOptional({ description: '知识库标签范围' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  knowledgeTags?: string[]
+
   @ApiPropertyOptional({ description: '允许使用的工具编码' })
   @IsArray()
   @IsString({ each: true })

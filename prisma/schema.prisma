@@ -13,14 +13,14 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
 
 // ==============================
 // 枚举（⭐新增：让类型更清晰）
 // ==============================
-enum MenuType { // ⭐修改：替换原来的 Int type
+enum MenuType {
   MENU
   PAGE
 }
@@ -29,19 +29,19 @@ enum MenuType { // ⭐修改：替换原来的 Int type
 // 用户表
 // ==============================
 model User {
-  id             String     @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 用户ID
-  username       String     @unique // 用户名（唯一）
-  email          String     @unique // 邮箱（唯一）
-  phone          String     @unique // ⭐修改：手机号唯一（如果用于登录）
-  password       String // 密码
-  roles          UserRole[] 
+  id              String           @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 用户ID
+  username        String           @unique // 用户名（唯一）
+  email           String           @unique // 邮箱（唯一）
+  phone           String           @unique // ⭐修改：手机号唯一（如果用于登录）
+  password        String // 密码
+  roles           UserRole[]
   aiConversations AiConversation[] // AI 会话列表
-  avatar         String? // ⭐修改：允许为空
-  isSuperAdmin   Boolean    @default(false) // ⭐新增：超级管理员
-  isDeleted      Boolean    @default(false) // 软删除标记
-  deletedAt      DateTime?  // 软删除时间
-  createdAt      DateTime   @default(now()) // 创建时间
-  updatedAt      DateTime   @updatedAt // 更新时间
+  avatar          String? // ⭐修改：允许为空
+  isSuperAdmin    Boolean          @default(false) // ⭐新增：超级管理员
+  isDeleted       Boolean          @default(false) // 软删除标记
+  deletedAt       DateTime? // 软删除时间
+  createdAt       DateTime         @default(now()) // 创建时间
+  updatedAt       DateTime         @updatedAt // 更新时间
 }
 
 // ==============================
@@ -72,8 +72,8 @@ model Permission {
 model UserRole {
   userId String @db.VarChar(32) // 用户ID
   roleId String @db.VarChar(32) // 角色ID
-  user   User @relation(fields: [userId], references: [id])
-  role   Role @relation(fields: [roleId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
 
   @@id([userId, roleId]) // 联合主键
 }
@@ -82,8 +82,8 @@ model UserRole {
 // 角色 ↔ 权限 关联表
 // ==============================
 model RolePermission {
-  roleId       String @db.VarChar(32) // 角色ID
-  permissionId String @db.VarChar(32) // 权限ID
+  roleId       String     @db.VarChar(32) // 角色ID
+  permissionId String     @db.VarChar(32) // 权限ID
   role         Role       @relation(fields: [roleId], references: [id])
   permission   Permission @relation(fields: [permissionId], references: [id])
 
@@ -107,18 +107,18 @@ model MenuRole {
 // 菜单/页面表
 // ==============================
 model Menu {
-  id        String     @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 菜单ID
-  parentId  String?    @db.VarChar(32) // ⭐修改：去掉 @default(0)，顶级用 null
+  id        String       @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 菜单ID
+  parentId  String?      @db.VarChar(32) // ⭐修改：去掉 @default(0)，顶级用 null
   name      String // 菜单/页面名称：用户管理
   path      String? // 前端路由
   component String? // 前端组件路径
   icon      String? // 菜单图标
-  sort      Int?       @default(0) // 排序
-  type      MenuType   @default(MENU) // MENU=侧边栏菜单，PAGE=详情页
+  sort      Int?         @default(0) // 排序
+  type      MenuType     @default(MENU) // MENU=侧边栏菜单，PAGE=详情页
   buttons   MenuButton[] // 页面按钮
   roles     MenuRole[] // ⭐新增：关联角色（控制菜单权限）
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }
 
 // ==============================
@@ -136,19 +136,100 @@ model MenuButton {
   @@unique([menuId, permissionId])
 }
 
-
 // ==============================
 // 向量数据库表
 // ==============================
 model Document {
-  id        String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
-  content   String   // 原始文本（必须有）
-  metadata  Json?    // 附加信息（可选）例如：{  "source": "vue.md",  "page": 3,  "type": "doc"}
+  id              String           @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  knowledgeBaseId String?          @db.VarChar(32)
+  knowledgeBase   AiKnowledgeBase? @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  fileId          String?          @db.VarChar(32)
+  file            AiKnowledgeFile? @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  chunkIndex      Int?             @default(0)
+  tokenCount      Int?
+  charStart       Int?
+  charEnd         Int?
+  status          Int              @default(1)
+  content         String // 原始文本（必须有）
+  metadata        Json? // 附加信息（可选）例如：{  "source": "vue.md",  "page": 3,  "type": "doc"}
 
   embedding Unsupported("vector") //让 Prisma 知道这里是 pgvector 类型
-  createdAt DateTime @default(now())
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
 
+  @@index([knowledgeBaseId, status])
+  @@index([fileId, chunkIndex])
   @@map("documents")
+}
+
+// ==============================
+// AI 知识库配置表
+// ==============================
+model AiKnowledgeBase {
+  id                   String                 @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  code                 String                 @unique
+  name                 String
+  description          String?
+  ragMode              String                 @default("generic")
+  provider             String                 @default("siliconflow")
+  apiKeyEncrypted      String?
+  endpoint             String?
+  embeddingModel       String?
+  embeddingDimension   Int                    @default(1024)
+  embeddingProfileCode String                 @default("siliconflow-default")
+  embeddingApiKeyMode  String                 @default("env")
+  embeddingApiKeyRef   String?                @default("SILICONFLOW_API_KEY")
+  chunkSize            Int                    @default(500)
+  chunkOverlap         Int                    @default(100)
+  retrievalLimit       Int                    @default(5)
+  similarityThreshold  Float                  @default(0.45)
+  responseBufferMb     Int                    @default(8)
+  batchSize            Int                    @default(10)
+  status               Int                    @default(1)
+  agents               AiKnowledgeBaseAgent[]
+  files                AiKnowledgeFile[]
+  documents            Document[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  @@index([status, updatedAt])
+}
+
+// ==============================
+// AI 知识库 ↔ 智能体关联表
+// ==============================
+model AiKnowledgeBaseAgent {
+  id              String          @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  knowledgeBaseId String          @db.VarChar(32)
+  knowledgeBase   AiKnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  agentId         String          @db.VarChar(32)
+  agent           AiAgent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
+
+  @@unique([knowledgeBaseId, agentId])
+  @@index([agentId])
+}
+
+// ==============================
+// AI 知识库源文件表
+// ==============================
+model AiKnowledgeFile {
+  id              String          @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  knowledgeBaseId String          @db.VarChar(32)
+  knowledgeBase   AiKnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  originalName    String
+  storagePath     String
+  mimeType        String?
+  size            Int             @default(0)
+  checksum        String?
+  chunkCount      Int             @default(0)
+  status          String          @default("pending")
+  errorMessage    String?
+  documents       Document[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([knowledgeBaseId, status])
 }
 
 // ==============================
@@ -158,12 +239,12 @@ model AiConversation {
   id        String      @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 会话ID
   userId    String      @db.VarChar(32) // 所属用户ID
   user      User        @relation(fields: [userId], references: [id])
-  title     String      // 会话标题
+  title     String // 会话标题
   mode      String      @default("chat") // 会话模式：chat / knowledge
-  agentCode String?     // 本会话使用的智能体编码
+  agentCode String? // 本会话使用的智能体编码
   messages  AiMessage[] // 会话消息
   isDeleted Boolean     @default(false) // 软删除标记
-  deletedAt DateTime?   // 软删除时间
+  deletedAt DateTime? // 软删除时间
   createdAt DateTime    @default(now()) // 创建时间
   updatedAt DateTime    @updatedAt // 更新时间
 
@@ -177,12 +258,12 @@ model AiMessage {
   id             String         @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32) // 消息ID
   conversationId String         @db.VarChar(32) // 所属会话ID
   conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role           String         // 消息角色：user / assistant
-  content        String         // 消息内容
-  sources        Json?          // 知识库问答引用来源
-  agentCode      String?        // 生成消息时使用的智能体编码
+  role           String // 消息角色：user / assistant
+  content        String // 消息内容
+  sources        Json? // 知识库问答引用来源
+  agentCode      String? // 生成消息时使用的智能体编码
   promptId       String?        @db.VarChar(32) // 生成消息时使用的提示词ID
-  workflowCode   String?        // 生成消息时使用的工作流编码
+  workflowCode   String? // 生成消息时使用的工作流编码
   createdAt      DateTime       @default(now()) // 创建时间
 
   @@index([conversationId, createdAt])
@@ -192,16 +273,16 @@ model AiMessage {
 // AI 提示词配置表
 // ==============================
 model AiPrompt {
-  id        String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
-  code      String   @unique
+  id        String    @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  code      String    @unique
   name      String
   scene     String
   content   String
-  status    Int      @default(1)
+  status    Int       @default(1)
   remark    String?
   agents    AiAgent[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([scene, status])
 }
@@ -229,32 +310,33 @@ model AiSensitiveWord {
 // AI 智能体配置表
 // ==============================
 model AiAgent {
-  id               String   @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
-  code             String   @unique
-  name             String
-  description      String?
-  avatar           String?
-  welcomeMessage   String?
+  id                   String                 @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  code                 String                 @unique
+  name                 String
+  description          String?
+  avatar               String?
+  welcomeMessage       String?
   recommendedQuestions Json?
-  tags             Json?
-  promptId         String   @db.VarChar(32)
-  prompt           AiPrompt @relation(fields: [promptId], references: [id])
-  promptSyncEnabled Boolean @default(true)
-  promptSnapshot    String?
-  promptEnhancement String?
-  mode             String   @default("chat")
-  model            String?
-  temperature      Float?
-  topP             Float?
-  knowledgeEnabled Boolean  @default(false)
-  knowledgeStrict  Boolean  @default(false)
-  knowledgeTags    Json?
-  toolCodes        Json?
-  workflowCode     String?
-  status           Int      @default(1)
-  remark           String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  tags                 Json?
+  promptId             String                 @db.VarChar(32)
+  prompt               AiPrompt               @relation(fields: [promptId], references: [id])
+  promptSyncEnabled    Boolean                @default(true)
+  promptSnapshot       String?
+  promptEnhancement    String?
+  mode                 String                 @default("chat")
+  model                String?
+  temperature          Float?
+  topP                 Float?
+  knowledgeEnabled     Boolean                @default(false)
+  knowledgeStrict      Boolean                @default(false)
+  knowledgeTags        Json?
+  knowledgeBases       AiKnowledgeBaseAgent[]
+  toolCodes            Json?
+  workflowCode         String?
+  status               Int                    @default(1)
+  remark               String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
 
   @@index([mode, status])
   @@index([promptId])

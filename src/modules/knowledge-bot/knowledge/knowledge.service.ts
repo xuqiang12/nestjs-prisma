@@ -28,7 +28,9 @@ export class KnowledgeService {
 
   // 分页查询知识库文档列表。
   async list(query: KnowledgeListDto) {
-    return this.vectorStoreService.list(Number(query.pageNum || 1), Number(query.pageSize || 10))
+    return this.vectorStoreService.list(Number(query.pageNum || 1), Number(query.pageSize || 10), {
+      query: query.query,
+    })
   }
 
   // 删除指定知识文档。

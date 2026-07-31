@@ -14,16 +14,18 @@ export class SearchKnowledgeTool {
         query: '搜索关键词',
         limit: '返回数量',
         tags: '知识标签',
+        knowledgeBaseIds: '知识库ID列表',
       },
       handler: async (params: any) => this.execute(params),
     }
   }
 
-  async execute(params: { query?: string; limit?: number; tags?: string[] }) {
+  async execute(params: { query?: string; limit?: number; tags?: string[]; knowledgeBaseIds?: string[] }) {
     const query = String(params?.query || '')
     const limit = params?.limit ? Number(params.limit) : 5
     const tags = Array.isArray(params?.tags) ? params.tags : undefined
-    const results = await this.vectorStore.similaritySearch(query, limit, { tags })
+    const knowledgeBaseIds = Array.isArray(params?.knowledgeBaseIds) ? params.knowledgeBaseIds : undefined
+    const results = await this.vectorStore.similaritySearch(query, limit, { tags, knowledgeBaseIds })
     return { query, results }
   }
 }

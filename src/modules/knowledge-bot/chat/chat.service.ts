@@ -58,6 +58,7 @@ export class ChatService {
         allowedToolCodes: agent.toolCodes,
         knowledgeStrict: agent.knowledgeStrict,
         knowledgeTags: agent.knowledgeTags,
+        knowledgeBaseIds: agent.knowledgeBaseIds,
         llmOptions: agent.llmOptions,
       })
       const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(
@@ -93,9 +94,10 @@ export class ChatService {
       checkedInput.content,
       agent?.mode || this.normalizeMode(conversation.mode),
       history,
-      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict, knowledgeTags: agent?.knowledgeTags },
+      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict, knowledgeTags: agent?.knowledgeTags, knowledgeBaseIds: agent?.knowledgeBaseIds },
     )
-    const answer = plan.directAnswer || await this.aiOrchestratorService.complete(plan.messages, agent?.llmOptions)
+    const rawAnswer = plan.directAnswer || await this.aiOrchestratorService.complete(plan.messages, agent?.llmOptions)
+    const answer = plan.route === 'knowledge' ? this.aiOrchestratorService.ensureKnowledgeAnswer(rawAnswer, plan.knowledgeFacts) : rawAnswer
     const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
     await this.conversationService.addMessage(
       conversation.id,
@@ -164,6 +166,7 @@ export class ChatService {
         allowedToolCodes: agent.toolCodes,
         knowledgeStrict: agent.knowledgeStrict,
         knowledgeTags: agent.knowledgeTags,
+        knowledgeBaseIds: agent.knowledgeBaseIds,
         llmOptions: agent.llmOptions,
       })) {
         if (event.type === 'content') {
@@ -198,13 +201,13 @@ export class ChatService {
       checkedInput.content,
       agent?.mode || this.normalizeMode(conversation.mode),
       history,
-      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict, knowledgeTags: agent?.knowledgeTags },
+      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict, knowledgeTags: agent?.knowledgeTags, knowledgeBaseIds: agent?.knowledgeBaseIds },
     )
     let answer = ''
 
     if (plan.directAnswer) {
-      answer = plan.directAnswer
-      yield { type: 'content', content: plan.directAnswer }
+      answer = plan.route === 'knowledge' ? this.aiOrchestratorService.ensureKnowledgeAnswer(plan.directAnswer, plan.knowledgeFacts) : plan.directAnswer
+      yield { type: 'content', content: answer }
       const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
       await this.conversationService.addMessage(
         conversation.id,

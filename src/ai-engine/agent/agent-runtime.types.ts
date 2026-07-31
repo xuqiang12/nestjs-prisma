@@ -10,5 +10,6 @@ export type AgentRuntimeConfig = {
   toolCodes: string[]
   knowledgeStrict: boolean
   knowledgeTags: string[]
+  knowledgeBaseIds: string[]
   workflowCode?: string
 }

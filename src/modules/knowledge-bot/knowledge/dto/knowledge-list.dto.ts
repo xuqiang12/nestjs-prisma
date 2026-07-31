@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
-import { IsInt, IsOptional, Min } from 'class-validator'
+import { IsInt, IsOptional, IsString, Min } from 'class-validator'
 
 export class KnowledgeListDto {
   @ApiPropertyOptional({ description: '页码', default: 1 })
@@ -16,4 +16,9 @@ export class KnowledgeListDto {
   @Min(1)
   @IsOptional()
   pageSize?: number
+
+  @ApiPropertyOptional({ description: '内容关键词' })
+  @IsString()
+  @IsOptional()
+  query?: string
 }

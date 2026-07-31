@@ -8,6 +8,8 @@ type MessageRole = 'user' | 'assistant'
 
 type MessageSource = Record<string, any>
 
+const ROLE_MARKER_PATTERN = /(^|\n)\s*(user|assistant|system)\s*(\n|$)/i
+
 @Injectable()
 export class ConversationService {
   constructor(private readonly prisma: PrismaService) {}
@@ -147,6 +149,7 @@ export class ConversationService {
     return messages
       .reverse()
       .filter((item) => item.role === 'user' || item.role === 'assistant')
+      .filter((item) => item.role !== 'assistant' || this.isCleanAssistantHistoryContent(item.content))
       .map((item) => ({ role: item.role as MessageRole, content: item.content }))
   }
 
@@ -204,5 +207,9 @@ export class ConversationService {
   // 清理标题两端空白，空标题统一使用默认会话名。
   private normalizeTitle(title: string) {
     return title.trim() || '新会话'
+  }
+
+  private isCleanAssistantHistoryContent(content: string) {
+    return !ROLE_MARKER_PATTERN.test(content)
   }
 }

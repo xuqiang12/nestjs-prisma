@@ -14,6 +14,12 @@ export class AgentRuntimeService {
 
     const agent = await this.prisma.aiAgent.findFirst({
       where: { code: agentCode, status: 1 },
+      include: {
+        knowledgeBases: {
+          where: { knowledgeBase: { status: 1 } },
+          select: { knowledgeBaseId: true },
+        },
+      },
     })
     if (!agent) {
       throw new BadRequestException('智能体不存在或未启用')
@@ -43,6 +49,7 @@ export class AgentRuntimeService {
       toolCodes: this.normalizeToolCodes(agent.toolCodes),
       knowledgeStrict: agent.knowledgeStrict,
       knowledgeTags: this.normalizeStringArray(agent.knowledgeTags),
+      knowledgeBaseIds: agent.knowledgeBases.map((item) => item.knowledgeBaseId),
       workflowCode: agent.workflowCode || undefined,
     }
   }

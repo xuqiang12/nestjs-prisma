@@ -34,6 +34,7 @@ export type WorkflowExecutionInput = {
   allowedToolCodes: string[]
   knowledgeStrict?: boolean
   knowledgeTags?: string[]
+  knowledgeBaseIds?: string[]
   llmOptions?: {
     model?: string
     temperature?: number

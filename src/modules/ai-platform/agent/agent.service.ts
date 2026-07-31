@@ -36,19 +36,23 @@ export class AgentService {
         skip: (pageNum - 1) * pageSize,
         take: pageSize,
         orderBy: { updatedAt: 'desc' },
+        include: {
+          knowledgeBases: { select: { knowledgeBaseId: true } },
+        },
       }),
       this.prisma.aiAgent.count({ where }),
     ])
 
-    return { list, total }
+    return { list: list.map((agent) => this.toAgentResponse(agent)), total }
   }
 
   async detail(id: string) {
-    return this.ensureAgent(id)
+    const agent = await this.ensureAgent(id)
+    return this.toAgentResponse(agent)
   }
 
   async enabledOptions() {
-    return this.prisma.aiAgent.findMany({
+    const list = await this.prisma.aiAgent.findMany({
       where: { status: 1 },
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -69,10 +73,12 @@ export class AgentService {
         knowledgeEnabled: true,
         knowledgeStrict: true,
         knowledgeTags: true,
+        knowledgeBases: { select: { knowledgeBaseId: true } },
         toolCodes: true,
         workflowCode: true,
       },
     })
+    return list.map((agent) => this.toAgentResponse(agent))
   }
 
   async configOptions() {
@@ -127,16 +133,19 @@ export class AgentService {
     if (dto.workflowCode) {
       await this.ensureEnabledWorkflow(dto.workflowCode)
     }
+    const knowledgeBaseIds = this.normalizeKnowledgeBaseIds(dto.knowledgeBaseIds)
+    await this.ensureEnabledKnowledgeBases(knowledgeBaseIds)
     this.ensureKnownTools(dto.toolCodes)
     await this.ensureWorkflowRequiredTools(dto.workflowCode, dto.toolCodes)
 
     const data = await this.toAgentData(dto)
-    await this.prisma.aiAgent.create({
+    const created = await this.prisma.aiAgent.create({
       data: {
         ...data,
         code: await this.nextAgentCode(),
       } as Prisma.AiAgentUncheckedCreateInput,
     })
+    await this.syncKnowledgeBaseBindings(created.id, knowledgeBaseIds)
     return '智能体新增成功'
   }
 
@@ -148,6 +157,11 @@ export class AgentService {
     if (dto.workflowCode) {
       await this.ensureEnabledWorkflow(dto.workflowCode)
     }
+    const shouldSyncKnowledgeBases = dto.knowledgeBaseIds !== undefined
+    const knowledgeBaseIds = this.normalizeKnowledgeBaseIds(dto.knowledgeBaseIds)
+    if (shouldSyncKnowledgeBases) {
+      await this.ensureEnabledKnowledgeBases(knowledgeBaseIds)
+    }
     this.ensureKnownTools(dto.toolCodes)
     await this.ensureWorkflowRequiredTools(dto.workflowCode, dto.toolCodes)
 
@@ -156,6 +170,9 @@ export class AgentService {
       where: { id: dto.id },
       data: data as Prisma.AiAgentUncheckedUpdateInput,
     })
+    if (shouldSyncKnowledgeBases) {
+      await this.syncKnowledgeBaseBindings(dto.id, knowledgeBaseIds)
+    }
     return '智能体修改成功'
   }
 
@@ -170,6 +187,7 @@ export class AgentService {
 
   private async toAgentData(dto: CreateAgentDto | UpdateAgentDto, fallbackPromptId?: string) {
     const promptId = dto.promptId || fallbackPromptId
+    const knowledgeBaseIds = this.normalizeKnowledgeBaseIds(dto.knowledgeBaseIds)
     const data: Record<string, any> = {
       name: dto.name,
       description: dto.description,
@@ -184,7 +202,7 @@ export class AgentService {
       model: dto.model,
       temperature: dto.temperature,
       topP: dto.topP,
-      knowledgeEnabled: dto.knowledgeEnabled,
+      knowledgeEnabled: dto.knowledgeBaseIds === undefined ? dto.knowledgeEnabled : knowledgeBaseIds.length > 0,
       knowledgeStrict: dto.knowledgeStrict,
       knowledgeTags: dto.knowledgeTags as Prisma.InputJsonValue,
       toolCodes: dto.toolCodes as Prisma.InputJsonValue,
@@ -226,11 +244,31 @@ export class AgentService {
   }
 
   private async ensureAgent(id: string) {
-    const agent = await this.prisma.aiAgent.findUnique({ where: { id } })
+    const agent = await this.prisma.aiAgent.findUnique({
+      where: { id },
+      include: {
+        knowledgeBases: { select: { knowledgeBaseId: true } },
+      },
+    })
     if (!agent) {
       throw new NotFoundException('智能体不存在')
     }
     return agent
+  }
+
+  private async ensureEnabledKnowledgeBases(knowledgeBaseIds: string[]) {
+    if (!knowledgeBaseIds.length) {
+      return
+    }
+    const count = await this.prisma.aiKnowledgeBase.count({
+      where: {
+        id: { in: knowledgeBaseIds },
+        status: 1,
+      },
+    })
+    if (count !== knowledgeBaseIds.length) {
+      throw new BadRequestException('绑定的知识库不存在或未启用')
+    }
   }
 
   private async ensureEnabledPrompt(promptId: string) {
@@ -322,5 +360,33 @@ export class AgentService {
 
   private normalizeNodeConfig(config: Prisma.JsonValue) {
     return config && typeof config === 'object' && !Array.isArray(config) ? (config as Record<string, unknown>) : {}
+  }
+
+  private normalizeKnowledgeBaseIds(knowledgeBaseIds?: string[]) {
+    return Array.from(new Set((knowledgeBaseIds || []).map((id) => id.trim()).filter(Boolean)))
+  }
+
+  private extractKnowledgeBaseIds(agent: { knowledgeBases?: Array<{ knowledgeBaseId: string }> }) {
+    return (agent.knowledgeBases || []).map((item) => item.knowledgeBaseId)
+  }
+
+  private toAgentResponse<T extends { knowledgeBases?: Array<{ knowledgeBaseId: string }> }>(agent: T) {
+    const { knowledgeBases, ...data } = agent
+    void knowledgeBases
+    return {
+      ...data,
+      knowledgeBaseIds: this.extractKnowledgeBaseIds(agent),
+    }
+  }
+
+  private async syncKnowledgeBaseBindings(agentId: string, knowledgeBaseIds: string[]) {
+    await this.prisma.aiKnowledgeBaseAgent.deleteMany({ where: { agentId } })
+    if (!knowledgeBaseIds.length) {
+      return
+    }
+    await this.prisma.aiKnowledgeBaseAgent.createMany({
+      data: knowledgeBaseIds.map((knowledgeBaseId) => ({ agentId, knowledgeBaseId })),
+      skipDuplicates: true,
+    })
   }
 }

@@ -12,6 +12,14 @@ export type LlmOptions = {
   topP?: number
 }
 
+const FINAL_ANSWER_GUARD = [
+  '你只能输出面向最终用户的中文答复。',
+  '不要输出或复述消息角色、对话模板、调试信息、编号占位符。',
+  '不要输出单独成行的 user、assistant、system。',
+].join('\n')
+
+const ROLE_TEMPLATE_STOPS = ['\nuser\n', '\nassistant\n', '\nsystem\n']
+
 @Injectable()
 export class LlmService {
   private readonly client = new OpenAI({
@@ -28,9 +36,10 @@ export class LlmService {
   async invokeWithMessages(messages: ChatMessage[], options: LlmOptions = {}): Promise<string> {
     const res = await this.client.chat.completions.create({
       model: options.model || process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
-      messages,
+      messages: this.withFinalAnswerGuard(messages),
       temperature: options.temperature ?? 0.2,
       top_p: options.topP ?? 0.8,
+      stop: ROLE_TEMPLATE_STOPS,
     })
 
     return res.choices[0].message.content || ''
@@ -40,10 +49,11 @@ export class LlmService {
   async *streamWithMessages(messages: ChatMessage[], options: LlmOptions = {}): AsyncIterable<string> {
     const stream = await this.client.chat.completions.create({
       model: options.model || process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
-      messages,
+      messages: this.withFinalAnswerGuard(messages),
       temperature: options.temperature ?? 0.2,
       top_p: options.topP ?? 0.8,
       stream: true,
+      stop: ROLE_TEMPLATE_STOPS,
     })
 
     for await (const chunk of stream) {
@@ -53,5 +63,13 @@ export class LlmService {
         yield content
       }
     }
+  }
+
+  private withFinalAnswerGuard(messages: ChatMessage[]) {
+    const [first, ...rest] = messages
+    if (first?.role === 'system') {
+      return [{ ...first, content: `${first.content}\n\n${FINAL_ANSWER_GUARD}` }, ...rest]
+    }
+    return [{ role: 'system' as const, content: FINAL_ANSWER_GUARD }, ...messages]
   }
 }

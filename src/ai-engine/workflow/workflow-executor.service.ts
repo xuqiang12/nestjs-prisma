@@ -198,7 +198,7 @@ export class WorkflowExecutorService {
     if (node.type === 'knowledge') {
       this.ensureToolAllowed('search_knowledge', input.allowedToolCodes)
       const query = this.readValue(values, config.queryField)
-      const matchedSources = await this.vectorStore.similaritySearch(String(query || ''), config.limit ? Number(config.limit) : 5, { tags: input.knowledgeTags })
+      const matchedSources = await this.vectorStore.similaritySearch(String(query || ''), config.limit ? Number(config.limit) : 5, { tags: input.knowledgeTags, knowledgeBaseIds: input.knowledgeBaseIds })
       const sources = input.knowledgeStrict
         ? matchedSources.filter((item) => item.distance <= STRICT_KNOWLEDGE_MAX_DISTANCE)
         : matchedSources

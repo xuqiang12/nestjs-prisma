@@ -47,6 +47,7 @@ export class ChatService {
       },
     )
 
+    // Agent 绑定了工作流时，聊天执行权交给工作流节点；普通问答/RAG 编排不再参与。
     if (agent?.workflowCode) {
       const workflowResult = await this.workflowRuntimeService.execute(agent.workflowCode, {
         message: checkedInput.content,
@@ -102,8 +103,9 @@ export class ChatService {
         knowledgeBaseIds: agent?.knowledgeBaseIds,
       },
     )
+    // 编排阶段可能已经给出直答；没有直答时才调用模型补全。
     const rawAnswer = plan.directAnswer || await this.aiOrchestratorService.complete(plan.messages, agent?.llmOptions)
-    const answer = plan.route === 'knowledge' ? this.aiOrchestratorService.ensureKnowledgeAnswer(rawAnswer, plan.knowledgeFacts) : rawAnswer
+    const answer = plan.route === 'knowledge' ? this.aiOrchestratorService.ensureKnowledgeAnswer(rawAnswer, plan.knowledgeFacts, checkedInput.content) : rawAnswer
     const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
     await this.conversationService.addMessage(
       conversation.id,
@@ -156,6 +158,7 @@ export class ChatService {
       },
     )
 
+    // Agent 绑定了工作流时，流式输出直接透传工作流事件，结束后再统一保存助手消息。
     if (agent?.workflowCode) {
       // 保存完整 AI 回复
       let answer = ''
@@ -217,8 +220,9 @@ export class ChatService {
     )
     let answer = ''
 
+    // 命中直答时无需再开启模型流，直接把完整答案作为一次 content 事件返回。
     if (plan.directAnswer) {
-      answer = plan.route === 'knowledge' ? this.aiOrchestratorService.ensureKnowledgeAnswer(plan.directAnswer, plan.knowledgeFacts) : plan.directAnswer
+      answer = plan.route === 'knowledge' ? this.aiOrchestratorService.ensureKnowledgeAnswer(plan.directAnswer, plan.knowledgeFacts, checkedInput.content) : plan.directAnswer
       yield { type: 'content', content: answer }
       const checkedOutput = await this.sensitiveWordCheckerService.checkAndApply(answer, 'output')
       await this.conversationService.addMessage(
@@ -248,7 +252,7 @@ export class ChatService {
     }
 
     if (plan.route === 'knowledge') {
-      answer = this.aiOrchestratorService.ensureKnowledgeAnswer(answer, plan.knowledgeFacts)
+      answer = this.aiOrchestratorService.ensureKnowledgeAnswer(answer, plan.knowledgeFacts, checkedInput.content)
       yield { type: 'content', content: answer }
     }
 

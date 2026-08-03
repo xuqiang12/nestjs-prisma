@@ -8,14 +8,17 @@ const rootDir = join(__dirname, '..')
 test('rag answers are sanitized before saving or streaming to users', () => {
   const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
   const chatService = readFileSync(join(rootDir, 'src/modules/knowledge-bot/chat/chat.service.ts'), 'utf8')
+  const answerUtil = readFileSync(join(rootDir, 'src/ai-engine/knowledge-answer.util.ts'), 'utf8')
 
-  assert.match(orchestrator, /export type KnowledgeFact = \{/)
-  assert.match(orchestrator, /requiredTerms:\s*string\[\]/)
+  assert.match(orchestrator, /KnowledgeAnswerFact/)
+  assert.match(answerUtil, /requiredTerms:\s*string\[\]/)
   assert.match(orchestrator, /knowledgeFacts:\s*KnowledgeFact\[\]/)
   assert.match(orchestrator, /buildKnowledgeFacts\(sources\)/)
   assert.match(orchestrator, /extractRequiredTerms/)
-  assert.match(orchestrator, /validateKnowledgeAnswer/)
-  assert.match(orchestrator, /buildKnowledgeFallbackAnswer/)
+  assert.match(answerUtil, /validateKnowledgeAnswer/)
+  assert.match(answerUtil, /buildKnowledgeFallbackAnswer/)
+  assert.doesNotMatch(answerUtil, /KNOWLEDGE_QUERY_STOP_WORDS/)
+  assert.doesNotMatch(answerUtil, /isQuestionAskingForValue/)
   assert.match(orchestrator, /完整保留事实依据中的数字、期限、条件和否定结论/)
   assert.match(orchestrator, /sanitizeKnowledgeAnswer\(content:\s*string\)/)
   assert.match(orchestrator, /stripCopiedKnowledgeArtifacts/)
@@ -25,8 +28,8 @@ test('rag answers are sanitized before saving or streaming to users', () => {
   assert.doesNotMatch(orchestrator, /KNOWLEDGE_HEADING_PATTERN/)
   assert.doesNotMatch(orchestrator, /isUsefulKnowledgeFact/)
 
-  assert.match(chatService, /plan\.route === 'knowledge'\s*\?\s*this\.aiOrchestratorService\.ensureKnowledgeAnswer\(rawAnswer,\s*plan\.knowledgeFacts\)/)
-  assert.match(chatService, /answer = this\.aiOrchestratorService\.ensureKnowledgeAnswer\(answer,\s*plan\.knowledgeFacts\)/)
+  assert.match(chatService, /plan\.route === 'knowledge'\s*\?\s*this\.aiOrchestratorService\.ensureKnowledgeAnswer\(rawAnswer,\s*plan\.knowledgeFacts,\s*checkedInput\.content\)/)
+  assert.match(chatService, /answer = this\.aiOrchestratorService\.ensureKnowledgeAnswer\(answer,\s*plan\.knowledgeFacts,\s*checkedInput\.content\)/)
 })
 
 test('rag facts use generic chunk content without sample-specific filters', () => {
@@ -229,6 +232,47 @@ test('knowledge answer fallback rejects numeric claims that are not in retrieved
   assert.doesNotMatch(answer, /1111元/)
   assert.doesNotMatch(answer, /4111元/)
   assert.equal(validAnswer, '基础版本的价格是1999元/年，企业版本的价格是4999元/年。')
+})
+
+test('knowledge fallback returns retrieved facts without query-specific line picking', async () => {
+  require('ts-node/register')
+  require('tsconfig-paths/register')
+  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
+  const service = new AiOrchestratorService({}, {
+    similaritySearch: async () => [{
+      id: 'doc-1',
+      distance: 0.2,
+      metadata: {},
+      content: [
+        '产品名称：智能办公助手Pro',
+        '产品功能：',
+        '1. 文档管理',
+        '支持在线创建、编辑、共享企业文档。',
+        '售价：',
+        '基础版本：',
+        '1999元/年',
+        '企业版本：',
+        '4999元/年',
+        '服务期限：',
+        '购买后提供一年技术支持服务。',
+      ].join('\n'),
+    }],
+  })
+
+  const plan = await service.buildCompletion('智能办公助手Pro基础版多少钱？', 'knowledge', [], {
+    allowedToolCodes: ['search_knowledge'],
+  })
+  const answer = service.ensureKnowledgeAnswer(
+    '基础版价格是1111元/年。',
+    plan.knowledgeFacts,
+    '智能办公助手Pro基础版多少钱？',
+  )
+
+  assert.match(answer, /基础版本/)
+  assert.match(answer, /1999元\/年/)
+  assert.match(answer, /企业版本/)
+  assert.match(answer, /4999元\/年/)
+  assert.match(answer, /文档管理/)
 })
 
 test('knowledge stream buffers model chunks and emits the checked answer once', async () => {

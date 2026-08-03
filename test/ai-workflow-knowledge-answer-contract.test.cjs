@@ -115,7 +115,7 @@ test('workflow knowledge stream buffers model chunks and emits checked facts', a
   const doneEvent = events.find((event) => event.type === 'workflow_done')
 
   assert.deepEqual(contentEvents, [
-    { type: 'content', content: '您好，相关信息如下：\n\n1. 产品名称：智能办公助手Pro\n售价：\n基础版本：1999元/年\n企业版本：4999元/年' },
+    { type: 'content', content: '根据知识库，相关信息如下：\n\n产品名称：智能办公助手Pro\n售价：\n基础版本：1999元/年\n企业版本：4999元/年' },
   ])
   assert.ok(doneEvent)
   assert.match(doneEvent.answer, /1999元\/年/)

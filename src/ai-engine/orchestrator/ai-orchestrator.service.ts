@@ -1,4 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
+import {
+  buildKnowledgeFallbackAnswer,
+  extractKnowledgeNumberTerms,
+  KnowledgeAnswerFact,
+  validateKnowledgeAnswer,
+} from '../knowledge-answer.util'
 import { ChatMessage, LlmOptions, LlmService } from '../llm/llm.service'
 import { SearchResult, VectorStoreService } from '../vector/vector-store.service'
 
@@ -12,10 +18,7 @@ export type CompletionPlan = {
   directAnswer?: string
 }
 
-export type KnowledgeFact = {
-  text: string
-  requiredTerms: string[]
-}
+export type KnowledgeFact = KnowledgeAnswerFact
 
 export type BuildCompletionOptions = {
   systemPrompt?: string
@@ -32,8 +35,6 @@ const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
 const KNOWLEDGE_ROLE_MARKER_PATTERN = /^\s*(user|assistant|system)\s*$/i
 const COPIED_KNOWLEDGE_ARTIFACT_PATTERN = /(知识片段|事实依据|来源\d*[:：])/
 const KNOWLEDGE_FACT_SPLIT_PATTERN = /[。；;]+/
-const KNOWLEDGE_REQUIRED_NUMBER_PATTERN = /\d+(?:\.\d+)?\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％)(?:\s*\/\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％))?(?:内|外|后|前|起|以上|以下)?/g
-const KNOWLEDGE_REQUIRED_CONDITION_PATTERN = /(?:未|已|不|无|非|仅|只|必须|需要|可以|支持|不能|不得|禁止|无法)[\u4e00-\u9fa5A-Za-z0-9]{1,12}/g
 
 @Injectable()
 export class AiOrchestratorService {
@@ -61,7 +62,7 @@ export class AiOrchestratorService {
   async rag(message: string) {
     const plan = await this.buildCompletion(message, 'knowledge')
     const rawAnswer = plan.directAnswer || await this.complete(plan.messages)
-    const answer = this.ensureKnowledgeAnswer(rawAnswer, plan.knowledgeFacts)
+    const answer = this.ensureKnowledgeAnswer(rawAnswer, plan.knowledgeFacts, message)
     return { answer, route: 'rag', sources: plan.sources }
   }
 
@@ -136,9 +137,9 @@ export class AiOrchestratorService {
     return this.stripCopiedKnowledgeArtifacts(content.replace(/\uFFFD/g, '')).trim()
   }
 
-  ensureKnowledgeAnswer(content: string, facts: KnowledgeFact[]) {
+  ensureKnowledgeAnswer(content: string, facts: KnowledgeFact[], question = '') {
     const answer = this.sanitizeKnowledgeAnswer(content)
-    return this.validateKnowledgeAnswer(answer, facts) ? answer : this.buildKnowledgeFallbackAnswer(facts)
+    return validateKnowledgeAnswer(answer, facts) ? answer : buildKnowledgeFallbackAnswer(facts, question, STRICT_KNOWLEDGE_FALLBACK)
   }
 
   private withFinalAnswerOptions(options: LlmOptions = {}): LlmOptions {
@@ -207,50 +208,8 @@ export class AiOrchestratorService {
 
   private extractRequiredTerms(content: string) {
     return Array.from(new Set([
-      ...this.extractKnowledgeNumberTerms(content),
-      ...(content.match(KNOWLEDGE_REQUIRED_CONDITION_PATTERN) || []),
+      ...extractKnowledgeNumberTerms(content),
     ].map((term) => term.trim()).filter(Boolean)))
-  }
-
-  private validateKnowledgeAnswer(answer: string, facts: KnowledgeFact[]) {
-    if (!answer) return !facts.length
-    const answerNumberTerms = this.extractKnowledgeNumberTerms(answer)
-    if (!answerNumberTerms.length) return true
-
-    const factNumberTerms = new Set(
-      facts
-        .flatMap((fact) => this.extractKnowledgeNumberTerms(fact.text))
-        .map((term) => this.normalizeKnowledgeTerm(term)),
-    )
-    if (!factNumberTerms.size) return true
-
-    return answerNumberTerms.every((term) => factNumberTerms.has(this.normalizeKnowledgeTerm(term)))
-  }
-
-  private extractKnowledgeNumberTerms(content: string) {
-    return Array.from(new Set((content.match(KNOWLEDGE_REQUIRED_NUMBER_PATTERN) || [])
-      .map((term) => term.trim())
-      .filter(Boolean)))
-  }
-
-  private normalizeKnowledgeTerm(content: string) {
-    return content.replace(/\s+/g, '')
-  }
-
-  private buildKnowledgeFallbackAnswer(facts: KnowledgeFact[]) {
-    const factLines = facts
-      .filter((fact) => fact.text)
-      .map((fact) => fact.text)
-    if (!factLines.length) return STRICT_KNOWLEDGE_FALLBACK
-    return [
-      '您好，相关信息如下：',
-      '',
-      ...factLines.map((line, index) => `${index + 1}. ${line}`),
-    ].join('\n')
-  }
-
-  private normalizeKnowledgeText(content: string) {
-    return content.replace(/[\s,，.。:：;；、\-_*•]/g, '')
   }
 
   private stripCopiedKnowledgeArtifacts(content: string) {

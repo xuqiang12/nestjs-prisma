@@ -1,5 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
+import {
+  buildKnowledgeFallbackAnswer,
+  extractKnowledgeNumberTerms,
+  KnowledgeAnswerFact,
+  validateKnowledgeAnswer,
+} from '../knowledge-answer.util'
 import { DefaultToolExecutor } from '../tools/tool.executor'
 import { LlmService } from '../llm/llm.service'
 import { VectorStoreService } from '../vector/vector-store.service'
@@ -11,12 +17,8 @@ const KNOWLEDGE_EVIDENCE_MAX_LENGTH = 6000
 const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
 const KNOWLEDGE_ROLE_MARKER_PATTERN = /^\s*(user|assistant|system)\s*$/i
 const KNOWLEDGE_FACT_SPLIT_PATTERN = /[。；;]+/
-const KNOWLEDGE_REQUIRED_NUMBER_PATTERN = /\d+(?:\.\d+)?\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％)(?:\s*\/\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％))?(?:内|外|后|前|起|以上|以下)?/g
 
-type WorkflowKnowledgeFact = {
-  text: string
-  requiredTerms: string[]
-}
+type WorkflowKnowledgeFact = KnowledgeAnswerFact
 
 @Injectable()
 export class WorkflowExecutorService {
@@ -225,8 +227,9 @@ export class WorkflowExecutorService {
       }
       const messages = this.buildLlmMessages(config, values, input)
       const rawAnswer = await this.llmService.invokeWithMessages(messages, input.llmOptions)
+      const userQuestion = String(this.readValue(values, config.userMessageField) || input.message || '')
       const answer = this.hasKnowledgeSources(values)
-        ? this.ensureKnowledgeAnswer(rawAnswer, values.knowledgeFacts || [])
+        ? this.ensureKnowledgeAnswer(rawAnswer, values.knowledgeFacts || [], userQuestion)
         : rawAnswer
       values[config.outputField] = answer
       return { [config.outputField]: answer }
@@ -267,7 +270,8 @@ export class WorkflowExecutorService {
       }
     }
     if (this.hasKnowledgeSources(values)) {
-      answer = this.ensureKnowledgeAnswer(answer, values.knowledgeFacts || [])
+      const userQuestion = String(this.readValue(values, config.userMessageField) || input.message || '')
+      answer = this.ensureKnowledgeAnswer(answer, values.knowledgeFacts || [], userQuestion)
       yield { type: 'content' as const, content: answer }
     }
     values[config.outputField] = answer
@@ -335,7 +339,7 @@ export class WorkflowExecutorService {
       .flatMap((source) => this.splitKnowledgeFactTexts(this.compactKnowledgeContent(source.content || '')))
       .map((text) => ({
         text,
-        requiredTerms: this.extractKnowledgeNumberTerms(text),
+        requiredTerms: extractKnowledgeNumberTerms(text),
       }))
       .filter((fact) => fact.text)
   }
@@ -357,48 +361,11 @@ export class WorkflowExecutorService {
       .filter(Boolean)
   }
 
-  private ensureKnowledgeAnswer(answer: string, facts: WorkflowKnowledgeFact[]) {
-    if (!this.validateKnowledgeAnswer(answer, facts)) {
-      return this.buildKnowledgeFallbackAnswer(facts)
+  private ensureKnowledgeAnswer(answer: string, facts: WorkflowKnowledgeFact[], question = '') {
+    if (!validateKnowledgeAnswer(answer, facts)) {
+      return buildKnowledgeFallbackAnswer(facts, question, STRICT_KNOWLEDGE_FALLBACK)
     }
     return answer.trim()
-  }
-
-  private validateKnowledgeAnswer(answer: string, facts: WorkflowKnowledgeFact[]) {
-    if (!answer) return !facts.length
-    const answerNumberTerms = this.extractKnowledgeNumberTerms(answer)
-    if (!answerNumberTerms.length) return true
-
-    const factNumberTerms = new Set(
-      facts
-        .flatMap((fact) => this.extractKnowledgeNumberTerms(fact.text))
-        .map((term) => this.normalizeKnowledgeTerm(term)),
-    )
-    if (!factNumberTerms.size) return true
-
-    return answerNumberTerms.every((term) => factNumberTerms.has(this.normalizeKnowledgeTerm(term)))
-  }
-
-  private extractKnowledgeNumberTerms(content: string) {
-    return Array.from(new Set((content.match(KNOWLEDGE_REQUIRED_NUMBER_PATTERN) || [])
-      .map((term) => term.trim())
-      .filter(Boolean)))
-  }
-
-  private normalizeKnowledgeTerm(content: string) {
-    return content.replace(/\s+/g, '')
-  }
-
-  private buildKnowledgeFallbackAnswer(facts: WorkflowKnowledgeFact[]) {
-    const factLines = facts
-      .filter((fact) => fact.text)
-      .map((fact) => fact.text)
-    if (!factLines.length) return STRICT_KNOWLEDGE_FALLBACK
-    return [
-      '您好，相关信息如下：',
-      '',
-      ...factLines.map((line, index) => `${index + 1}. ${line}`),
-    ].join('\n')
   }
 
   private ensureSingleStreamingLlmNode(graph: WorkflowGraph) {

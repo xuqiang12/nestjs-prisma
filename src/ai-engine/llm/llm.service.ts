@@ -10,6 +10,8 @@ export type LlmOptions = {
   model?: string
   temperature?: number
   topP?: number
+  finalAnswerGuard?: boolean
+  roleTemplateStops?: boolean
 }
 
 const FINAL_ANSWER_GUARD = [
@@ -36,10 +38,10 @@ export class LlmService {
   async invokeWithMessages(messages: ChatMessage[], options: LlmOptions = {}): Promise<string> {
     const res = await this.client.chat.completions.create({
       model: options.model || process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
-      messages: this.withFinalAnswerGuard(messages),
+      messages: options.finalAnswerGuard ? this.withFinalAnswerGuard(messages) : messages,
       temperature: options.temperature ?? 0.2,
       top_p: options.topP ?? 0.8,
-      stop: ROLE_TEMPLATE_STOPS,
+      ...(options.roleTemplateStops ? { stop: ROLE_TEMPLATE_STOPS } : {}),
     })
 
     return res.choices[0].message.content || ''
@@ -49,11 +51,11 @@ export class LlmService {
   async *streamWithMessages(messages: ChatMessage[], options: LlmOptions = {}): AsyncIterable<string> {
     const stream = await this.client.chat.completions.create({
       model: options.model || process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
-      messages: this.withFinalAnswerGuard(messages),
+      messages: options.finalAnswerGuard ? this.withFinalAnswerGuard(messages) : messages,
       temperature: options.temperature ?? 0.2,
       top_p: options.topP ?? 0.8,
       stream: true,
-      stop: ROLE_TEMPLATE_STOPS,
+      ...(options.roleTemplateStops ? { stop: ROLE_TEMPLATE_STOPS } : {}),
     })
 
     for await (const chunk of stream) {

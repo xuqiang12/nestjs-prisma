@@ -94,7 +94,13 @@ export class ChatService {
       checkedInput.content,
       agent?.mode || this.normalizeMode(conversation.mode),
       history,
-      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict, knowledgeTags: agent?.knowledgeTags, knowledgeBaseIds: agent?.knowledgeBaseIds },
+      {
+        systemPrompt: agent?.systemPrompt,
+        allowedToolCodes: agent?.toolCodes,
+        knowledgeStrict: agent?.knowledgeStrict,
+        knowledgeTags: agent?.knowledgeTags,
+        knowledgeBaseIds: agent?.knowledgeBaseIds,
+      },
     )
     const rawAnswer = plan.directAnswer || await this.aiOrchestratorService.complete(plan.messages, agent?.llmOptions)
     const answer = plan.route === 'knowledge' ? this.aiOrchestratorService.ensureKnowledgeAnswer(rawAnswer, plan.knowledgeFacts) : rawAnswer
@@ -201,7 +207,13 @@ export class ChatService {
       checkedInput.content,
       agent?.mode || this.normalizeMode(conversation.mode),
       history,
-      { systemPrompt: agent?.systemPrompt, allowedToolCodes: agent?.toolCodes, knowledgeStrict: agent?.knowledgeStrict, knowledgeTags: agent?.knowledgeTags, knowledgeBaseIds: agent?.knowledgeBaseIds },
+      {
+        systemPrompt: agent?.systemPrompt,
+        allowedToolCodes: agent?.toolCodes,
+        knowledgeStrict: agent?.knowledgeStrict,
+        knowledgeTags: agent?.knowledgeTags,
+        knowledgeBaseIds: agent?.knowledgeBaseIds,
+      },
     )
     let answer = ''
 
@@ -230,7 +242,14 @@ export class ChatService {
       agent?.llmOptions,
     )) {
       answer += content
-      yield { type: 'content', content }
+      if (plan.route !== 'knowledge') {
+        yield { type: 'content', content }
+      }
+    }
+
+    if (plan.route === 'knowledge') {
+      answer = this.aiOrchestratorService.ensureKnowledgeAnswer(answer, plan.knowledgeFacts)
+      yield { type: 'content', content: answer }
     }
 
     // 模型流结束后保存完整答案，前端仍通过最后的 sources 事件拿到知识来源。

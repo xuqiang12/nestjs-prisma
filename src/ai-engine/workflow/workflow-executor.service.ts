@@ -7,7 +7,16 @@ import { WorkflowExecutionInput, WorkflowExecutionResult, WorkflowGraph, Workflo
 import { WorkflowRunLoggerService } from './workflow-run-logger.service'
 
 const STRICT_KNOWLEDGE_MAX_DISTANCE = 0.45
+const KNOWLEDGE_EVIDENCE_MAX_LENGTH = 6000
 const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
+const KNOWLEDGE_ROLE_MARKER_PATTERN = /^\s*(user|assistant|system)\s*$/i
+const KNOWLEDGE_FACT_SPLIT_PATTERN = /[。；;]+/
+const KNOWLEDGE_REQUIRED_NUMBER_PATTERN = /\d+(?:\.\d+)?\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％)(?:\s*\/\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％))?(?:内|外|后|前|起|以上|以下)?/g
+
+type WorkflowKnowledgeFact = {
+  text: string
+  requiredTerms: string[]
+}
 
 @Injectable()
 export class WorkflowExecutorService {
@@ -198,12 +207,14 @@ export class WorkflowExecutorService {
     if (node.type === 'knowledge') {
       this.ensureToolAllowed('search_knowledge', input.allowedToolCodes)
       const query = this.readValue(values, config.queryField)
-      const matchedSources = await this.vectorStore.similaritySearch(String(query || ''), config.limit ? Number(config.limit) : 5, { tags: input.knowledgeTags, knowledgeBaseIds: input.knowledgeBaseIds })
+      const standaloneQuestion = this.buildStandaloneKnowledgeQuestion(String(query || ''), input.history || [])
+      const matchedSources = await this.vectorStore.similaritySearch(standaloneQuestion, config.limit ? Number(config.limit) : 5, { tags: input.knowledgeTags, knowledgeBaseIds: input.knowledgeBaseIds })
       const sources = input.knowledgeStrict
         ? matchedSources.filter((item) => item.distance <= STRICT_KNOWLEDGE_MAX_DISTANCE)
         : matchedSources
       values[config.outputField] = sources
       values.sources = sources
+      values.knowledgeFacts = this.buildKnowledgeFacts(sources)
       return { [config.outputField]: sources }
     }
 
@@ -213,7 +224,10 @@ export class WorkflowExecutorService {
         return { [config.outputField]: STRICT_KNOWLEDGE_FALLBACK }
       }
       const messages = this.buildLlmMessages(config, values, input)
-      const answer = await this.llmService.invokeWithMessages(messages, input.llmOptions)
+      const rawAnswer = await this.llmService.invokeWithMessages(messages, input.llmOptions)
+      const answer = this.hasKnowledgeSources(values)
+        ? this.ensureKnowledgeAnswer(rawAnswer, values.knowledgeFacts || [])
+        : rawAnswer
       values[config.outputField] = answer
       return { [config.outputField]: answer }
     }
@@ -248,7 +262,13 @@ export class WorkflowExecutorService {
     let answer = ''
     for await (const content of this.llmService.streamWithMessages(messages, input.llmOptions)) {
       answer += content
-      yield { type: 'content' as const, content }
+      if (!this.hasKnowledgeSources(values)) {
+        yield { type: 'content' as const, content }
+      }
+    }
+    if (this.hasKnowledgeSources(values)) {
+      answer = this.ensureKnowledgeAnswer(answer, values.knowledgeFacts || [])
+      yield { type: 'content' as const, content: answer }
     }
     values[config.outputField] = answer
     return { [config.outputField]: answer }
@@ -257,11 +277,128 @@ export class WorkflowExecutorService {
   private buildLlmMessages(config: Record<string, any>, values: Record<string, any>, input: WorkflowExecutionInput) {
     const systemPrompt = config.systemPromptField ? this.readValue(values, config.systemPromptField) : undefined
     const userMessage = this.readValue(values, config.userMessageField)
+    if (this.hasKnowledgeSources(values)) {
+      return [
+        { role: 'system' as const, content: this.buildKnowledgeSystemPrompt(String(systemPrompt || ''), values.knowledgeFacts || []) },
+        { role: 'user' as const, content: this.buildStandaloneKnowledgeQuestion(String(userMessage || ''), input.history || []) },
+      ]
+    }
     return [
       ...(systemPrompt ? [{ role: 'system' as const, content: String(systemPrompt) }] : []),
       ...((input.history || []).filter((item) => item.role === 'user' || item.role === 'assistant') as any),
       { role: 'user' as const, content: String(userMessage || '') },
     ]
+  }
+
+  private hasKnowledgeSources(values: Record<string, any>) {
+    return Array.isArray(values.sources)
+  }
+
+  private buildStandaloneKnowledgeQuestion(message: string, history: WorkflowExecutionInput['history'] = []) {
+    const currentQuestion = message.trim()
+    const userContext = (history || [])
+      .filter((item) => item.role === 'user')
+      .map((item) => item.content.trim())
+      .filter((content) => content && content !== currentQuestion)
+      .slice(-3)
+
+    return [...userContext, currentQuestion].filter(Boolean).join('\n')
+  }
+
+  private buildKnowledgeSystemPrompt(systemPrompt: string, facts: WorkflowKnowledgeFact[]) {
+    const evidence = this.buildKnowledgeEvidence(facts)
+    return [
+      systemPrompt,
+      '你是知识库问答助手。',
+      '优先根据事实依据回答；如果事实依据不足以回答，请明确说明知识库中没有足够信息。',
+      '只能根据事实依据组织自然客服回答。不要复述事实依据编号，不要输出知识片段全文，不要输出 user/assistant/system。',
+      '完整保留事实依据中的数字、期限、条件和否定结论；不要省略、截断或改写关键条件。',
+      `事实依据：\n${evidence || '未检索到可用事实依据'}`,
+    ].filter(Boolean).join('\n')
+  }
+
+  private buildKnowledgeEvidence(facts: WorkflowKnowledgeFact[]) {
+    const evidence = facts
+      .map((fact, index) => {
+        const requiredTerms = fact.requiredTerms.length ? `\n关键条件：${fact.requiredTerms.join('、')}` : ''
+        return `事实${index + 1}：${fact.text}${requiredTerms}`
+      })
+      .join('\n')
+
+    return evidence.length > KNOWLEDGE_EVIDENCE_MAX_LENGTH
+      ? `${evidence.slice(0, KNOWLEDGE_EVIDENCE_MAX_LENGTH)}...`
+      : evidence
+  }
+
+  private buildKnowledgeFacts(sources: Array<{ content?: string }>) {
+    return sources
+      .flatMap((source) => this.splitKnowledgeFactTexts(this.compactKnowledgeContent(source.content || '')))
+      .map((text) => ({
+        text,
+        requiredTerms: this.extractKnowledgeNumberTerms(text),
+      }))
+      .filter((fact) => fact.text)
+  }
+
+  private compactKnowledgeContent(content: string) {
+    const lines = content.replace(/\uFFFD/g, '')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line)
+      .filter((line) => !KNOWLEDGE_ROLE_MARKER_PATTERN.test(line))
+
+    return (lines.length ? lines : [content.trim()]).join('\n')
+  }
+
+  private splitKnowledgeFactTexts(content: string) {
+    return content
+      .split(KNOWLEDGE_FACT_SPLIT_PATTERN)
+      .map((line) => line.trim())
+      .filter(Boolean)
+  }
+
+  private ensureKnowledgeAnswer(answer: string, facts: WorkflowKnowledgeFact[]) {
+    if (!this.validateKnowledgeAnswer(answer, facts)) {
+      return this.buildKnowledgeFallbackAnswer(facts)
+    }
+    return answer.trim()
+  }
+
+  private validateKnowledgeAnswer(answer: string, facts: WorkflowKnowledgeFact[]) {
+    if (!answer) return !facts.length
+    const answerNumberTerms = this.extractKnowledgeNumberTerms(answer)
+    if (!answerNumberTerms.length) return true
+
+    const factNumberTerms = new Set(
+      facts
+        .flatMap((fact) => this.extractKnowledgeNumberTerms(fact.text))
+        .map((term) => this.normalizeKnowledgeTerm(term)),
+    )
+    if (!factNumberTerms.size) return true
+
+    return answerNumberTerms.every((term) => factNumberTerms.has(this.normalizeKnowledgeTerm(term)))
+  }
+
+  private extractKnowledgeNumberTerms(content: string) {
+    return Array.from(new Set((content.match(KNOWLEDGE_REQUIRED_NUMBER_PATTERN) || [])
+      .map((term) => term.trim())
+      .filter(Boolean)))
+  }
+
+  private normalizeKnowledgeTerm(content: string) {
+    return content.replace(/\s+/g, '')
+  }
+
+  private buildKnowledgeFallbackAnswer(facts: WorkflowKnowledgeFact[]) {
+    const factLines = facts
+      .filter((fact) => fact.text)
+      .map((fact) => fact.text)
+    if (!factLines.length) return STRICT_KNOWLEDGE_FALLBACK
+    return [
+      '您好，相关信息如下：',
+      '',
+      ...factLines.map((line, index) => `${index + 1}. ${line}`),
+    ].join('\n')
   }
 
   private ensureSingleStreamingLlmNode(graph: WorkflowGraph) {

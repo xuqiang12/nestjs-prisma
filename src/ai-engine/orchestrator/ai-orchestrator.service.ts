@@ -27,17 +27,13 @@ export type BuildCompletionOptions = {
 
 const STRICT_KNOWLEDGE_MAX_DISTANCE = 0.45
 const KNOWLEDGE_EVIDENCE_MAX_DISTANCE = 0.55
-const KNOWLEDGE_EVIDENCE_MAX_LINES = 6
-const KNOWLEDGE_EVIDENCE_MAX_LENGTH = 280
+const KNOWLEDGE_EVIDENCE_MAX_LENGTH = 6000
 const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
-const KNOWLEDGE_LABEL_PATTERN = /^(问题|答案|答复|回复|标题|产品名称|知识标题|内容|正文)[:：]\s*/
 const KNOWLEDGE_ROLE_MARKER_PATTERN = /^\s*(user|assistant|system)\s*$/i
-const COPIED_KNOWLEDGE_ARTIFACT_PATTERN = /(售后服务政策|产品名称[:：]|产品型号[:：]|产品功能[:：]|知识片段|事实依据|来源\d*[:：])/
+const COPIED_KNOWLEDGE_ARTIFACT_PATTERN = /(知识片段|事实依据|来源\d*[:：])/
 const KNOWLEDGE_FACT_SPLIT_PATTERN = /[。；;]+/
-const KNOWLEDGE_REQUIRED_NUMBER_PATTERN = /[\u4e00-\u9fa5]{0,4}\d+(?:\.\d+)?\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％)(?:内|外|后|前|起|以上|以下)?/g
+const KNOWLEDGE_REQUIRED_NUMBER_PATTERN = /\d+(?:\.\d+)?\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％)(?:\s*\/\s*(?:天|日|小时|分钟|个月|月|年|次|个|元|%|％))?(?:内|外|后|前|起|以上|以下)?/g
 const KNOWLEDGE_REQUIRED_CONDITION_PATTERN = /(?:未|已|不|无|非|仅|只|必须|需要|可以|支持|不能|不得|禁止|无法)[\u4e00-\u9fa5A-Za-z0-9]{1,12}/g
-const KNOWLEDGE_HEADING_PATTERN = /^([一二三四五六七八九十\d]+[、.．]\s*)?[\u4e00-\u9fa5A-Za-z0-9]{2,24}(政策|流程|说明|信息|范围|服务|配置)$/
-const KNOWLEDGE_LABEL_ONLY_PATTERN = /^(问题|答案|答复|回复|标题|产品名称|产品型号|产品功能|适用范围|售价|基础版本|企业版本|服务期限|内容|正文)[:：]?$/
 
 @Injectable()
 export class AiOrchestratorService {
@@ -78,8 +74,9 @@ export class AiOrchestratorService {
   ): Promise<CompletionPlan> {
     if (mode === 'knowledge') {
       this.ensureToolAllowed('search_knowledge', options.allowedToolCodes)
-      // 知识库模式需要先做向量检索，把命中的片段压缩为 system prompt 的事实依据。
-      const matchedSources = await this.vectorStoreService.similaritySearch(message, 5, { tags: options.knowledgeTags, knowledgeBaseIds: options.knowledgeBaseIds })
+      const standaloneQuestion = this.buildStandaloneKnowledgeQuestion(message, history)
+      // 知识库模式先用用户上下文补全检索问题，再把命中的片段整理为 system prompt 的事实依据。
+      const matchedSources = await this.vectorStoreService.similaritySearch(standaloneQuestion, 5, { tags: options.knowledgeTags, knowledgeBaseIds: options.knowledgeBaseIds })
       const sources = options.knowledgeStrict
         ? matchedSources.filter((item) => item.distance <= STRICT_KNOWLEDGE_MAX_DISTANCE)
         : matchedSources.filter((item) => item.distance <= KNOWLEDGE_EVIDENCE_MAX_DISTANCE)
@@ -92,7 +89,7 @@ export class AiOrchestratorService {
           directAnswer: STRICT_KNOWLEDGE_FALLBACK,
         }
       }
-      const knowledgeFacts = this.buildKnowledgeFacts(message, sources)
+      const knowledgeFacts = this.buildKnowledgeFacts(sources)
       const evidence = this.buildKnowledgeEvidence(knowledgeFacts)
       const systemPrompt = [
         options.systemPrompt,
@@ -107,7 +104,7 @@ export class AiOrchestratorService {
 
       return {
         route: 'knowledge',
-        messages: [{ role: 'system', content: systemPrompt }, ...this.normalizeHistory(history), { role: 'user', content: message }],
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: standaloneQuestion }],
         sources,
         knowledgeFacts,
       }
@@ -127,12 +124,12 @@ export class AiOrchestratorService {
 
   // 根据已构建好的消息数组发起一次非流式模型调用。
   async complete(messages: ChatMessage[], options?: LlmOptions) {
-    return this.llmService.invokeWithMessages(messages, options)
+    return this.llmService.invokeWithMessages(messages, this.withFinalAnswerOptions(options))
   }
 
   // 根据已构建好的消息数组发起一次流式模型调用。
   streamCompletion(messages: ChatMessage[], options?: LlmOptions) {
-    return this.llmService.streamWithMessages(messages, options)
+    return this.llmService.streamWithMessages(messages, this.withFinalAnswerOptions(options))
   }
 
   sanitizeKnowledgeAnswer(content: string) {
@@ -144,47 +141,61 @@ export class AiOrchestratorService {
     return this.validateKnowledgeAnswer(answer, facts) ? answer : this.buildKnowledgeFallbackAnswer(facts)
   }
 
+  private withFinalAnswerOptions(options: LlmOptions = {}): LlmOptions {
+    return {
+      ...options,
+      finalAnswerGuard: true,
+      roleTemplateStops: true,
+    }
+  }
+
   // 过滤历史消息，只保留模型支持的用户消息和助手消息。
   private normalizeHistory(history: ChatMessage[]) {
     return history.filter((item) => item.role === 'user' || item.role === 'assistant')
   }
 
+  private buildStandaloneKnowledgeQuestion(message: string, history: ChatMessage[]) {
+    const currentQuestion = message.trim()
+    const userContext = this.normalizeHistory(history)
+      .filter((item) => item.role === 'user')
+      .map((item) => item.content.trim())
+      .filter((content) => content && content !== currentQuestion)
+      .slice(-3)
+
+    return [...userContext, currentQuestion].filter(Boolean).join('\n')
+  }
+
   private buildKnowledgeEvidence(facts: KnowledgeFact[]) {
-    return facts
+    const evidence = facts
       .map((fact, index) => {
         const requiredTerms = fact.requiredTerms.length ? `\n关键条件：${fact.requiredTerms.join('、')}` : ''
         return `事实${index + 1}：${fact.text}${requiredTerms}`
       })
       .join('\n')
+
+    return evidence.length > KNOWLEDGE_EVIDENCE_MAX_LENGTH
+      ? `${evidence.slice(0, KNOWLEDGE_EVIDENCE_MAX_LENGTH)}...`
+      : evidence
   }
 
-  private buildKnowledgeFacts(question: string, sources: SearchResult[]) {
-    const facts = sources
+  private buildKnowledgeFacts(sources: SearchResult[]) {
+    return sources
       .flatMap((source) => this.splitKnowledgeFactTexts(this.compactKnowledgeContent(source.content)))
       .map((text) => ({
         text,
         requiredTerms: this.extractRequiredTerms(text),
       }))
       .filter((fact) => fact.text)
-
-    const usefulFacts = facts.filter((fact) => this.isUsefulKnowledgeFact(fact, question))
-    return usefulFacts
   }
 
   private compactKnowledgeContent(content: string) {
     const lines = content.replace(/\uFFFD/g, '')
       .split(/\r?\n/)
-      .map((line) => line.replace(KNOWLEDGE_LABEL_PATTERN, '').trim())
-      .filter((line) => line && !this.isKnowledgeHeadingOrLabel(line))
+      .map((line) => line.trim())
+      .filter((line) => line)
       .filter((line) => !KNOWLEDGE_ROLE_MARKER_PATTERN.test(line))
 
-    const compacted = (lines.length ? lines : [content.trim()])
-      .slice(0, KNOWLEDGE_EVIDENCE_MAX_LINES)
-      .join('；')
-
-    return compacted.length > KNOWLEDGE_EVIDENCE_MAX_LENGTH
-      ? `${compacted.slice(0, KNOWLEDGE_EVIDENCE_MAX_LENGTH)}...`
-      : compacted
+    return (lines.length ? lines : [content.trim()]).join('\n')
   }
 
   private splitKnowledgeFactTexts(content: string) {
@@ -194,47 +205,36 @@ export class AiOrchestratorService {
       .filter(Boolean)
   }
 
-  private isUsefulKnowledgeFact(fact: KnowledgeFact, question: string) {
-    return fact.requiredTerms.length > 0 && this.hasQuestionOverlap(fact.text, question)
-  }
-
-  private isKnowledgeHeadingOrLabel(content: string) {
-    const line = content.trim()
-    return KNOWLEDGE_LABEL_ONLY_PATTERN.test(line) || KNOWLEDGE_HEADING_PATTERN.test(line)
-  }
-
-  private hasQuestionOverlap(content: string, question: string) {
-    const questionTerms = this.extractQuestionTerms(question)
-    if (!questionTerms.length) return false
-    const normalizedContent = this.normalizeKnowledgeText(content)
-    return questionTerms.some((term) => normalizedContent.includes(term))
-  }
-
-  private extractQuestionTerms(question: string) {
-    const normalizedQuestion = this.normalizeKnowledgeText(question)
-    return Array.from(new Set((normalizedQuestion.match(/[\u4e00-\u9fa5A-Za-z0-9]{2,}/g) || [])
-      .flatMap((term) => {
-        const intent = term.replace(/(是什么|有哪些|怎么|如何|多少|吗|呢|啊)$/, '')
-        const base = intent.replace(/(政策|规则|说明|流程|信息)$/, '')
-        const terms = intent.length > 4 ? [intent, intent.slice(0, 4)] : [intent]
-        return base && base !== term ? [...terms, base, base.slice(0, 1)] : terms
-      })
-      .filter((term) => term.length > 0)))
-  }
-
   private extractRequiredTerms(content: string) {
     return Array.from(new Set([
-      ...(content.match(KNOWLEDGE_REQUIRED_NUMBER_PATTERN) || []),
+      ...this.extractKnowledgeNumberTerms(content),
       ...(content.match(KNOWLEDGE_REQUIRED_CONDITION_PATTERN) || []),
     ].map((term) => term.trim()).filter(Boolean)))
   }
 
   private validateKnowledgeAnswer(answer: string, facts: KnowledgeFact[]) {
     if (!answer) return !facts.length
-    const requiredTerms = Array.from(new Set(facts.flatMap((fact) => fact.requiredTerms)))
-    if (!requiredTerms.length) return true
-    const normalizedAnswer = this.normalizeKnowledgeText(answer)
-    return requiredTerms.every((term) => normalizedAnswer.includes(this.normalizeKnowledgeText(term)))
+    const answerNumberTerms = this.extractKnowledgeNumberTerms(answer)
+    if (!answerNumberTerms.length) return true
+
+    const factNumberTerms = new Set(
+      facts
+        .flatMap((fact) => this.extractKnowledgeNumberTerms(fact.text))
+        .map((term) => this.normalizeKnowledgeTerm(term)),
+    )
+    if (!factNumberTerms.size) return true
+
+    return answerNumberTerms.every((term) => factNumberTerms.has(this.normalizeKnowledgeTerm(term)))
+  }
+
+  private extractKnowledgeNumberTerms(content: string) {
+    return Array.from(new Set((content.match(KNOWLEDGE_REQUIRED_NUMBER_PATTERN) || [])
+      .map((term) => term.trim())
+      .filter(Boolean)))
+  }
+
+  private normalizeKnowledgeTerm(content: string) {
+    return content.replace(/\s+/g, '')
   }
 
   private buildKnowledgeFallbackAnswer(facts: KnowledgeFact[]) {

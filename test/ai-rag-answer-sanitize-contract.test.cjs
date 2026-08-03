@@ -12,36 +12,34 @@ test('rag answers are sanitized before saving or streaming to users', () => {
   assert.match(orchestrator, /export type KnowledgeFact = \{/)
   assert.match(orchestrator, /requiredTerms:\s*string\[\]/)
   assert.match(orchestrator, /knowledgeFacts:\s*KnowledgeFact\[\]/)
-  assert.match(orchestrator, /buildKnowledgeFacts\(message,\s*sources\)/)
+  assert.match(orchestrator, /buildKnowledgeFacts\(sources\)/)
   assert.match(orchestrator, /extractRequiredTerms/)
-  assert.match(orchestrator, /isUsefulKnowledgeFact/)
-  assert.match(orchestrator, /isKnowledgeHeadingOrLabel/)
   assert.match(orchestrator, /validateKnowledgeAnswer/)
   assert.match(orchestrator, /buildKnowledgeFallbackAnswer/)
   assert.match(orchestrator, /完整保留事实依据中的数字、期限、条件和否定结论/)
   assert.match(orchestrator, /sanitizeKnowledgeAnswer\(content:\s*string\)/)
   assert.match(orchestrator, /stripCopiedKnowledgeArtifacts/)
-  assert.match(orchestrator, /售后服务政策/)
-  assert.match(orchestrator, /产品名称/)
   assert.match(orchestrator, /知识片段/)
+  assert.doesNotMatch(orchestrator, /KNOWLEDGE_EVIDENCE_MAX_LINES/)
+  assert.doesNotMatch(orchestrator, /KNOWLEDGE_LABEL_ONLY_PATTERN/)
+  assert.doesNotMatch(orchestrator, /KNOWLEDGE_HEADING_PATTERN/)
+  assert.doesNotMatch(orchestrator, /isUsefulKnowledgeFact/)
 
   assert.match(chatService, /plan\.route === 'knowledge'\s*\?\s*this\.aiOrchestratorService\.ensureKnowledgeAnswer\(rawAnswer,\s*plan\.knowledgeFacts\)/)
-  assert.match(chatService, /answer \+= content\s*yield \{ type: 'content', content \}/)
+  assert.match(chatService, /answer = this\.aiOrchestratorService\.ensureKnowledgeAnswer\(answer,\s*plan\.knowledgeFacts\)/)
 })
 
-test('rag fallback facts exclude headings labels and unrelated source fields', () => {
+test('rag facts use generic chunk content without sample-specific filters', () => {
   const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
 
-  assert.match(orchestrator, /KNOWLEDGE_HEADING_PATTERN/)
-  assert.match(orchestrator, /KNOWLEDGE_LABEL_ONLY_PATTERN/)
-  assert.match(orchestrator, /const usefulFacts = facts\.filter\(\(fact\) => this\.isUsefulKnowledgeFact\(fact,\s*question\)\)/)
-  assert.match(orchestrator, /return fact\.requiredTerms\.length > 0/)
-  assert.match(orchestrator, /this\.hasQuestionOverlap\(fact\.text,\s*question\)/)
-  assert.match(orchestrator, /filter\(\(line\) => line && !this\.isKnowledgeHeadingOrLabel\(line\)\)/)
-  assert.doesNotMatch(orchestrator, /factLines = facts\.map\(\(fact\) => fact\.text\)/)
+  assert.doesNotMatch(orchestrator, /产品名称\|产品型号\|产品功能/)
+  assert.doesNotMatch(orchestrator, /售价\|基础版本\|企业版本/)
+  assert.doesNotMatch(orchestrator, /\.slice\(0,\s*KNOWLEDGE_EVIDENCE_MAX_LINES\)/)
+  assert.doesNotMatch(orchestrator, /requiredTerms\.length > 0 && this\.hasQuestionOverlap/)
+  assert.match(orchestrator, /source\.content/)
 })
 
-test('rag fact extraction keeps policy facts without unrelated product fields', async () => {
+test('rag fact extraction keeps relevant policy facts without fixed field lists', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
   const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
@@ -69,13 +67,235 @@ test('rag fact extraction keeps policy facts without unrelated product fields', 
     allowedToolCodes: ['search_knowledge'],
   })
   const factText = plan.knowledgeFacts.map((item) => item.text).join('\n')
-  const fallback = service.ensureKnowledgeAnswer('您好，相关信息如下：\n1. 售后服务政策\n2. 产品名称：\n3. OA-Pro-2026', plan.knowledgeFacts)
+  const fallback = service.ensureKnowledgeAnswer('', plan.knowledgeFacts)
 
   assert.match(factText, /购买7天内/)
   assert.match(factText, /不支持无理由退款/)
-  assert.doesNotMatch(factText, /OA-Pro-2026/)
-  assert.doesNotMatch(factText, /支持在线创建/)
   assert.match(fallback, /购买7天内/)
   assert.match(fallback, /不支持无理由退款/)
-  assert.doesNotMatch(fallback, /OA-Pro-2026/)
+})
+
+test('rag fact extraction keeps later structured values instead of truncating to leading lines', async () => {
+  require('ts-node/register')
+  require('tsconfig-paths/register')
+  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
+  const service = new AiOrchestratorService({}, {
+    similaritySearch: async () => [{
+      id: 'doc-1',
+      distance: 0.2,
+      metadata: {},
+      content: [
+        '产品名称：智能办公助手Pro',
+        '产品型号：',
+        'OA-Pro-2026',
+        '产品功能：',
+        '1. 文档管理',
+        '支持在线创建、编辑、共享企业文档。',
+        '2. AI助手',
+        '支持智能问答、内容总结、会议纪要生成。',
+        '3. 权限管理',
+        '支持管理员设置用户访问权限。',
+        '适用范围：',
+        '适用于企业内部办公场景，包括：',
+        '- 文件管理',
+        '- 企业知识查询',
+        '- 日常办公协作',
+        '售价：',
+        '基础版本：',
+        '1999元/年',
+        '企业版本：',
+        '4999元/年',
+        '服务期限：',
+        '购买后提供一年技术支持服务。',
+      ].join('\n'),
+    }],
+  })
+
+  const plan = await service.buildCompletion('智能办公助手Pro多少钱？', 'knowledge', [], {
+    allowedToolCodes: ['search_knowledge'],
+  })
+  const factText = plan.knowledgeFacts.map((item) => item.text).join('\n')
+  const fallback = service.ensureKnowledgeAnswer('', plan.knowledgeFacts)
+
+  assert.match(factText, /产品名称：智能办公助手Pro/)
+  assert.match(factText, /售价/)
+  assert.match(factText, /基础版本/)
+  assert.match(factText, /1999元\/年/)
+  assert.match(factText, /企业版本/)
+  assert.match(factText, /4999元\/年/)
+  assert.match(fallback, /1999元\/年/)
+  assert.match(fallback, /4999元\/年/)
+})
+
+test('knowledge prompts exclude assistant history so stale answers do not override retrieved facts', async () => {
+  require('ts-node/register')
+  require('tsconfig-paths/register')
+  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
+  const service = new AiOrchestratorService({}, {
+    similaritySearch: async () => [{
+      id: 'doc-1',
+      distance: 0.2,
+      metadata: {},
+      content: [
+        '产品名称：智能办公助手Pro',
+        '售价：',
+        '基础版本：1999元/年',
+        '企业版本：4999元/年',
+      ].join('\n'),
+    }],
+  })
+
+  const plan = await service.buildCompletion('智能办公助手Pro多少钱？', 'knowledge', [
+    { role: 'user', content: '智能办公助手Pro多少钱？' },
+    { role: 'assistant', content: '基础版本价格为1111元/年，企业版本价格为2222元/年。' },
+  ], {
+    allowedToolCodes: ['search_knowledge'],
+  })
+  const messagesText = plan.messages.map((message) => message.content).join('\n')
+
+  assert.equal(plan.route, 'knowledge')
+  assert.match(messagesText, /基础版本：1999元\/年/)
+  assert.match(messagesText, /企业版本：4999元\/年/)
+  assert.doesNotMatch(messagesText, /1111元\/年/)
+  assert.doesNotMatch(messagesText, /2222元\/年/)
+  assert.deepEqual(plan.messages.map((message) => message.role), ['system', 'user'])
+})
+
+test('knowledge retrieval uses recent user context to make follow-up questions searchable', async () => {
+  require('ts-node/register')
+  require('tsconfig-paths/register')
+  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
+  let receivedQuery = ''
+  const service = new AiOrchestratorService({}, {
+    similaritySearch: async (query) => {
+      receivedQuery = query
+      return [{
+        id: 'doc-1',
+        distance: 0.2,
+        metadata: {},
+        content: '企业版本：4999元/年',
+      }]
+    },
+  })
+
+  const plan = await service.buildCompletion('企业版呢？', 'knowledge', [
+    { role: 'user', content: '智能办公助手Pro多少钱？' },
+    { role: 'assistant', content: '基础版本价格为1111元/年。' },
+  ], {
+    allowedToolCodes: ['search_knowledge'],
+  })
+  const finalUserMessage = plan.messages[plan.messages.length - 1]
+
+  assert.match(receivedQuery, /智能办公助手Pro多少钱/)
+  assert.match(receivedQuery, /企业版呢/)
+  assert.doesNotMatch(receivedQuery, /1111元/)
+  assert.equal(finalUserMessage.role, 'user')
+  assert.match(finalUserMessage.content, /智能办公助手Pro多少钱/)
+  assert.match(finalUserMessage.content, /企业版呢/)
+})
+
+test('knowledge answer fallback rejects numeric claims that are not in retrieved facts', async () => {
+  require('ts-node/register')
+  require('tsconfig-paths/register')
+  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
+  const service = new AiOrchestratorService({}, {
+    similaritySearch: async () => [{
+      id: 'doc-1',
+      distance: 0.2,
+      metadata: {},
+      content: [
+        '产品名称：智能办公助手Pro',
+        '售价：',
+        '基础版本：1999元/年',
+        '企业版本：4999元/年',
+      ].join('\n'),
+    }],
+  })
+
+  const plan = await service.buildCompletion('智能办公助手Pro多少钱？', 'knowledge', [], {
+    allowedToolCodes: ['search_knowledge'],
+  })
+  const answer = service.ensureKnowledgeAnswer(
+    '基础版本的价格是1111元/年，企业版本的价格是4111元/年。',
+    plan.knowledgeFacts,
+  )
+  const validAnswer = service.ensureKnowledgeAnswer(
+    '基础版本的价格是1999元/年，企业版本的价格是4999元/年。',
+    plan.knowledgeFacts,
+  )
+
+  assert.match(answer, /1999元\/年/)
+  assert.match(answer, /4999元\/年/)
+  assert.doesNotMatch(answer, /1111元/)
+  assert.doesNotMatch(answer, /4111元/)
+  assert.equal(validAnswer, '基础版本的价格是1999元/年，企业版本的价格是4999元/年。')
+})
+
+test('knowledge stream buffers model chunks and emits the checked answer once', async () => {
+  require('ts-node/register')
+  require('tsconfig-paths/register')
+  const { ChatService } = require(join(rootDir, 'src/modules/knowledge-bot/chat/chat.service'))
+  const savedMessages = []
+  const aiOrchestratorService = {
+    buildCompletion: async () => ({
+      route: 'knowledge',
+      messages: [{ role: 'system', content: '事实依据：基础版本：1999元/年\n企业版本：4999元/年' }],
+      sources: [{ id: 'doc-1' }],
+      knowledgeFacts: [
+        { text: '基础版本：1999元/年\n企业版本：4999元/年', requiredTerms: ['1999元', '4999元'] },
+      ],
+    }),
+    streamCompletion: async function* () {
+      yield '基础版本的价格是1111元/年，'
+      yield '企业版本的价格是4111元/年。'
+    },
+    ensureKnowledgeAnswer: (answer) => {
+      assert.match(answer, /1111元\/年/)
+      assert.match(answer, /4111元\/年/)
+      return '基础版本：1999元/年\n企业版本：4999元/年'
+    },
+  }
+  const conversationService = {
+    getOrCreateForMessage: async () => ({ id: 'conv-1', mode: 'knowledge' }),
+    getHistoryMessages: async () => [],
+    addMessage: async (...args) => savedMessages.push(args),
+    touchConversation: async () => undefined,
+  }
+  const agentRuntimeService = {
+    resolve: async () => ({
+      mode: 'knowledge',
+      toolCodes: ['search_knowledge'],
+      knowledgeStrict: false,
+      knowledgeTags: [],
+      knowledgeBaseIds: [],
+      llmOptions: {},
+    }),
+  }
+  const sensitiveWordCheckerService = {
+    checkAndApply: async (content) => ({ content }),
+  }
+  const workflowRuntimeService = {}
+  const service = new ChatService(
+    aiOrchestratorService,
+    conversationService,
+    agentRuntimeService,
+    sensitiveWordCheckerService,
+    workflowRuntimeService,
+  )
+
+  const events = []
+  for await (const event of service.stream({
+    message: '智能办公助手Pro多少钱？',
+    mode: 'knowledge',
+  }, 'user-1')) {
+    events.push(event)
+  }
+  const contentEvents = events.filter((event) => event.type === 'content')
+  const assistantMessage = savedMessages.find((item) => item[1] === 'assistant')
+
+  assert.deepEqual(contentEvents, [
+    { type: 'content', content: '基础版本：1999元/年\n企业版本：4999元/年' },
+  ])
+  assert.ok(assistantMessage)
+  assert.equal(assistantMessage[2], '基础版本：1999元/年\n企业版本：4999元/年')
 })

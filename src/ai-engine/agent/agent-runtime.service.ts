@@ -5,6 +5,7 @@ import { AgentExecutorService } from './agent-executor.service'
 import { AgentExecutionLoggerService } from './agent-execution-logger.service'
 import { AgentPlanService, MAX_AGENT_PLAN_STEPS } from './agent-plan.service'
 import { AgentResponseComposerService } from './agent-response-composer.service'
+import { ModelResolverService } from '../model/model-resolver.service'
 import {
   AgentContext,
   AgentExecutionResult,
@@ -21,6 +22,7 @@ export class AgentRuntimeService {
     private readonly executor: AgentExecutorService,
     private readonly responseComposer: AgentResponseComposerService,
     private readonly executionLogger: AgentExecutionLoggerService,
+    private readonly modelResolver: ModelResolverService,
   ) {}
 
   async resolve(agentCode?: string): Promise<AgentRuntimeConfig | null> {
@@ -51,6 +53,7 @@ export class AgentRuntimeService {
     const basePrompt = [agent.promptSnapshot || prompt.content, agent.promptEnhancement]
       .filter(Boolean)
       .join('\n\n')
+    const llmOptions = await this.modelResolver.resolve(agent.modelConfigId, agent.model)
     return {
       agentCode: agent.code,
       agentName: agent.name,
@@ -62,7 +65,7 @@ export class AgentRuntimeService {
           : 'chat',
       systemPrompt: basePrompt,
       llmOptions: {
-        model: agent.model || undefined,
+        ...llmOptions,
         temperature: agent.temperature ?? undefined,
         topP: agent.topP ?? undefined,
       },
@@ -196,7 +199,7 @@ export class AgentRuntimeService {
       agentCode: agent?.agentCode,
       agentName: agent?.agentName,
       model: {
-        provider: 'default',
+        provider: agent?.llmOptions.provider || 'default',
         name: agent?.llmOptions.model,
         temperature: agent?.llmOptions.temperature,
         topP: agent?.llmOptions.topP,

@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common'
 import { AgentController } from './agent/agent.controller'
 import { AgentService } from './agent/agent.service'
+import { ModelConfigController } from './model-config/model-config.controller'
+import { ModelConfigService } from './model-config/model-config.service'
+import { ModelProviderController } from './model-provider/model-provider.controller'
+import { ModelProviderService } from './model-provider/model-provider.service'
 import { PromptController } from './prompt/prompt.controller'
 import { PromptService } from './prompt/prompt.service'
 import { SensitiveWordController } from './sensitive-word/sensitive-word.controller'
@@ -19,6 +23,8 @@ import { WorkflowService } from './workflow/workflow.service'
     PromptController,
     SensitiveWordController,
     AgentController,
+    ModelProviderController,
+    ModelConfigController,
     WorkflowController,
     SkillPackageController,
     WorkflowRunController,
@@ -28,6 +34,8 @@ import { WorkflowService } from './workflow/workflow.service'
     PromptService,
     SensitiveWordService,
     AgentService,
+    ModelProviderService,
+    ModelConfigService,
     WorkflowService,
     SkillPackageService,
     WorkflowRunService,
@@ -37,6 +45,8 @@ import { WorkflowService } from './workflow/workflow.service'
     PromptService,
     SensitiveWordService,
     AgentService,
+    ModelProviderService,
+    ModelConfigService,
     WorkflowService,
     SkillPackageService,
     WorkflowRunService,

@@ -4,15 +4,6 @@ import { PrismaService } from 'nestjs-prisma'
 import { AIRegistry } from '../../../ai-engine/core/ai.registry'
 import { AgentListDto, AgentStatusDto, CreateAgentDto, UpdateAgentDto } from './dto/agent.dto'
 
-const MODEL_OPTIONS = [
-  {
-    label: 'Qwen2.5 7B 指令模型',
-    value: 'Qwen/Qwen2.5-7B-Instruct',
-    key: 'Qwen/Qwen2.5-7B-Instruct',
-    provider: 'SiliconFlow',
-  },
-]
-
 @Injectable()
 export class AgentService {
   constructor(
@@ -38,6 +29,7 @@ export class AgentService {
         orderBy: { updatedAt: 'desc' },
         include: {
           knowledgeBases: { select: { knowledgeBaseId: true } },
+          modelConfig: { include: { provider: true } },
         },
       }),
       this.prisma.aiAgent.count({ where }),
@@ -70,6 +62,8 @@ export class AgentService {
         promptSnapshot: true,
         promptEnhancement: true,
         model: true,
+        modelConfigId: true,
+        modelConfig: { select: { name: true, modelName: true, modelType: true, provider: { select: { name: true } } } },
         knowledgeEnabled: true,
         knowledgeStrict: true,
         knowledgeTags: true,
@@ -82,7 +76,7 @@ export class AgentService {
   }
 
   async configOptions() {
-    const [prompts, workflows] = await Promise.all([
+    const [prompts, workflows, models] = await Promise.all([
       this.prisma.aiPrompt.findMany({
         where: { status: 1 },
         orderBy: { updatedAt: 'desc' },
@@ -109,6 +103,11 @@ export class AgentService {
           },
         },
       }),
+      this.prisma.aiModelConfig.findMany({
+        where: { status: 1, modelType: 'chat', provider: { status: 1 } },
+        orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
+        include: { provider: true },
+      }),
     ])
 
     return {
@@ -124,7 +123,18 @@ export class AgentService {
         code: tool.name,
         name: tool.description || tool.name,
       })),
-      models: MODEL_OPTIONS,
+      models: models.map((item) => ({
+        id: item.id,
+        value: item.id,
+        label: item.name,
+        code: item.code,
+        provider: item.provider.name,
+        providerCode: item.provider.code,
+        modelName: item.modelName,
+        modelType: item.modelType,
+        capabilities: item.capabilities,
+        isDefault: item.isDefault,
+      })),
     }
   }
 
@@ -135,6 +145,7 @@ export class AgentService {
     }
     const knowledgeBaseIds = this.normalizeKnowledgeBaseIds(dto.knowledgeBaseIds)
     await this.ensureEnabledKnowledgeBases(knowledgeBaseIds)
+    await this.ensureEnabledChatModelConfig(dto.modelConfigId)
     this.ensureKnownTools(dto.toolCodes)
     await this.ensureWorkflowRequiredTools(dto.workflowCode, dto.toolCodes)
 
@@ -162,6 +173,7 @@ export class AgentService {
     if (shouldSyncKnowledgeBases) {
       await this.ensureEnabledKnowledgeBases(knowledgeBaseIds)
     }
+    await this.ensureEnabledChatModelConfig(dto.modelConfigId)
     this.ensureKnownTools(dto.toolCodes)
     await this.ensureWorkflowRequiredTools(dto.workflowCode, dto.toolCodes)
 
@@ -210,6 +222,9 @@ export class AgentService {
       status: dto.status,
       remark: dto.remark,
     }
+    if (dto.modelConfigId !== undefined) {
+      data.modelConfigId = dto.modelConfigId || null
+    }
     if (!('id' in dto) || dto.promptId !== undefined || dto.promptSnapshot !== undefined) {
       data.promptSnapshot = await this.resolvePromptSnapshot(promptId, dto.promptSnapshot)
     }
@@ -248,6 +263,7 @@ export class AgentService {
       where: { id },
       include: {
         knowledgeBases: { select: { knowledgeBaseId: true } },
+        modelConfig: { include: { provider: true } },
       },
     })
     if (!agent) {
@@ -286,6 +302,18 @@ export class AgentService {
     })
     if (!workflow) {
       throw new BadRequestException('绑定的工作流不存在或未启用')
+    }
+  }
+
+  private async ensureEnabledChatModelConfig(modelConfigId?: string) {
+    if (!modelConfigId) {
+      return
+    }
+    const modelConfig = await this.prisma.aiModelConfig.findFirst({
+      where: { id: modelConfigId, status: 1, modelType: 'chat', provider: { status: 1 } },
+    })
+    if (!modelConfig) {
+      throw new BadRequestException('绑定的模型配置不存在或未启用')
     }
   }
 
@@ -370,12 +398,17 @@ export class AgentService {
     return (agent.knowledgeBases || []).map((item) => item.knowledgeBaseId)
   }
 
-  private toAgentResponse<T extends { knowledgeBases?: Array<{ knowledgeBaseId: string }> }>(agent: T) {
-    const { knowledgeBases, ...data } = agent
+  private toAgentResponse<T extends { knowledgeBases?: Array<{ knowledgeBaseId: string }>; modelConfig?: any }>(agent: T) {
+    const { knowledgeBases, modelConfig, ...data } = agent
     void knowledgeBases
     return {
       ...data,
       knowledgeBaseIds: this.extractKnowledgeBaseIds(agent),
+      modelConfigId: (data as any).modelConfigId || modelConfig?.id,
+      modelConfigName: modelConfig?.name,
+      modelProviderName: modelConfig?.provider?.name,
+      modelName: modelConfig?.modelName,
+      modelType: modelConfig?.modelType,
     }
   }
 

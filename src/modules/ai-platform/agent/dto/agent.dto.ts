@@ -69,6 +69,11 @@ export class CreateAgentDto {
   @IsOptional()
   model?: string
 
+  @ApiPropertyOptional({ description: '模型配置ID' })
+  @IsString()
+  @IsOptional()
+  modelConfigId?: string
+
   @ApiPropertyOptional({ description: 'temperature' })
   @Type(() => Number)
   @IsNumber()

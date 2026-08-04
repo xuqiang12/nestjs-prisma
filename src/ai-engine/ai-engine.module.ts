@@ -4,6 +4,7 @@ import { EmbeddingService } from './embedding/embedding.service'
 import { AiOrchestratorService } from './orchestrator/ai-orchestrator.service'
 import { DefaultToolExecutor } from './tools/tool.executor'
 import { LlmService } from './llm/llm.service'
+import { ModelResolverService } from './model/model-resolver.service'
 import { VectorStoreService } from './vector/vector-store.service'
 import { AgentExecutionLoggerService } from './agent/agent-execution-logger.service'
 import { AgentExecutorService } from './agent/agent-executor.service'
@@ -20,6 +21,7 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
 @Module({
   providers: [
     LlmService,
+    ModelResolverService,
     EmbeddingService,
     VectorStoreService,
     AgentExecutionLoggerService,
@@ -43,6 +45,7 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
     AIRegistry,
     DefaultToolExecutor,
     LlmService,
+    ModelResolverService,
     EmbeddingService,
     VectorStoreService,
     AiOrchestratorService,

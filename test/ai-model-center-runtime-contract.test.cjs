@@ -1,0 +1,26 @@
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const test = require('node:test')
+
+const root = path.join(__dirname, '..')
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
+
+test('runtime resolves model config instead of hardcoding SiliconFlow only', () => {
+  const resolver = read('src/ai-engine/model/model-resolver.service.ts')
+  const llm = read('src/ai-engine/llm/llm.service.ts')
+  const runtime = read('src/ai-engine/agent/agent-runtime.service.ts')
+
+  assert.match(resolver, /class ModelResolverService/)
+  assert.match(resolver, /findFirst[\s\S]*aiModelConfig/)
+  assert.match(resolver, /id,[\s\S]*modelType:\s*'chat'/)
+  assert.match(resolver, /isDefault:\s*true/)
+  assert.match(resolver, /modelType:\s*'chat'/)
+  assert.match(resolver, /provider:\s*{[\s\S]*select:\s*{[\s\S]*baseUrl:\s*true[\s\S]*apiKeyEnv:\s*true/)
+  assert.match(resolver, /process\.env\[.*provider\.apiKeyEnv/)
+  assert.match(llm, /baseURL:\s*options\.baseUrl/)
+  assert.match(llm, /apiKey:\s*options\.apiKey/)
+  assert.doesNotMatch(llm, /baseURL:\s*process\.env\.SILICONFLOW_BASE_URL/)
+  assert.match(runtime, /modelConfigId/)
+  assert.match(runtime, /modelResolver\.resolve/)
+})

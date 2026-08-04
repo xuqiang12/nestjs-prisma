@@ -1,11 +1,27 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
-import { AgentRuntimeConfig } from './agent-runtime.types'
+import { AgentExecutorService } from './agent-executor.service'
+import { AgentExecutionLoggerService } from './agent-execution-logger.service'
+import { AgentPlanService, MAX_AGENT_PLAN_STEPS } from './agent-plan.service'
+import { AgentResponseComposerService } from './agent-response-composer.service'
+import {
+  AgentContext,
+  AgentExecutionResult,
+  AgentRuntimeConfig,
+  AgentRuntimeInput,
+  AgentRuntimeStreamChunk,
+} from './agent-runtime.types'
 
 @Injectable()
 export class AgentRuntimeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planService: AgentPlanService,
+    private readonly executor: AgentExecutorService,
+    private readonly responseComposer: AgentResponseComposerService,
+    private readonly executionLogger: AgentExecutionLoggerService,
+  ) {}
 
   async resolve(agentCode?: string): Promise<AgentRuntimeConfig | null> {
     if (!agentCode) {
@@ -22,18 +38,22 @@ export class AgentRuntimeService {
       },
     })
     if (!agent) {
-      throw new BadRequestException('智能体不存在或未启用')
+      throw new BadRequestException('Agent does not exist or is disabled')
     }
 
     const prompt = await this.prisma.aiPrompt.findFirst({
       where: { id: agent.promptId, status: 1 },
     })
     if (!prompt) {
-      throw new BadRequestException('智能体绑定的提示词不存在或未启用')
+      throw new BadRequestException('Agent prompt does not exist or is disabled')
     }
-    const basePrompt = agent.promptSnapshot || prompt.content
+
+    const basePrompt = [agent.promptSnapshot || prompt.content, agent.promptEnhancement]
+      .filter(Boolean)
+      .join('\n\n')
     return {
       agentCode: agent.code,
+      agentName: agent.name,
       promptId: prompt.id,
       mode: agent.knowledgeEnabled
         ? 'knowledge'
@@ -47,10 +67,162 @@ export class AgentRuntimeService {
         topP: agent.topP ?? undefined,
       },
       toolCodes: this.normalizeToolCodes(agent.toolCodes),
+      knowledgeEnabled: agent.knowledgeEnabled,
       knowledgeStrict: agent.knowledgeStrict,
       knowledgeTags: this.normalizeStringArray(agent.knowledgeTags),
       knowledgeBaseIds: agent.knowledgeBases.map((item) => item.knowledgeBaseId),
       workflowCode: agent.workflowCode || undefined,
+    }
+  }
+
+  async execute(input: AgentRuntimeInput): Promise<AgentExecutionResult> {
+    const startedAt = Date.now()
+    const context = this.buildContext(input)
+    const plan = this.planService.createPlan(input, context)
+    const log = await this.executionLogger.logStart({
+      conversationId: input.conversationId,
+      messageId: input.userMessageId,
+      agentCode: context.agentCode,
+      plan,
+    })
+
+    try {
+      this.planService.validate(plan, context)
+      const step = plan.steps[0]
+      const executionResult = await this.executor.execute(step, input, context)
+      const composed = await this.responseComposer.compose(input, context, executionResult)
+      const result = {
+        route: step.type,
+        answer: composed.answer,
+        sources: composed.sources,
+        workflowCode: step.type === 'workflow' ? context.workflow?.code : undefined,
+        plan,
+        executionLogId: log.id,
+      }
+      await this.executionLogger.logSuccess(log.id, {
+        route: result.route,
+        durationMs: Date.now() - startedAt,
+      })
+      return result
+    } catch (error) {
+      await this.executionLogger.logFailed(log.id, {
+        message: error instanceof Error ? error.message : 'Agent execution failed',
+        durationMs: Date.now() - startedAt,
+      })
+      throw error
+    }
+  }
+
+  async *stream(input: AgentRuntimeInput): AsyncIterable<AgentRuntimeStreamChunk> {
+    const startedAt = Date.now()
+    const context = this.buildContext(input)
+    const plan = this.planService.createPlan(input, context)
+    const log = await this.executionLogger.logStart({
+      conversationId: input.conversationId,
+      messageId: input.userMessageId,
+      agentCode: context.agentCode,
+      plan,
+    })
+    let answer = ''
+    let sources: any[] = []
+
+    try {
+      this.planService.validate(plan, context)
+      const step = plan.steps[0]
+      if (step.type === 'workflow') {
+        for await (const event of await this.executor.streamWorkflow(step, input, context)) {
+          if (event.type === 'content') answer += event.content
+          if (event.type === 'sources') sources = event.sources || []
+          if (event.type === 'workflow_done') answer = event.answer
+          yield { event }
+        }
+      } else if (step.type === 'chat' || step.type === 'knowledge') {
+        const executionResult = await this.executor.execute(step, input, context)
+        if (executionResult.type !== 'chat' && executionResult.type !== 'knowledge') {
+          throw new BadRequestException('Agent plan execution result does not match')
+        }
+        const completionPlan = executionResult.completionPlan
+        sources = completionPlan.sources
+        if (completionPlan.directAnswer) {
+          answer = step.type === 'knowledge'
+            ? this.responseComposer.ensureKnowledgeAnswer(completionPlan.directAnswer, completionPlan.knowledgeFacts, input.message)
+            : completionPlan.directAnswer
+          yield { event: { type: 'content', content: answer } }
+        } else {
+          for await (const content of this.responseComposer.streamCompletion(completionPlan.messages, input.agent?.llmOptions)) {
+            answer += content
+            if (step.type !== 'knowledge') {
+              yield { event: { type: 'content', content } }
+            }
+          }
+          if (step.type === 'knowledge') {
+            answer = this.responseComposer.ensureKnowledgeAnswer(answer, completionPlan.knowledgeFacts, input.message)
+            yield { event: { type: 'content', content: answer } }
+          }
+        }
+      } else {
+        const executionResult = await this.executor.execute(step, input, context)
+        const composed = await this.responseComposer.compose(input, context, executionResult)
+        answer = composed.answer
+        sources = composed.sources
+        yield { event: { type: 'content', content: answer } }
+      }
+
+      const state = {
+        route: step.type,
+        answer,
+        sources,
+        workflowCode: step.type === 'workflow' ? context.workflow?.code : undefined,
+        plan,
+        executionLogId: log.id,
+      }
+      await this.executionLogger.logSuccess(log.id, {
+        route: state.route,
+        durationMs: Date.now() - startedAt,
+      })
+      yield { event: { type: 'sources', sources }, state }
+    } catch (error) {
+      await this.executionLogger.logFailed(log.id, {
+        message: error instanceof Error ? error.message : 'Agent execution failed',
+        durationMs: Date.now() - startedAt,
+      })
+      throw error
+    }
+  }
+
+  private buildContext(input: AgentRuntimeInput): AgentContext {
+    const agent = input.agent
+    return {
+      agentCode: agent?.agentCode,
+      agentName: agent?.agentName,
+      model: {
+        provider: 'default',
+        name: agent?.llmOptions.model,
+        temperature: agent?.llmOptions.temperature,
+        topP: agent?.llmOptions.topP,
+      },
+      prompt: {
+        id: agent?.promptId,
+        system: agent?.systemPrompt,
+      },
+      knowledge: {
+        enabled: agent ? agent.knowledgeEnabled : input.mode === 'knowledge',
+        ids: agent?.knowledgeBaseIds || [],
+        tags: agent?.knowledgeTags || [],
+        strict: !!agent?.knowledgeStrict,
+      },
+      tools: agent?.toolCodes || (input.mode === 'knowledge' ? ['search_knowledge'] : []),
+      workflow: agent?.workflowCode ? { code: agent.workflowCode } : undefined,
+      user: {
+        id: input.userId,
+        roles: [],
+      },
+      conversation: {
+        id: input.conversationId,
+        history: input.history,
+      },
+      mode: agent?.mode || input.mode,
+      maxSteps: MAX_AGENT_PLAN_STEPS,
     }
   }
 
@@ -67,5 +239,4 @@ export class AgentRuntimeService {
     }
     return value.filter((item): item is string => typeof item === 'string')
   }
-
 }

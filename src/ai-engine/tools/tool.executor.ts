@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
-import { ToolExecutor as IToolExecutor, ToolDefinition } from '../core/interfaces'
 import { AIRegistry } from '../core/ai.registry'
+import { ToolExecutor as IToolExecutor, ToolDefinition } from './tool.types'
 
 @Injectable()
 export class DefaultToolExecutor implements IToolExecutor {
@@ -30,16 +30,4 @@ export class DefaultToolExecutor implements IToolExecutor {
 
     return result
   }
-}
-
-// 保留向后兼容的导出（不再推荐使用）
-// 推荐通过 DI 注入 DefaultToolExecutor
-export const toolExecutor = {
-  execute: async (toolName: string, params: any) => {
-    throw new Error(
-      'Deprecated: Please inject DefaultToolExecutor instead of using the global instance',
-    )
-  },
-  listTools: () => [],
-  registerTool: () => {},
 }

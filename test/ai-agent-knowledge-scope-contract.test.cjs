@@ -23,7 +23,7 @@ test('ai agent stores knowledge tag scope', () => {
 test('agent runtime passes knowledge tags into rag and workflow searches', () => {
   const runtimeTypes = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.types.ts'), 'utf8')
   const runtimeService = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.service.ts'), 'utf8')
-  const chatService = readFileSync(join(rootDir, 'src/modules/knowledge-bot/chat/chat.service.ts'), 'utf8')
+  const agentExecutor = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-executor.service.ts'), 'utf8')
   const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
   const workflowTypes = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow.types.ts'), 'utf8')
   const workflowExecutor = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow-executor.service.ts'), 'utf8')
@@ -31,7 +31,8 @@ test('agent runtime passes knowledge tags into rag and workflow searches', () =>
 
   assert.match(runtimeTypes, /knowledgeTags:\s*string\[\]/)
   assert.match(runtimeService, /knowledgeTags:\s*this\.normalizeStringArray\(agent\.knowledgeTags\)/)
-  assert.match(chatService, /knowledgeTags:\s*agent\.knowledgeTags/)
+  assert.match(runtimeService, /tags:\s*agent\?\.knowledgeTags/)
+  assert.match(agentExecutor, /knowledgeTags:\s*context\.knowledge\.tags/)
   assert.match(orchestrator, /knowledgeTags\?:\s*string\[\]/)
   assert.match(orchestrator, /similaritySearch\(standaloneQuestion,\s*5,\s*\{\s*tags:\s*options\.knowledgeTags,\s*knowledgeBaseIds:\s*options\.knowledgeBaseIds\s*\}\)/)
   assert.match(workflowTypes, /knowledgeTags\?:\s*string\[\]/)

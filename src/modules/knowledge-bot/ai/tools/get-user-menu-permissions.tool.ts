@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
-import { ToolDefinition } from '../../../../ai-engine/core/interfaces'
+import { ToolDefinition } from '../../../../ai-engine/tools/tool.types'
 
 // 查询用户菜单权限工具 - 支持依赖注入
 @Injectable()

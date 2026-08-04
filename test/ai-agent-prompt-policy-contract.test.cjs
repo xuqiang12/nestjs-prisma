@@ -12,7 +12,8 @@ test('agent prompt snapshot is the editable prompt content used at runtime', () 
 
   assert.match(service, /data\.promptSnapshot = await this\.resolvePromptSnapshot\(promptId,\s*dto\.promptSnapshot\)/)
   assert.doesNotMatch(runtimeService, /joinPrompt\(basePrompt,\s*agent\.promptEnhancement\)/)
-  assert.match(runtimeService, /const basePrompt = agent\.promptSnapshot \|\| prompt\.content/)
+  assert.match(runtimeService, /agent\.promptSnapshot \|\| prompt\.content/)
+  assert.match(runtimeService, /agent\.promptEnhancement/)
   assert.doesNotMatch(runtimeTypes, /promptEnhancement\?:\s*string/)
 })
 

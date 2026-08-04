@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { ToolDefinition } from '../../../../ai-engine/core/interfaces'
+import { ToolDefinition } from '../../../../ai-engine/tools/tool.types'
 import { VectorStoreService } from '../../../../ai-engine/vector/vector-store.service'
 
 @Injectable()

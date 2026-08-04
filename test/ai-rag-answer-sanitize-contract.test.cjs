@@ -7,7 +7,8 @@ const rootDir = join(__dirname, '..')
 
 test('rag answers are sanitized before saving or streaming to users', () => {
   const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
-  const chatService = readFileSync(join(rootDir, 'src/modules/knowledge-bot/chat/chat.service.ts'), 'utf8')
+  const runtimeService = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.service.ts'), 'utf8')
+  const responseComposer = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-response-composer.service.ts'), 'utf8')
   const answerUtil = readFileSync(join(rootDir, 'src/ai-engine/knowledge-answer.util.ts'), 'utf8')
 
   assert.match(orchestrator, /KnowledgeAnswerFact/)
@@ -28,8 +29,8 @@ test('rag answers are sanitized before saving or streaming to users', () => {
   assert.doesNotMatch(orchestrator, /KNOWLEDGE_HEADING_PATTERN/)
   assert.doesNotMatch(orchestrator, /isUsefulKnowledgeFact/)
 
-  assert.match(chatService, /plan\.route === 'knowledge'\s*\?\s*this\.aiOrchestratorService\.ensureKnowledgeAnswer\(rawAnswer,\s*plan\.knowledgeFacts,\s*checkedInput\.content\)/)
-  assert.match(chatService, /answer = this\.aiOrchestratorService\.ensureKnowledgeAnswer\(answer,\s*plan\.knowledgeFacts,\s*checkedInput\.content\)/)
+  assert.match(responseComposer, /ensureKnowledgeAnswer\(rawAnswer,\s*result\.completionPlan\.knowledgeFacts,\s*input\.message\)/)
+  assert.match(runtimeService, /answer = this\.responseComposer\.ensureKnowledgeAnswer\(answer,\s*completionPlan\.knowledgeFacts,\s*input\.message\)/)
 })
 
 test('rag facts use generic chunk content without sample-specific filters', () => {
@@ -314,17 +315,25 @@ test('knowledge stream buffers model chunks and emits the checked answer once', 
       knowledgeBaseIds: [],
       llmOptions: {},
     }),
+    stream: async function* () {
+      const plan = await aiOrchestratorService.buildCompletion()
+      let answer = ''
+      for await (const content of aiOrchestratorService.streamCompletion()) {
+        answer += content
+      }
+      answer = aiOrchestratorService.ensureKnowledgeAnswer(answer)
+      yield { event: { type: 'content', content: answer } }
+      yield { event: { type: 'sources', sources: plan.sources }, state: { workflowCode: undefined } }
+    },
   }
   const sensitiveWordCheckerService = {
     checkAndApply: async (content) => ({ content }),
   }
   const workflowRuntimeService = {}
   const service = new ChatService(
-    aiOrchestratorService,
     conversationService,
     agentRuntimeService,
     sensitiveWordCheckerService,
-    workflowRuntimeService,
   )
 
   const events = []

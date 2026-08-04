@@ -460,6 +460,28 @@ model AiWorkflowRunStep {
 }
 
 // ==============================
+// AI 智能体轻量执行日志表
+// ==============================
+model AiAgentExecutionLog {
+  id             String    @id @default(dbgenerated("next_snowflake_id()")) @db.VarChar(32)
+  conversationId String?   @db.VarChar(32)
+  messageId      String?   @db.VarChar(32)
+  agentCode      String?
+  route          String?
+  planJson       Json?
+  status         String
+  errorMessage   String?
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  durationMs     Int?
+  createdAt      DateTime  @default(now())
+
+  @@index([agentCode, status, createdAt])
+  @@index([conversationId, createdAt])
+  @@index([messageId])
+}
+
+// ==============================
 // 首页配置表
 // ==============================
 model HomeDecoration {

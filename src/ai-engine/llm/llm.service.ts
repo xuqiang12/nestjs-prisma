@@ -1,3 +1,4 @@
+// 封装 OpenAI 兼容模型的非流式与流式调用。
 import { BadRequestException, Injectable } from '@nestjs/common'
 import OpenAI from 'openai'
 
@@ -35,7 +36,7 @@ export class LlmService {
   // 使用 OpenAI 兼容的 Chat Completions 接口发起一次非流式对话。
   async invokeWithMessages(messages: ChatMessage[], options: LlmOptions = {}): Promise<string> {
     const resolved = this.assertModelOptions(options)
-    // 这里不解析默认模型和密钥；调用方必须先通过 ModelResolverService 得到完整运行时模型配置。
+    // 这里不解析默认模型和密钥；调用方必须先通过上游模型解析入口得到完整运行时模型配置。
     const res = await this.createClient(resolved).chat.completions.create({
       model: resolved.model,
       messages: options.finalAnswerGuard ? this.withFinalAnswerGuard(messages) : messages,
@@ -53,7 +54,7 @@ export class LlmService {
     options: LlmOptions = {},
   ): AsyncIterable<string> {
     const resolved = this.assertModelOptions(options)
-    // LlmService 只向上返回文本增量，SSE 事件结构由 Controller/ChatService 维护。
+    // LlmService 只向上返回文本增量，外层事件结构由调用方维护。
     const stream = await this.createClient(resolved).chat.completions.create({
       model: resolved.model,
       messages: options.finalAnswerGuard ? this.withFinalAnswerGuard(messages) : messages,
@@ -66,12 +67,13 @@ export class LlmService {
     for await (const chunk of stream) {
       const content = chunk.choices?.[0]?.delta?.content
       if (content) {
-        // 只向上层暴露文本增量，SSE 事件格式由 controller/service 负责。
+        // 只向上层暴露文本增量，事件格式由调用方负责。
         yield content
       }
     }
   }
 
+  // 创建 OpenAI 兼容客户端实例。
   private createClient(options: Required<Pick<LlmOptions, 'baseUrl' | 'apiKey'>>) {
     return new OpenAI({
       apiKey: options.apiKey,
@@ -79,6 +81,7 @@ export class LlmService {
     })
   }
 
+  // 校验调用方已经提供完整模型连接参数。
   private assertModelOptions(options: LlmOptions) {
     if (!options.model || !options.baseUrl || !options.apiKey) {
       throw new BadRequestException('LLM model config is incomplete')
@@ -86,6 +89,7 @@ export class LlmService {
     return options as Required<Pick<LlmOptions, 'model' | 'baseUrl' | 'apiKey'>> & LlmOptions
   }
 
+  // 为最终回答消息追加角色模板保护提示。
   private withFinalAnswerGuard(messages: ChatMessage[]) {
     const [first, ...rest] = messages
     if (first?.role === 'system') {

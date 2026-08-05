@@ -1,3 +1,4 @@
+// 校验智能体知识标签会进入知识库检索范围。
 const assert = require('node:assert/strict')
 const { existsSync, readFileSync } = require('node:fs')
 const { test } = require('node:test')
@@ -25,6 +26,7 @@ test('agent runtime passes knowledge tags into rag and workflow searches', () =>
   const runtimeService = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.service.ts'), 'utf8')
   const agentExecutor = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-executor.service.ts'), 'utf8')
   const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
+  const knowledgeQA = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-qa.service.ts'), 'utf8')
   const workflowTypes = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow.types.ts'), 'utf8')
   const workflowExecutor = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow-executor.service.ts'), 'utf8')
   const vectorStore = readFileSync(join(rootDir, 'src/ai-engine/vector/vector-store.service.ts'), 'utf8')
@@ -34,7 +36,8 @@ test('agent runtime passes knowledge tags into rag and workflow searches', () =>
   assert.match(runtimeService, /tags:\s*agent\?\.knowledgeTags/)
   assert.match(agentExecutor, /knowledgeTags:\s*context\.knowledge\.tags/)
   assert.match(orchestrator, /knowledgeTags\?:\s*string\[\]/)
-  assert.match(orchestrator, /similaritySearch\(standaloneQuestion,\s*5,\s*\{\s*tags:\s*options\.knowledgeTags,\s*knowledgeBaseIds:\s*options\.knowledgeBaseIds\s*\}\)/)
+  assert.match(orchestrator, /knowledgeQAService\.buildCompletion/)
+  assert.match(knowledgeQA, /similaritySearch\(standaloneQuestion,\s*5,\s*\{[\s\S]*tags:\s*context\.knowledgeTags,[\s\S]*knowledgeBaseIds:\s*context\.knowledgeBaseIds,[\s\S]*\}\)/)
   assert.match(workflowTypes, /knowledgeTags\?:\s*string\[\]/)
   assert.match(workflowExecutor, /similaritySearch\(standaloneQuestion,\s*config\.limit \? Number\(config\.limit\) : 5,\s*\{\s*tags:\s*input\.knowledgeTags,\s*knowledgeBaseIds:\s*input\.knowledgeBaseIds\s*\}\)/)
   assert.match(vectorStore, /type SearchOptions = \{\s*tags\?: string\[\]\s*knowledgeBaseIds\?: string\[\]/)

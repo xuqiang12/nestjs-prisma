@@ -4,6 +4,7 @@ import { IsOptional, IsString } from 'class-validator'
 
 export class AgentStreamRequestDto {
   @ApiProperty({ description: '智能体编码；v2 流式对话必须依附智能体运行' })
+  @IsString()
   agentCode: string
 
   @ApiProperty({ description: '用户消息' })

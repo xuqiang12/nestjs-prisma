@@ -6,6 +6,7 @@ const { test } = require('node:test')
 
 const rootDir = join(__dirname, '..')
 
+// 读取指定源码文件内容用于静态合同断言。
 function readSource(relativePath) {
   const absolutePath = join(rootDir, relativePath)
   assert.equal(existsSync(absolutePath), true, `${relativePath} should exist`)
@@ -36,6 +37,7 @@ test('agent chat v2 request DTO keeps agentCode required and conversationId opti
   const beforeAgentCode = dto.slice(Math.max(0, agentCodeIndex - 180), agentCodeIndex)
 
   assert.match(dto, /agentCode: string/)
+  assert.match(beforeAgentCode, /@IsString\(\)/)
   assert.match(dto, /message: string/)
   assert.match(dto, /conversationId\?: string/)
   assert.doesNotMatch(beforeAgentCode, /@IsOptional/)
@@ -65,13 +67,15 @@ test('sse adapter only converts AgentEvent to SSE data', () => {
   assert.doesNotMatch(adapter, /express/)
 })
 
-test('v2 stream service returns explicit placeholder and missing-agent errors', () => {
+test('v2 stream service delegates real v2 chat flow and keeps entrance errors explicit', () => {
   const service = readSource('src/modules/agent-chat/stream/agent-stream.service.ts')
 
   assert.match(service, /AGENT_CODE_REQUIRED/)
   assert.match(service, /agentCode is required for agent chat v2 stream/)
-  assert.match(service, /AGENT_CHAT_V2_NOT_IMPLEMENTED/)
-  assert.match(service, /agent chat v2 runtime is not implemented yet/)
+  assert.match(service, /AgentChatService/)
+  assert.match(service, /agentChatService\.stream\(body as AgentStreamRequestDto, userId, metadata\)/)
+  assert.match(service, /AGENT_CHAT_V2_USER_REQUIRED/)
+  assert.doesNotMatch(service, /AGENT_CHAT_V2_NOT_IMPLEMENTED/)
   assert.match(service, /yield \{ type: 'done'/)
 })
 
@@ -81,7 +85,8 @@ test('v2 stream controller only sets SSE headers and delegates event production'
   assert.match(controller, /Content-Type', 'text\/event-stream; charset=utf-8'/)
   assert.match(controller, /Cache-Control', 'no-cache'/)
   assert.match(controller, /Connection', 'keep-alive'/)
-  assert.match(controller, /agentStreamService\.stream\(body\)/)
+  assert.match(controller, /@Req\(\) req: AuthenticatedRequest/)
+  assert.match(controller, /agentStreamService\.stream\(body, req\.user\.userId\)/)
   assert.match(controller, /sseEventAdapter\.toSseData\(event\)/)
   assert.match(controller, /res\.end\(\)/)
   assert.doesNotMatch(controller, /LlmService/)

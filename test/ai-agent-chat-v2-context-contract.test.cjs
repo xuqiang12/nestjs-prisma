@@ -6,6 +6,7 @@ const { test } = require('node:test')
 
 const rootDir = join(__dirname, '..')
 
+// 读取指定源码文件内容用于静态合同断言。
 function readSource(relativePath) {
   const absolutePath = join(rootDir, relativePath)
   assert.equal(existsSync(absolutePath), true, `${relativePath} should exist`)

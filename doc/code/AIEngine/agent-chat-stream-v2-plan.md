@@ -39,7 +39,7 @@ Composer 面向 SSE，会限制后续 HTTP、WebSocket、OpenAI Compatible API �
 Planner 输出 ExecutionPlan，而不是 route。
 Runtime 入口使用统一 AgentRuntimeRequest，而不是零散参数。
 运行时统一使用 Capability / ExecutionStep / AgentEvent 模型。
-使用 CapabilityResolver 输出真正可用的 AvailableCapabilities。
+使用 CapabilityResolver 输出 Planner 可见能力列表和诊断状态列表。
 使用 CapabilityRegistry 注册能力 Handler，Executor 不写固定 switch 分支。
 可复用现有 LLM / RAG / Tool / Workflow / Safety / Conversation 能力。
 Composer 输出协议无关的 AgentEvent，SSE 只作为 Adapter。
@@ -301,26 +301,53 @@ retry
 
 ```text
 基于 AgentContext 解析当前请求真正可用的能力。
-输出 AvailableCapabilities。
-屏蔽未配置、未启用、未授权或当前入口不允许的能力。
-根据资源状态和运行环境标记能力 available / unavailable。
-为 Planner 提供能力摘要，而不是底层执行细节。
+输出 plannerView 和 diagnosticView。
+plannerView 只包含 Planner 可见的可用能力类型。
+diagnosticView 保留全部能力的 available / unavailable 和原因。
+只基于 AgentContext 判断是否有资格进入规划，不判断执行能否成功。
 ```
 
-它不仅做权限过滤，还要处理能力可用性：
+第一版能力状态模型：
+
+```ts
+type CapabilityType = 'chat' | 'rag' | 'tool' | 'workflow'
+
+interface CapabilityStatus {
+  capability: CapabilityType
+  available: boolean
+  reason?: string
+}
+
+interface ResolvedCapabilities {
+  plannerView: CapabilityType[]
+  diagnosticView: CapabilityStatus[]
+}
+```
+
+第一版可用性规则：
 
 ```text
-Agent 配置了 RAG，但没有绑定可用知识库或知识库没有可检索文档，则 RAG unavailable。
-Agent 配置了 Tool，但工具依赖的 API Key 或服务不可用，则对应 Tool unavailable。
-Agent 配置了 Workflow，但工作流未启用或校验失败，则 Workflow unavailable。
-模型不支持某类能力时，对应 Capability unavailable。
+chat：AgentContext 中已有已解析模型配置，则 available。
+rag：AgentContext 中 Agent 允许使用知识，且已解析出的有效知识库绑定非空，则 available。
+tool：AgentContext 中存在 Agent 授权且启用的普通工具，则 available；search_knowledge 不算普通工具能力。
+workflow：AgentContext.capabilities.workflowCode 存在，则 available。
+```
+
+它不判断执行阶段才知道的状态：
+
+```text
+不判断 RAG TopK、threshold、rerank、embedding 模型或具体检索策略。
+不判断工具 API 是否连通、余额是否足够、token 是否过期。
+不判断 workflow 节点是否完整、参数是否齐全或最终能否执行。
+不自行查询数据库决定 knowledgeBaseIds、工具、workflow 或模型来源。
 ```
 
 设计原则：
 
 ```text
-权限和可用性判断尽量前置，减少 Planner 产生非法计划的概率。
-Planner 只能看到 AvailableCapabilities。
+能力资格判断在 Planner 前完成，减少 Planner 产生非法计划的概率。
+Planner 只能看到 plannerView，不能看到 unavailable 原因。
+unavailable 原因只进入 diagnosticView，用于日志、调试或管理端诊断。
 Validator 仍作为最后防线，但不把所有权限判断都后置。
 ```
 
@@ -358,9 +385,9 @@ reason
 职责：
 
 ```text
-根据用户问题、历史消息、AgentContext 和 AvailableCapabilities 生成 ExecutionPlan。
+根据用户问题、历史消息、AgentContext 和 plannerView 生成 ExecutionPlan。
 Planner 输出 steps，不输出 route。
-每个 step 只能引用 AvailableCapabilities 中存在的 capability。
+每个 step 只能引用 plannerView 中存在的 capability。
 第一版可以只执行单步，但数据结构必须支持多步。
 Planner 只表达要使用什么能力，不负责能力内部执行细节。
 ```
@@ -379,7 +406,7 @@ Planner 失败策略先固定为：
 LLM Planner 失败
 -> Rule Planner
 -> Chat fallback
--> 如果 chat 不在 AvailableCapabilities 中，则返回明确错误
+-> 如果 chat 不在 plannerView 中，则返回明确错误
 ```
 
 ExecutionPlan 草案：
@@ -490,9 +517,9 @@ Handler 复用现有底层能力，但输出统一的能力执行结果或 Agent
 Handler 查底层资源和执行策略，不由 Planner 决定底层资源：
 
 ```text
-RagHandler 根据 AgentContext.capabilities.rag 和 AvailableCapability 决定知识库范围、TopK、阈值和检索策略。
-ToolHandler 根据 AvailableCapability 决定工具是否可执行和参数适配。
-WorkflowHandler 根据 AvailableCapability 决定工作流是否可执行。
+RagHandler 根据 AgentContext 中已解析出的知识库绑定和执行策略决定知识库范围、TopK、阈值和检索策略。
+ToolHandler 根据 AgentContext 中已授权工具和执行入参决定工具调用与参数适配。
+WorkflowHandler 根据 AgentContext.capabilities.workflowCode 调度已绑定 workflow。
 ChatHandler 根据 AgentContext.prompt / model / execution 决定 LLM 调用参数。
 ```
 
@@ -765,7 +792,7 @@ Planner 不输出 route。
 运行时统一使用 Capability / ExecutionPlan / AgentEvent。
 CapabilityExecutor 通过 Handler 执行具体能力。
 CapabilityExecutor 通过 CapabilityRegistry 分发，不写固定 switch。
-CapabilityResolver 输出 AvailableCapabilities。
+CapabilityResolver 输出 plannerView 和 diagnosticView。
 Composer 不直接依赖 SSE。
 AgentStreamService 不直接处理聊天业务落库。
 AgentRuntimeRequest 不包含 history。
@@ -821,7 +848,7 @@ Planner 失败后按 LLM Planner -> Rule Planner -> Chat fallback/error 处理�
 Planner 不输出 route，改为输出 ExecutionPlan。
 ExecutionPlan 使用 steps 结构，第一版即使只执行单步也保留多步扩展模型。
 Runtime 入口统一为 AgentRuntimeRequest。
-ContextBuilder 后增加 CapabilityResolver，Planner 只接收 AvailableCapabilities。
+ContextBuilder 后增加 CapabilityResolver，Planner 只接收 plannerView。
 CapabilityExecutor 只做调度，具体执行拆到 Chat / RAG / Tool / Workflow Handler。
 Composer 输出协议无关 AgentEvent，SSE 通过 Adapter 转换。
 AgentStreamService 只负责 SSE 生命周期，聊天业务放入 AgentChatService。
@@ -833,8 +860,8 @@ AgentStreamService 只负责 SSE 生命周期，聊天业务放入 AgentChatServ
 本次沟通确认继续强化平台化运行时边界：
 
 ```text
-CapabilityFilter 升级为 CapabilityResolver，输出 AvailableCapabilities。
-CapabilityResolver 不只做权限过滤，也根据资源状态、密钥、模型能力、知识库状态和工作流状态判断能力是否真正可用。
+CapabilityFilter 升级为 CapabilityResolver，输出 plannerView 和 diagnosticView。
+CapabilityResolver 只读取 AgentContext，判断 chat、rag、tool、workflow 是否有资格进入规划，不判断执行阶段能否成功。
 CapabilityExecutor 通过 CapabilityRegistry 获取 Handler，不写固定 switch / if 分发。
 ExecutionPlan 固定 metadata / strategy / steps 结构，第一版只用最小字段。
 AgentRuntimeRequest 不包含 history，history 由 ContextBuilder 通过 conversationId 和 Repository 统一加载。
@@ -843,6 +870,23 @@ AgentEvent 使用 type / payload / metadata 统一 Envelope。
 Planner 只表达需要使用的能力，例如需要知识查询，不直接决定 knowledgeBaseIds 或 RAG 底层检索策略。
 Planner 失败策略固定为 LLM Planner -> Rule Planner -> Chat fallback；如果 chat 不可用，则返回明确错误。
 数据库先规划 AiConversation.agentId 和 AiAgentExecutionLog.planSnapshot，但不在文档当前状态下授权改库。
+```
+
+### 2026-08-05：收窄 CapabilityResolver 第三步边界
+
+本次沟通确认第 3 步只建立能力边界模型，不提前执行或探测能力：
+
+```text
+Capability 类型命名为 CapabilityType，只包含 chat、rag、tool、workflow。
+CapabilityStatus 表示单个能力的状态，包含 capability、available 和可选 reason。
+ResolvedCapabilities 拆分为 plannerView 和 diagnosticView。
+Planner 只能接收 plannerView，例如 ['chat', 'rag']。
+diagnosticView 保留 unavailable 原因，但不传给 Planner，避免污染规划。
+CapabilityResolver 只读取 AgentContext，不引用旧 ChatService、AgentRuntimeService、AgentPlanService 或 AgentExecutorService。
+Resolver 只判断有没有资格执行，不判断能不能执行成功。
+RAG 第一版只看 Agent 是否允许知识能力以及上下文中是否有已解析出的有效知识库绑定。
+Tool 第一版只看 Agent 是否有授权且启用的普通工具，search_knowledge 不计入普通工具能力。
+Workflow 第一版只看 workflowCode 是否存在，不校验节点、参数或执行成功率。
 ```
 
 ### 2026-08-05：确认 v2 新入口和分步沟通门禁
@@ -1013,9 +1057,10 @@ history loader 有明确清洗规则留痕，避免异常 assistant 历史重新
 执行内容：
 
 ```text
-定义 Capability、AvailableCapability、AvailableCapabilities 类型。
-实现 CapabilityResolver，统一判断 chat、rag、tool、workflow 是否授权且真实可用。
-Resolver 输出给 Planner 的能力摘要，不暴露底层检索阈值、TopK、knowledgeBaseIds 决策权。
+定义 CapabilityType、CapabilityStatus、ResolvedCapabilities 类型。
+实现 CapabilityResolver，统一判断 chat、rag、tool、workflow 是否有资格进入规划。
+Resolver 输出 plannerView 给 Planner，输出 diagnosticView 给日志和诊断。
+Resolver 不暴露底层检索阈值、TopK、knowledgeBaseIds 决策权，也不决定工具或 workflow 执行策略。
 ```
 
 预计涉及文件：
@@ -1029,16 +1074,22 @@ src/ai-runtime/capability/capability-resolver.service.ts
 
 ```text
 开发前确认第一版能力范围是否只包含 chat、rag、tool、workflow。
-开发前确认 rag 可用性判断采用哪些真实条件。
-开发前确认 tool 和 workflow 第一版只允许 Agent 已授权或已绑定的能力。
+开发前确认 AgentContext 中哪些字段代表已解析出的有效知识库绑定。
+开发前确认 AgentContext 中是否已有 enabled tools 结构；若当前只有 toolCodes，第一版只按已解析授权工具码处理。
+开发前确认 search_knowledge 只作为 RAG 检索能力信号，不计入普通 tool 能力。
 ```
 
 验收标准：
 
 ```text
-Planner 看不到 unavailable 能力。
-未绑定知识库、未授权工具、未绑定工作流不能进入可用能力集合。
-每一个可用性分支都能对应 Agent 配置或真实资源状态，不添加假想兜底。
+CapabilityType 只包含 chat、rag、tool、workflow。
+CapabilityResolver 输出 plannerView 和 diagnosticView。
+Planner 只能看到 plannerView，不能看到 unavailable 原因。
+未绑定有效知识库、未授权普通工具、未绑定 workflowCode 不能进入 plannerView。
+search_knowledge 不作为普通 tool 能力。
+Resolver 不引用旧 ChatService、AgentRuntimeService、AgentPlanService、AgentExecutorService。
+Resolver 不决定 knowledgeBaseIds、TopK、threshold、embedding 模型或具体检索策略。
+每一个可用性分支都能对应 AgentContext 中的已解析事实，不添加假想兜底。
 ```
 
 ##### 第 4 步：确认 Planner 和 Validator 第一版策略

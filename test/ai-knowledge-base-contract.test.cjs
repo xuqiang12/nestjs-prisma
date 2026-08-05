@@ -1,3 +1,4 @@
+// 校验知识库管理和运行时检索范围合同。
 const assert = require('node:assert/strict')
 const { existsSync, readdirSync, readFileSync } = require('node:fs')
 const { test } = require('node:test')
@@ -143,6 +144,7 @@ test('runtime filters rag by enabled knowledge base associations', () => {
   const chatService = readFileSync(join(rootDir, 'src/modules/knowledge-bot/chat/chat.service.ts'), 'utf8')
   const agentExecutor = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-executor.service.ts'), 'utf8')
   const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
+  const knowledgeQA = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-qa.service.ts'), 'utf8')
   const workflowTypes = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow.types.ts'), 'utf8')
   const workflowExecutor = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow-executor.service.ts'), 'utf8')
   const vectorStore = readFileSync(join(rootDir, 'src/ai-engine/vector/vector-store.service.ts'), 'utf8')
@@ -153,7 +155,8 @@ test('runtime filters rag by enabled knowledge base associations', () => {
   assert.match(chatService, /agent,\s*\n\s*\}\)/)
   assert.match(agentExecutor, /knowledgeBaseIds:\s*context\.knowledge\.ids/)
   assert.match(orchestrator, /knowledgeBaseIds\?:\s*string\[\]/)
-  assert.match(orchestrator, /similaritySearch\(standaloneQuestion,\s*5,\s*\{\s*tags:\s*options\.knowledgeTags,\s*knowledgeBaseIds:\s*options\.knowledgeBaseIds\s*\}\)/)
+  assert.match(orchestrator, /knowledgeQAService\.buildCompletion/)
+  assert.match(knowledgeQA, /similaritySearch\(standaloneQuestion,\s*5,\s*\{[\s\S]*tags:\s*context\.knowledgeTags,[\s\S]*knowledgeBaseIds:\s*context\.knowledgeBaseIds,[\s\S]*\}\)/)
   assert.match(workflowTypes, /knowledgeBaseIds\?:\s*string\[\]/)
   assert.match(workflowExecutor, /knowledgeBaseIds:\s*input\.knowledgeBaseIds/)
   assert.match(vectorStore, /knowledgeBaseIds\?:\s*string\[\]/)

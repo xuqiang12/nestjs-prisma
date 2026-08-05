@@ -4,6 +4,9 @@ export type AgentEventMetadata = {
   timestamp?: string
   stepId?: string
   capability?: string
+  agentCode?: string
+  promptId?: string
+  workflowCode?: string
 }
 
 export type AgentContentEvent = {
@@ -37,9 +40,30 @@ export type AgentDoneEvent = {
   metadata: AgentEventMetadata
 }
 
+export type AgentPlanEvent = {
+  type: 'plan'
+  payload: {
+    plan: Record<string, any>
+    plannerView: string[]
+  }
+  metadata: AgentEventMetadata
+}
+
 export type AgentWorkflowEvent = {
   type: `workflow_${string}`
   payload: Record<string, any>
+  metadata: AgentEventMetadata
+}
+
+export type AgentToolEvent = {
+  type: 'tool_start' | 'tool_done'
+  payload: {
+    tool: {
+      code: string
+      params?: Record<string, any>
+      result?: any
+    }
+  }
   metadata: AgentEventMetadata
 }
 
@@ -48,4 +72,6 @@ export type AgentEvent =
   | AgentSourcesEvent
   | AgentErrorEvent
   | AgentDoneEvent
+  | AgentPlanEvent
+  | AgentToolEvent
   | AgentWorkflowEvent

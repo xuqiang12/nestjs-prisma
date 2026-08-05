@@ -1,3 +1,4 @@
+// 组合底层 LLM 与知识库问答能力生成对话完成计划。
 import { Injectable } from '@nestjs/common'
 import { KnowledgeAnswerGuardService } from '../knowledge-qa/knowledge-answer-guard.service'
 import { KnowledgeEvidenceService } from '../knowledge-qa/knowledge-evidence.service'
@@ -17,6 +18,11 @@ export {
   CompletionPlan,
   KnowledgeFact,
 } from '../knowledge-qa/knowledge.types'
+
+type OrchestratorCompletionOptions = BuildCompletionOptions & {
+  knowledgeTags?: string[]
+  knowledgeBaseIds?: string[]
+}
 
 @Injectable()
 export class AiOrchestratorService {
@@ -63,7 +69,7 @@ export class AiOrchestratorService {
     message: string,
     mode: ChatMode = 'chat',
     history: ChatMessage[] = [],
-    options: BuildCompletionOptions = {},
+    options: OrchestratorCompletionOptions = {},
   ): Promise<CompletionPlan> {
     if (mode === 'knowledge') {
       return this.knowledgeQAService.buildCompletion({
@@ -97,14 +103,17 @@ export class AiOrchestratorService {
     return this.llmService.streamWithMessages(messages, this.withFinalAnswerOptions(options))
   }
 
+  // 清洗知识库回答中不应暴露给用户的角色模板痕迹。
   sanitizeKnowledgeAnswer(content: string) {
     return this.knowledgeQAService.sanitizeAnswer(content)
   }
 
+  // 根据事实依据约束知识库回答，避免输出不受支持的数字和结论。
   ensureKnowledgeAnswer(content: string, facts: KnowledgeFact[], question = '') {
     return this.knowledgeQAService.ensureAnswer(content, facts, question)
   }
 
+  // 为最终回答补充输出守卫选项。
   private withFinalAnswerOptions(options: LlmOptions = {}): LlmOptions {
     return {
       ...options,

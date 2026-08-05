@@ -1,3 +1,4 @@
+// 验证 Swagger 文档开关和 Knife4j 分组配置。
 import '../utils/logger'
 import { AuthModule } from '../../modules/auth/auth.module'
 import { KnowledgeBotModule } from '../../modules/knowledge-bot/knowledge-bot.module'
@@ -7,6 +8,7 @@ import { UserModule } from '../../modules/user/user.module'
 import { HomeModule } from '../../modules/home/home.module'
 import { MobileTabBarModule } from '../../modules/mobile-tabbar/mobile-tabbar.module'
 import { AiPlatformModule } from '../../modules/ai-platform/ai-platform.module'
+import { AiConfigModule } from '../../modules/ai-config/ai-config.module'
 import { getKnife4jGroups, isApiDocsEnabled } from './swagger-docs'
 
 describe('swagger docs config', () => {
@@ -24,7 +26,7 @@ describe('swagger docs config', () => {
 
     expect(groups).toEqual([
       { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule, RoleModule, HomeModule, MobileTabBarModule] },
-      { name: 'AI模块', url: '/api-docs/ai-json', modules: [KnowledgeBotModule, AiPlatformModule] },
+      { name: 'AI模块', url: '/api-docs/ai-json', modules: [KnowledgeBotModule, AiPlatformModule, AiConfigModule] },
     ])
     expect(groups.some((group) => group.url === '/api-json')).toBe(false)
   })

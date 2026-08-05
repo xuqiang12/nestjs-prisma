@@ -1,0 +1,51 @@
+// 定义新版智能体运行时的协议无关事件结构。
+export type AgentEventMetadata = {
+  requestId?: string
+  timestamp?: string
+  stepId?: string
+  capability?: string
+}
+
+export type AgentContentEvent = {
+  type: 'content'
+  payload: {
+    text: string
+  }
+  metadata: AgentEventMetadata
+}
+
+export type AgentSourcesEvent = {
+  type: 'sources'
+  payload: {
+    sources: any[]
+  }
+  metadata: AgentEventMetadata
+}
+
+export type AgentErrorEvent = {
+  type: 'error'
+  payload: {
+    code: string
+    message: string
+  }
+  metadata: AgentEventMetadata
+}
+
+export type AgentDoneEvent = {
+  type: 'done'
+  payload: Record<string, never>
+  metadata: AgentEventMetadata
+}
+
+export type AgentWorkflowEvent = {
+  type: `workflow_${string}`
+  payload: Record<string, any>
+  metadata: AgentEventMetadata
+}
+
+export type AgentEvent =
+  | AgentContentEvent
+  | AgentSourcesEvent
+  | AgentErrorEvent
+  | AgentDoneEvent
+  | AgentWorkflowEvent

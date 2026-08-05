@@ -20,6 +20,7 @@ import { MobileTabBarModule } from './modules/mobile-tabbar/mobile-tabbar.module
 import { AiPlatformModule } from './modules/ai-platform/ai-platform.module'
 import { AiConfigModule } from './modules/ai-config/ai-config.module'
 import { KnowledgeModule } from './modules/knowledge/knowledge.module'
+import { AgentChatModule } from './modules/agent-chat/agent-chat.module'
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module'
     AuthModule,
     AIEngineModule,
     KnowledgeBotModule,
+    AgentChatModule,
     AiPlatformModule,
     AiConfigModule,
     KnowledgeModule,

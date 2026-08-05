@@ -6,7 +6,7 @@ const rootDir = path.resolve(__dirname, '..')
 const schema = fs.readFileSync(path.join(rootDir, 'prisma/schema.prisma'), 'utf8')
 const agentDto = fs.readFileSync(path.join(rootDir, 'src/modules/ai-platform/agent/dto/agent.dto.ts'), 'utf8')
 const skillPackageDto = fs.readFileSync(path.join(rootDir, 'src/modules/ai-platform/skill-package/dto/skill-package.dto.ts'), 'utf8')
-const promptService = fs.readFileSync(path.join(rootDir, 'src/modules/ai-platform/prompt/prompt.service.ts'), 'utf8')
+const promptService = fs.readFileSync(path.join(rootDir, 'src/modules/ai-config/prompt/prompt.service.ts'), 'utf8')
 const migrationSql = fs.readFileSync(
   path.join(rootDir, 'prisma/migrations/20260729010000_use_snowflake_ids/migration.sql'),
   'utf8',

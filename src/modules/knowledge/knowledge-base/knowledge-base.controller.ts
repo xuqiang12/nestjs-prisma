@@ -20,7 +20,7 @@ import {
 import { KnowledgeBaseService } from './knowledge-base.service'
 
 @ApiTags('知识库高级管理')
-@Controller('knowledge-bot/knowledge-base')
+@Controller('knowledge/knowledge-base')
 export class KnowledgeBaseController {
   constructor(private readonly knowledgeBaseService: KnowledgeBaseService) {}
 

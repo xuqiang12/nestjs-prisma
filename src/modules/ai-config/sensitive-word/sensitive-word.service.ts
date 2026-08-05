@@ -12,6 +12,7 @@ import {
 export class SensitiveWordService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // 查询敏感词分页列表，并按筛选条件返回总数。
   async list(query: SensitiveWordListDto) {
     const pageNum = Number(query.pageNum || 1)
     const pageSize = Number(query.pageSize || 10)
@@ -35,10 +36,12 @@ export class SensitiveWordService {
     return { list, total }
   }
 
+  // 查询单个敏感词详情。
   async detail(id: string) {
     return this.ensureSensitiveWord(id)
   }
 
+  // 创建新的敏感词配置。
   async create(dto: CreateSensitiveWordDto) {
     await this.ensureUniqueWord(dto.word, dto.scope)
     await this.prisma.aiSensitiveWord.create({
@@ -55,6 +58,7 @@ export class SensitiveWordService {
     return '敏感词新增成功'
   }
 
+  // 更新已有敏感词配置。
   async update(dto: UpdateSensitiveWordDto) {
     const word = await this.ensureSensitiveWord(dto.id)
     const nextWord = dto.word || word.word
@@ -78,6 +82,7 @@ export class SensitiveWordService {
     return '敏感词修改成功'
   }
 
+  // 更新敏感词启用状态。
   async updateStatus(dto: SensitiveWordStatusDto) {
     await this.ensureSensitiveWord(dto.id)
     await this.prisma.aiSensitiveWord.update({
@@ -87,6 +92,7 @@ export class SensitiveWordService {
     return '敏感词状态修改成功'
   }
 
+  // 确认敏感词存在并返回记录。
   private async ensureSensitiveWord(id: string) {
     const word = await this.prisma.aiSensitiveWord.findUnique({ where: { id } })
     if (!word) {
@@ -95,6 +101,7 @@ export class SensitiveWordService {
     return word
   }
 
+  // 校验同一范围内的敏感词是否唯一。
   private async ensureUniqueWord(word: string, scope: string, excludeId?: string) {
     const existed = await this.prisma.aiSensitiveWord.findFirst({
       where: {

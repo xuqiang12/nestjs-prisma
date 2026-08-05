@@ -14,11 +14,21 @@
 
 ## 目录范围
 
+本阶段先建立以下 5 个后续重构的大目录边界：
+
+```text
+src/modules/chat/          普通对话入口
+src/modules/agent-chat/    Agent 对话和会话入口
+src/modules/ai-config/     AI 基础配置中心
+src/modules/knowledge/     知识资产管理
+src/ai-runtime/            AI 内部运行时能力层
+```
+
 ### 新增业务入口目录
 
 ```text
-src/modules/ai-chat/
-src/modules/ai-chat/dto/
+src/modules/chat/
+src/modules/chat/dto/
 
 src/modules/agent-chat/
 src/modules/agent-chat/chat/
@@ -30,30 +40,34 @@ src/modules/agent-chat/conversation/dto/
 ### 新增配置和资源目录
 
 ```text
-src/modules/ai-admin/
-src/modules/ai-admin/model-provider/
-src/modules/ai-admin/model-config/
-src/modules/ai-admin/prompt/
-src/modules/ai-admin/sensitive-word/
-src/modules/ai-admin/agent/
+src/modules/ai-config/
+src/modules/ai-config/model-provider/
+src/modules/ai-config/model-config/
+src/modules/ai-config/prompt/
+src/modules/ai-config/sensitive-word/
+src/modules/ai-config/agent/
 
 src/modules/knowledge/
 src/modules/knowledge/knowledge-base/
 src/modules/knowledge/knowledge-base/dto/
 ```
 
+`src/modules/ai-config/` 负责模型供应商、模型配置、提示词、敏感词、Agent 管理等 AI 基础配置。
+
+`src/modules/knowledge/` 负责知识库、文件、切片、向量重建、检索测试等知识资产管理。AI 配置中只保存 Agent 对知识库的引用关系，不管理知识库本体。
+
 ### 新增运行时内部目录
 
 ```text
-src/ai-engine/agent/context/
-src/ai-engine/agent/router/
-src/ai-engine/agent/validator/
-src/ai-engine/agent/executor/
-src/ai-engine/agent/composer/
-src/ai-engine/agent/trace/
+src/ai-runtime/agent/context/
+src/ai-runtime/agent/router/
+src/ai-runtime/agent/validator/
+src/ai-runtime/agent/executor/
+src/ai-runtime/agent/composer/
+src/ai-runtime/agent/trace/
 
-src/ai-engine/rag/
-src/ai-engine/tool/
+src/ai-runtime/rag/
+src/ai-runtime/tool/
 ```
 
 ## 本阶段不做

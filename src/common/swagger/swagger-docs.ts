@@ -7,6 +7,7 @@ import { UserModule } from '../../modules/user/user.module'
 import { HomeModule } from '../../modules/home/home.module'
 import { MobileTabBarModule } from '../../modules/mobile-tabbar/mobile-tabbar.module'
 import { AiPlatformModule } from '../../modules/ai-platform/ai-platform.module'
+import { AiConfigModule } from '../../modules/ai-config/ai-config.module'
 
 export interface Knife4jGroup {
   name: string
@@ -23,6 +24,6 @@ export function isApiDocsEnabled(nodeEnv?: string) {
 export function getKnife4jGroups(): Knife4jGroup[] {
   return [
     { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule, RoleModule, HomeModule, MobileTabBarModule] },
-    { name: 'AI模块', url: '/api-docs/ai-json', modules: [KnowledgeBotModule, AiPlatformModule] },
+    { name: 'AI模块', url: '/api-docs/ai-json', modules: [KnowledgeBotModule, AiPlatformModule, AiConfigModule] },
   ]
 }

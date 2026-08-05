@@ -10,8 +10,8 @@ function read(relativePath) {
 
 const files = {
   schema: 'prisma/schema.prisma',
-  promptDto: 'src/modules/ai-platform/prompt/dto/prompt.dto.ts',
-  promptService: 'src/modules/ai-platform/prompt/prompt.service.ts',
+  promptDto: 'src/modules/ai-config/prompt/dto/prompt.dto.ts',
+  promptService: 'src/modules/ai-config/prompt/prompt.service.ts',
   agentRuntime: 'src/ai-engine/agent/agent-runtime.service.ts',
   workflowExecutor: 'src/ai-engine/workflow/workflow-executor.service.ts',
   aiEngineModule: 'src/ai-engine/ai-engine.module.ts',

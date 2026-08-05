@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict')
-const { existsSync, readFileSync } = require('node:fs')
+const { existsSync, readdirSync, readFileSync } = require('node:fs')
 const { test } = require('node:test')
 const { join } = require('node:path')
 
@@ -29,14 +29,17 @@ test('knowledge base schema and migration exist', () => {
 })
 
 test('knowledge base controller exposes page-level management contracts', () => {
-  const controller = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-base/knowledge-base.controller.ts'), 'utf8')
-  const module = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-bot.module.ts'), 'utf8')
+  const controller = readFileSync(join(rootDir, 'src/modules/knowledge/knowledge-base/knowledge-base.controller.ts'), 'utf8')
+  const module = readFileSync(join(rootDir, 'src/modules/knowledge/knowledge.module.ts'), 'utf8')
+  const legacyModule = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-bot.module.ts'), 'utf8')
+  const legacyKnowledgeDir = join(rootDir, 'src/modules/knowledge-bot/knowledge-base')
 
-  assert.match(controller, /@Controller\('knowledge-bot\/knowledge-base'\)/)
+  assert.match(controller, /@Controller\('knowledge\/knowledge-base'\)/)
   assert.match(controller, /@Get\('list'\)/)
   assert.match(controller, /@Get\('options'\)/)
   assert.match(controller, /knowledgeBases:\s*await this\.knowledgeBaseService\.enabledOptions\(\)/)
   assert.match(controller, /@Get\('detail'\)/)
+  assert.match(controller, /@Post\(\)/)
   assert.match(controller, /@Post\('update'\)/)
   assert.match(controller, /@Post\('status'\)/)
   assert.match(controller, /@Post\('delete'\)/)
@@ -53,10 +56,40 @@ test('knowledge base controller exposes page-level management contracts', () => 
   assert.match(controller, /@Get\('search-test'\)/)
   assert.match(module, /KnowledgeBaseController/)
   assert.match(module, /KnowledgeBaseService/)
+  assert.doesNotMatch(legacyModule, /KnowledgeBaseController/)
+  assert.doesNotMatch(legacyModule, /KnowledgeBaseService/)
+  const legacyFiles = existsSync(legacyKnowledgeDir)
+    ? readdirSync(legacyKnowledgeDir, { recursive: true, withFileTypes: true }).filter((item) => item.isFile())
+    : []
+  assert.equal(legacyFiles.length, 0, 'legacy knowledge-bot/knowledge-base directory should not keep implementation files after full migration')
+})
+
+test('knowledge base implementation files live under modules/knowledge', () => {
+  const expectedFiles = [
+    'src/modules/knowledge/knowledge-base/dto/knowledge-base.dto.ts',
+    'src/modules/knowledge/knowledge-base/embedding-profiles.ts',
+    'src/modules/knowledge/knowledge-base/knowledge-base.controller.ts',
+    'src/modules/knowledge/knowledge-base/knowledge-base.service.ts',
+    'src/modules/knowledge/knowledge-base/knowledge-storage.service.ts',
+  ]
+  expectedFiles.forEach((file) => {
+    assert.equal(existsSync(join(rootDir, file)), true, `${file} should exist`)
+  })
+})
+
+test('knowledge bot module keeps chat, conversation, and AI tools only', () => {
+  const module = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-bot.module.ts'), 'utf8')
+
+  assert.match(module, /ChatController/)
+  assert.match(module, /ConversationController/)
+  assert.match(module, /SearchKnowledgeTool/)
+  assert.match(module, /GetUserMenuPermissionsTool/)
+  assert.doesNotMatch(module, /knowledge-base\/knowledge-base\.controller/)
+  assert.doesNotMatch(module, /knowledge-base\/knowledge-base\.service/)
 })
 
 test('knowledge base upload normalizes utf8 filenames before persistence', () => {
-  const service = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-base/knowledge-base.service.ts'), 'utf8')
+  const service = readFileSync(join(rootDir, 'src/modules/knowledge/knowledge-base/knowledge-base.service.ts'), 'utf8')
 
   assert.match(service, /private normalizeOriginalName\(originalName:\s*string\)/)
   assert.match(service, /Buffer\.from\(originalName,\s*'latin1'\)\.toString\('utf8'\)/)
@@ -68,9 +101,9 @@ test('knowledge base upload normalizes utf8 filenames before persistence', () =>
 })
 
 test('knowledge base create and update use backend generated code and editable config fields', () => {
-  const dto = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-base/dto/knowledge-base.dto.ts'), 'utf8')
-  const service = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-base/knowledge-base.service.ts'), 'utf8')
-  const profiles = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-base/embedding-profiles.ts'), 'utf8')
+  const dto = readFileSync(join(rootDir, 'src/modules/knowledge/knowledge-base/dto/knowledge-base.dto.ts'), 'utf8')
+  const service = readFileSync(join(rootDir, 'src/modules/knowledge/knowledge-base/knowledge-base.service.ts'), 'utf8')
+  const profiles = readFileSync(join(rootDir, 'src/modules/knowledge/knowledge-base/embedding-profiles.ts'), 'utf8')
   const vectorStore = readFileSync(join(rootDir, 'src/ai-engine/vector/vector-store.service.ts'), 'utf8')
   const embeddingService = readFileSync(join(rootDir, 'src/ai-engine/embedding/embedding.service.ts'), 'utf8')
 

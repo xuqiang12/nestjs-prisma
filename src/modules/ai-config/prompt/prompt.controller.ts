@@ -13,7 +13,7 @@ import { PromptService } from './prompt.service'
 
 @ApiTags('AI配置模块')
 @ApiBearerAuth()
-@Controller('ai-platform/prompt')
+@Controller('ai-config/prompt')
 export class PromptController {
   constructor(private readonly promptService: PromptService) {}
 

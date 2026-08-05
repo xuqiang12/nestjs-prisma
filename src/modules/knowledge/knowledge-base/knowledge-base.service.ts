@@ -17,6 +17,10 @@ const COMPLETED = 'completed'
 const PROCESSING = 'processing'
 const FAILED = 'failed'
 
+/**
+ * 知识库资产管理服务，负责知识库配置、源文件、分片和向量重建。
+ * Agent/RAG 的最终回答链路仍由 ai-engine/runtime 消费这些资产，这里只提供管理侧能力。
+ */
 @Injectable()
 export class KnowledgeBaseService {
   constructor(
@@ -25,6 +29,7 @@ export class KnowledgeBaseService {
     private readonly storageService: KnowledgeStorageService,
   ) {}
 
+  // 知识库配置管理：维护管理端列表、详情、启停和基础参数，不直接参与运行时问答决策。
   async list(query: KnowledgeBaseListDto) {
     const pageNum = Number(query.pageNum || 1)
     const pageSize = Number(query.pageSize || 10)
@@ -139,6 +144,7 @@ export class KnowledgeBaseService {
     return '知识库删除成功'
   }
 
+  // 文件资产管理：文件变更会同步本地存储、文件记录和对应 Document 向量分片。
   async fileList(query: KnowledgeFileListDto) {
     await this.ensureKnowledgeBase(query.knowledgeBaseId)
     return this.prisma.aiKnowledgeFile.findMany({
@@ -269,6 +275,7 @@ export class KnowledgeBaseService {
     return '文件删除成功'
   }
 
+  // 分片维护：直接操作 Document 表和向量内容，删除分片后同步文件维度的 chunkCount。
   async chunkList(query: KnowledgeChunkListDto) {
     return this.vectorStoreService.list(
       Number(query.pageNum || 1),
@@ -316,6 +323,7 @@ export class KnowledgeBaseService {
     return '分片删除成功'
   }
 
+  // 管理端检索测试：复用当前知识库的向量配置和阈值，仅用于验证召回效果。
   async searchTest(query: KnowledgeSearchTestDto) {
     const knowledgeBase = await this.ensureEnabledKnowledgeBase(query.knowledgeBaseId)
     const list = await this.vectorStoreService.similaritySearch(query.query, query.limit || knowledgeBase.retrievalLimit, {
@@ -325,6 +333,7 @@ export class KnowledgeBaseService {
     return list.filter((item) => Number(item.distance) <= knowledgeBase.similarityThreshold)
   }
 
+  // 重建文件分片时先清理同文件旧 Document，再按知识库配置重新切分并写入向量。
   private async rebuildFileChunks(
     knowledgeBaseId: string,
     fileId: string,
@@ -374,6 +383,7 @@ export class KnowledgeBaseService {
     return file
   }
 
+  // 统一 DTO 到数据库字段的映射，保证 embedding profile 是向量配置的唯一来源。
   private toKnowledgeBaseData(dto: CreateKnowledgeBaseDto | UpdateKnowledgeBaseDto, currentProfileCode?: string) {
     const profile = getEmbeddingProfile(dto.embeddingProfileCode || currentProfileCode)
     const data: Record<string, any> = {

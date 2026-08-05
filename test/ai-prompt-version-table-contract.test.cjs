@@ -13,9 +13,9 @@ const promptPage = fs.readFileSync(
   'utf8',
 )
 const schema = read('prisma/schema.prisma')
-const promptDto = read('src/modules/ai-platform/prompt/dto/prompt.dto.ts')
-const promptService = read('src/modules/ai-platform/prompt/prompt.service.ts')
-const promptController = read('src/modules/ai-platform/prompt/prompt.controller.ts')
+const promptDto = read('src/modules/ai-config/prompt/dto/prompt.dto.ts')
+const promptService = read('src/modules/ai-config/prompt/prompt.service.ts')
+const promptController = read('src/modules/ai-config/prompt/prompt.controller.ts')
 const promptApi = fs.readFileSync(
   path.join(rootDir, '../fullstack-admin-serve/vue-element-admin-dev/src/api/ai.js'),
   'utf8',

@@ -12,7 +12,7 @@ import { SensitiveWordService } from './sensitive-word.service'
 
 @ApiTags('AI配置模块')
 @ApiBearerAuth()
-@Controller('ai-platform/sensitive-word')
+@Controller('ai-config/sensitive-word')
 export class SensitiveWordController {
   constructor(private readonly sensitiveWordService: SensitiveWordService) {}
 

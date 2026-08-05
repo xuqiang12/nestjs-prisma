@@ -18,7 +18,7 @@ test('agent prompt snapshot is the editable prompt content used at runtime', () 
 })
 
 test('prompt update syncs enabled agent prompt snapshots', () => {
-  const promptService = readFileSync(join(rootDir, 'src/modules/ai-platform/prompt/prompt.service.ts'), 'utf8')
+  const promptService = readFileSync(join(rootDir, 'src/modules/ai-config/prompt/prompt.service.ts'), 'utf8')
 
   assert.match(promptService, /await this\.syncAgentPromptSnapshots\(dto\.id,\s*dto\.content\)/)
   assert.match(promptService, /promptSyncEnabled:\s*true/)

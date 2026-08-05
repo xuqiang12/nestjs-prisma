@@ -66,7 +66,7 @@ flowchart TD
   A2 --> A4{"是否已有会话"}
   A4 -- "有 conversationId" --> A5["请求带 conversationId<br/>追加到历史会话"]
   A4 -- "无 conversationId" --> A6["请求不带 conversationId<br/>后端自动创建会话"]
-  A5 --> B["sendAiChatStream()<br/>POST /knowledge-bot/chat/stream"]
+  A5 --> B["sendAiChatStream()<br/>POST /agent/chat/stream"]
   A6 --> B
   B --> C["ChatController.stream()<br/>写入 SSE 响应头"]
   C --> D["ChatService.stream()<br/>进入对话主流程"]
@@ -449,11 +449,11 @@ flowchart LR
 
 接口封装：
 
-- `sendAiChat(data)` -> `POST /knowledge-bot/chat`
-- `sendAiChatStream(data)` -> `POST /knowledge-bot/chat/stream`
-- `getAiConversationList(params)` -> `GET /knowledge-bot/conversation/list`
-- `createAiConversation(data)` -> `POST /knowledge-bot/conversation/create`
-- `getAiConversationDetail(params)` -> `GET /knowledge-bot/conversation/detail`
+- `sendAiChat(data)` -> `POST /agent/chat`
+- `sendAiChatStream(data)` -> `POST /agent/chat/stream`
+- `getAiConversationList(params)` -> `GET /agent/conversation/list`
+- `createAiConversation(data)` -> `POST /agent/conversation/create`
+- `getAiConversationDetail(params)` -> `GET /agent/conversation/detail`
 
 页面初始化时：
 
@@ -499,8 +499,8 @@ Controller：
 
 接口：
 
-- `POST /knowledge-bot/chat`
-- `POST /knowledge-bot/chat/stream`
+- `POST /agent/chat`
+- `POST /agent/chat/stream`
 
 两者都需要权限：
 

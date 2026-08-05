@@ -22,13 +22,15 @@ export class ChatService {
 
   async chat(body: ChatRequestDto, userId: string) {
     const checkedInput = await this.sensitiveWordCheckerService.checkAndApply(body.message, 'input')
-    const agent = await this.agentRuntimeService.resolve(body.agentCode)
+    const requestedAgent = await this.agentRuntimeService.resolve(body.agentCode)
+    // ChatService 只负责对话外围闭环：安全检查、会话归属、历史读取和消息落库；真正的 Agent 路由由 AgentRuntimeService 处理。
     const conversation = await this.conversationService.getOrCreateForMessage(userId, {
       conversationId: body.conversationId,
       message: checkedInput.content,
-      mode: agent?.mode || body.mode,
-      agentCode: agent?.agentCode,
+      mode: requestedAgent?.mode || body.mode,
+      agentCode: requestedAgent?.agentCode,
     })
+    const agent = requestedAgent || await this.agentRuntimeService.resolveDefault(this.normalizeMode(conversation.mode))
     // History is read before storing this turn so the prompt does not duplicate the current question.
     const history = await this.conversationService.getHistoryMessages(conversation.id)
     const userMessage = await this.conversationService.addMessage(
@@ -80,13 +82,15 @@ export class ChatService {
 
   async *stream(body: ChatRequestDto, userId: string): AsyncIterable<ChatStreamEvent> {
     const checkedInput = await this.sensitiveWordCheckerService.checkAndApply(body.message, 'input')
-    const agent = await this.agentRuntimeService.resolve(body.agentCode)
+    const requestedAgent = await this.agentRuntimeService.resolve(body.agentCode)
+    // 流式路径和非流式路径保持同一套会话与运行时解析规则，避免两个入口出现不同的 Agent 行为。
     const conversation = await this.conversationService.getOrCreateForMessage(userId, {
       conversationId: body.conversationId,
       message: checkedInput.content,
-      mode: agent?.mode || body.mode,
-      agentCode: agent?.agentCode,
+      mode: requestedAgent?.mode || body.mode,
+      agentCode: requestedAgent?.agentCode,
     })
+    const agent = requestedAgent || await this.agentRuntimeService.resolveDefault(this.normalizeMode(conversation.mode))
     // Keep streaming and non-streaming prompt history rules aligned.
     const history = await this.conversationService.getHistoryMessages(conversation.id)
     const userMessage = await this.conversationService.addMessage(

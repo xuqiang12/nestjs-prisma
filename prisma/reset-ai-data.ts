@@ -110,6 +110,19 @@ async function seedAiData() {
     }
     return id
   }
+  const defaultChatModel = await prisma.aiModelConfig.findFirst({
+    where: {
+      modelType: 'chat',
+      isDefault: true,
+      status: 1,
+      provider: { status: 1 },
+    },
+    orderBy: { updatedAt: 'desc' },
+    select: { id: true, modelName: true },
+  })
+  if (!defaultChatModel) {
+    throw new Error('默认聊天模型配置不存在，请先维护 AI 模型中心')
+  }
 
   await prisma.aiSensitiveWord.createMany({
     data: [
@@ -184,7 +197,8 @@ async function seedAiData() {
         description: '用于日常客户咨询、后台操作说明和问题分流。',
         promptId: promptId(PROMPT_CODES.customerReception),
         mode: 'chat',
-        model: 'Qwen/Qwen2.5-7B-Instruct',
+        model: defaultChatModel.modelName,
+        modelConfigId: defaultChatModel.id,
         temperature: 0.3,
         topP: 0.8,
         knowledgeEnabled: false,
@@ -199,7 +213,8 @@ async function seedAiData() {
         description: '用于制度、帮助文档、操作手册类问题，优先走知识库检索。',
         promptId: promptId(PROMPT_CODES.knowledgeAnswer),
         mode: 'knowledge',
-        model: 'Qwen/Qwen2.5-7B-Instruct',
+        model: defaultChatModel.modelName,
+        modelConfigId: defaultChatModel.id,
         temperature: 0.2,
         topP: 0.75,
         knowledgeEnabled: true,
@@ -214,7 +229,8 @@ async function seedAiData() {
         description: '用于后台菜单不可见、按钮无权限、角色授权异常等排查。',
         promptId: promptId(PROMPT_CODES.permissionHelper),
         mode: 'chat',
-        model: 'Qwen/Qwen2.5-7B-Instruct',
+        model: defaultChatModel.modelName,
+        modelConfigId: defaultChatModel.id,
         temperature: 0.2,
         topP: 0.8,
         knowledgeEnabled: false,
@@ -229,7 +245,8 @@ async function seedAiData() {
         description: '用于公告、活动、首页配置说明等中文文案优化。',
         promptId: promptId(PROMPT_CODES.contentPolish),
         mode: 'chat',
-        model: 'Qwen/Qwen2.5-7B-Instruct',
+        model: defaultChatModel.modelName,
+        modelConfigId: defaultChatModel.id,
         temperature: 0.6,
         topP: 0.9,
         knowledgeEnabled: false,
@@ -252,7 +269,8 @@ async function seedAiData() {
       agentDefaults: json({
         promptId: promptId(PROMPT_CODES.knowledgeAnswer),
         mode: 'knowledge',
-        model: 'Qwen/Qwen2.5-7B-Instruct',
+        model: defaultChatModel.modelName,
+        modelConfigId: defaultChatModel.id,
         temperature: 0.2,
         topP: 0.75,
         knowledgeEnabled: true,

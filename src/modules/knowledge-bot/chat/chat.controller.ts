@@ -11,25 +11,25 @@ type AuthenticatedRequest = Request & {
   }
 }
 
-@ApiTags('知识库模块')
-@Controller('knowledge-bot/chat')
+@ApiTags('智能体运行时')
+@Controller('agent/chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  @ApiOperation({ summary: '知识库对话' })
+  @ApiOperation({ summary: '智能体对话' })
   @ApiBody({ type: ChatRequestDto })
   @Permissions('ai:chat:send')
   @Post()
-  // 普通知识库聊天接口，返回一次完整的 AI 回复。
+  // 智能体运行时的非流式入口；具体走普通对话、知识库还是工作流由 ChatService 后续解析 agentCode 决定。
   async chat(@Body() body: ChatRequestDto, @Req() req: AuthenticatedRequest) {
     return this.chatService.chat(body, req.user.userId)
   }
 
-  @ApiOperation({ summary: '知识库流式对话' })
+  @ApiOperation({ summary: '智能体流式对话' })
   @ApiBody({ type: ChatStreamRequestDto })
   @Permissions('ai:chat:send')
   @Post('stream')
-  // 流式知识库聊天接口，通过 SSE 持续输出模型生成片段。
+  // 智能体运行时的流式入口；这里仅负责 SSE 协议输出，不复制运行时分支逻辑。
   async stream(@Body() body: ChatStreamRequestDto, @Req() req: AuthenticatedRequest, @Res() res: Response) {
     // 这里直接写 Express Response，所以不会经过普通 JSON 响应封装。
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')

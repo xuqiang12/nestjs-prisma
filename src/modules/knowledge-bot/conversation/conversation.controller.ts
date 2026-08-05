@@ -17,8 +17,8 @@ type AuthenticatedRequest = Request & {
   }
 }
 
-@ApiTags('知识库模块')
-@Controller('knowledge-bot/conversation')
+@ApiTags('智能体运行时')
+@Controller('agent/conversation')
 export class ConversationController {
   constructor(private readonly conversationService: ConversationService) {}
 

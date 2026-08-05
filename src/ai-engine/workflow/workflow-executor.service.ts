@@ -208,6 +208,7 @@ export class WorkflowExecutorService {
 
     if (node.type === 'knowledge') {
       this.ensureToolAllowed('search_knowledge', input.allowedToolCodes)
+      // 工作流 knowledge 节点独立走向量检索，但仍复用 Agent 的工具授权和知识库范围。
       const query = this.readValue(values, config.queryField)
       const standaloneQuestion = this.buildStandaloneKnowledgeQuestion(String(query || ''), input.history || [])
       const matchedSources = await this.vectorStore.similaritySearch(standaloneQuestion, config.limit ? Number(config.limit) : 5, { tags: input.knowledgeTags, knowledgeBaseIds: input.knowledgeBaseIds })
@@ -237,6 +238,7 @@ export class WorkflowExecutorService {
 
     if (node.type === 'tool') {
       this.ensureToolAllowed(config.toolCode, input.allowedToolCodes)
+      // tool 节点只执行 AIRegistry 中已注册且被当前 Agent 授权的工具。
       const params = this.buildToolParams(config.toolCode, config.paramsField ? this.readValue(values, config.paramsField) : {}, input)
       const result = await this.toolExecutor.execute(config.toolCode, params || {})
       values[config.outputField] = result

@@ -90,6 +90,7 @@ export class AiOrchestratorService {
           directAnswer: STRICT_KNOWLEDGE_FALLBACK,
         }
       }
+      // RAG 只把命中的通用事实压入 system prompt，不在这里写业务字段或样例专用过滤规则。
       const knowledgeFacts = this.buildKnowledgeFacts(sources)
       const evidence = this.buildKnowledgeEvidence(knowledgeFacts)
       const systemPrompt = [
@@ -111,6 +112,7 @@ export class AiOrchestratorService {
       }
     }
 
+    // 普通 chat 不自动检索知识库或执行工具，只拼接系统提示词、干净历史和当前用户消息。
     return {
       route: 'chat',
       messages: [

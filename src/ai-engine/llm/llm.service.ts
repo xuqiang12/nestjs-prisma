@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable } from '@nestjs/common'
 import OpenAI from 'openai'
 
 export type ChatMessage = {
@@ -28,14 +28,16 @@ const ROLE_TEMPLATE_STOPS = ['\nuser\n', '\nassistant\n', '\nsystem\n']
 @Injectable()
 export class LlmService {
   // 兼容简单 prompt 调用，把单条用户输入包装成标准 messages 后发送给模型。
-  async invoke(prompt: string): Promise<string> {
-    return this.invokeWithMessages([{ role: 'user', content: prompt }])
+  async invoke(prompt: string, options: LlmOptions = {}): Promise<string> {
+    return this.invokeWithMessages([{ role: 'user', content: prompt }], options)
   }
 
   // 使用 OpenAI 兼容的 Chat Completions 接口发起一次非流式对话。
   async invokeWithMessages(messages: ChatMessage[], options: LlmOptions = {}): Promise<string> {
-    const res = await this.createClient(options).chat.completions.create({
-      model: options.model || process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
+    const resolved = this.assertModelOptions(options)
+    // 这里不解析默认模型和密钥；调用方必须先通过 ModelResolverService 得到完整运行时模型配置。
+    const res = await this.createClient(resolved).chat.completions.create({
+      model: resolved.model,
       messages: options.finalAnswerGuard ? this.withFinalAnswerGuard(messages) : messages,
       temperature: options.temperature ?? 0.2,
       top_p: options.topP ?? 0.8,
@@ -47,8 +49,10 @@ export class LlmService {
 
   // 使用 OpenAI 兼容的流式接口逐段返回模型生成的文本内容。
   async *streamWithMessages(messages: ChatMessage[], options: LlmOptions = {}): AsyncIterable<string> {
-    const stream = await this.createClient(options).chat.completions.create({
-      model: options.model || process.env.SILICONFLOW_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
+    const resolved = this.assertModelOptions(options)
+    // LlmService 只向上返回文本增量，SSE 事件结构由 Controller/ChatService 维护。
+    const stream = await this.createClient(resolved).chat.completions.create({
+      model: resolved.model,
       messages: options.finalAnswerGuard ? this.withFinalAnswerGuard(messages) : messages,
       temperature: options.temperature ?? 0.2,
       top_p: options.topP ?? 0.8,
@@ -65,11 +69,18 @@ export class LlmService {
     }
   }
 
-  private createClient(options: LlmOptions) {
+  private createClient(options: Required<Pick<LlmOptions, 'baseUrl' | 'apiKey'>>) {
     return new OpenAI({
-      apiKey: options.apiKey || process.env.SILICONFLOW_API_KEY,
-      baseURL: options.baseUrl || process.env.SILICONFLOW_BASE_URL,
+      apiKey: options.apiKey,
+      baseURL: options.baseUrl,
     })
+  }
+
+  private assertModelOptions(options: LlmOptions) {
+    if (!options.model || !options.baseUrl || !options.apiKey) {
+      throw new BadRequestException('LLM model config is incomplete')
+    }
+    return options as Required<Pick<LlmOptions, 'model' | 'baseUrl' | 'apiKey'>> & LlmOptions
   }
 
   private withFinalAnswerGuard(messages: ChatMessage[]) {

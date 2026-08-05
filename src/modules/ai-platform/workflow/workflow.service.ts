@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
+import { ModelResolverService } from '../../../ai-engine/model/model-resolver.service'
 import { PrismaService } from 'nestjs-prisma'
 import { WorkflowRuntimeService } from '../../../ai-engine/workflow/workflow-runtime.service'
 import { WorkflowValidatorService } from '../../../ai-engine/workflow/workflow-validator.service'
@@ -19,6 +20,7 @@ export class WorkflowService {
     private readonly prisma: PrismaService,
     private readonly validator: WorkflowValidatorService,
     private readonly workflowRuntime: WorkflowRuntimeService,
+    private readonly modelResolver: ModelResolverService,
   ) {}
 
   async list(query: WorkflowListDto) {
@@ -153,12 +155,14 @@ export class WorkflowService {
   }
 
   async testRun(dto: TestRunWorkflowDto, userId: string) {
+    const llmOptions = await this.modelResolver.resolveDefault()
     return this.workflowRuntime.execute(dto.workflowCode, {
       message: dto.message,
       userId,
       agentCode: 'test-run',
       workflowCode: dto.workflowCode,
       allowedToolCodes: dto.toolCodes || [],
+      llmOptions,
     })
   }
 

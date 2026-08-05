@@ -27,6 +27,7 @@ export class AgentPlanService {
 
   private createStep(input: AgentRuntimeInput, context: AgentContext): AgentPlanStep {
     const workflowCode = context.workflow?.code
+    // 路由优先级保持单一入口：绑定工作流优先，其次显式工具，再按知识库能力进入 RAG，否则退回普通对话。
     if (workflowCode) {
       return {
         type: 'workflow',

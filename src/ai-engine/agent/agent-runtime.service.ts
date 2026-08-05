@@ -50,6 +50,7 @@ export class AgentRuntimeService {
       throw new BadRequestException('Agent prompt does not exist or is disabled')
     }
 
+    // agentCode 在这里被解析成运行时配置：提示词、模型、知识库范围、工具白名单和可选工作流都从同一个入口输出。
     const basePrompt = [agent.promptSnapshot || prompt.content, agent.promptEnhancement]
       .filter(Boolean)
       .join('\n\n')
@@ -78,6 +79,20 @@ export class AgentRuntimeService {
     }
   }
 
+  async resolveDefault(mode: AgentRuntimeConfig['mode'] = 'chat'): Promise<AgentRuntimeConfig> {
+    const llmOptions = await this.modelResolver.resolveDefault()
+    return {
+      mode,
+      systemPrompt: '',
+      llmOptions,
+      toolCodes: mode === 'knowledge' ? ['search_knowledge'] : [],
+      knowledgeEnabled: mode === 'knowledge',
+      knowledgeStrict: false,
+      knowledgeTags: [],
+      knowledgeBaseIds: [],
+    }
+  }
+
   async execute(input: AgentRuntimeInput): Promise<AgentExecutionResult> {
     const startedAt = Date.now()
     const context = this.buildContext(input)
@@ -91,6 +106,7 @@ export class AgentRuntimeService {
 
     try {
       this.planService.validate(plan, context)
+      // 当前版本只执行首个受校验的计划步骤；能力边界由 AgentContext 决定，避免业务层自行分散兜底。
       const step = plan.steps[0]
       const executionResult = await this.executor.execute(step, input, context)
       const composed = await this.responseComposer.compose(input, context, executionResult)
@@ -131,6 +147,7 @@ export class AgentRuntimeService {
 
     try {
       this.planService.validate(plan, context)
+      // 流式执行复用同一套计划；workflow 透传节点事件，chat/knowledge 则统一产出 content 与 sources。
       const step = plan.steps[0]
       if (step.type === 'workflow') {
         for await (const event of await this.executor.streamWorkflow(step, input, context)) {

@@ -91,9 +91,9 @@ export type AgentRuntimeStreamChunk = {
 }
 
 export type AgentRuntimeConfig = {
-  agentCode: string
-  agentName: string
-  promptId: string
+  agentCode?: string
+  agentName?: string
+  promptId?: string
   mode: ChatMode
   systemPrompt: string
   llmOptions: LlmOptions

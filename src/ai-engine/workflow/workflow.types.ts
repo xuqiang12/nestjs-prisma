@@ -1,3 +1,5 @@
+import type { LlmOptions } from '../llm/llm.service'
+
 export const WORKFLOW_NODE_TYPES = ['start', 'prompt', 'knowledge', 'llm', 'tool', 'condition', 'output'] as const
 
 export type WorkflowNodeType = (typeof WORKFLOW_NODE_TYPES)[number]
@@ -35,11 +37,7 @@ export type WorkflowExecutionInput = {
   knowledgeStrict?: boolean
   knowledgeTags?: string[]
   knowledgeBaseIds?: string[]
-  llmOptions?: {
-    model?: string
-    temperature?: number
-    topP?: number
-  }
+  llmOptions?: LlmOptions
 }
 
 export type WorkflowExecutionResult = {

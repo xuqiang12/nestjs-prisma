@@ -1,6 +1,6 @@
 // 生成新版智能体流式入口的协议事件。
 import { Injectable } from '@nestjs/common'
-import { AgentEvent, AgentEventMetadata } from '../../../ai-engine/agent-v2/composer/agent-event.types'
+import { AgentEvent, AgentEventMetadata } from '../../../ai-runtime/events/agent-event.types'
 import { AgentStreamRequestDto } from './dto/agent-stream.dto'
 
 @Injectable()

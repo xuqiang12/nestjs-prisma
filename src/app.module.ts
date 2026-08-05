@@ -1,3 +1,4 @@
+// 注册应用根模块和全局基础模块。
 import { Logger, Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { PrismaModule, loggingMiddleware } from 'nestjs-prisma'

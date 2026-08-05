@@ -1,6 +1,6 @@
 // 把内部事件转换成 SSE 协议格式。
 import { Injectable } from '@nestjs/common'
-import { AgentEvent } from '../composer/agent-event.types'
+import { AgentEvent } from '../events/agent-event.types'
 
 @Injectable()
 export class SseEventAdapter {

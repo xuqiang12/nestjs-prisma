@@ -2,7 +2,7 @@
 import { Body, Controller, Post, Res } from '@nestjs/common'
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { Permissions } from '../../../common/decorators/permissions.decorator'
-import { SseEventAdapter } from '../../../ai-engine/agent-v2/adapter/sse-event.adapter'
+import { SseEventAdapter } from '../../../ai-runtime/adapter/sse-event.adapter'
 import { AgentStreamRequestDto } from './dto/agent-stream.dto'
 import { AgentStreamService } from './agent-stream.service'
 

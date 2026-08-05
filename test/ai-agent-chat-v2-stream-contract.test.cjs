@@ -42,7 +42,7 @@ test('agent chat v2 request DTO keeps agentCode required and conversationId opti
 })
 
 test('agent event envelope covers current frontend stream semantics', () => {
-  const eventTypes = readSource('src/ai-engine/agent-v2/composer/agent-event.types.ts')
+  const eventTypes = readSource('src/ai-runtime/events/agent-event.types.ts')
 
   assert.match(eventTypes, /type: 'content'/)
   assert.match(eventTypes, /type: 'sources'/)
@@ -54,7 +54,7 @@ test('agent event envelope covers current frontend stream semantics', () => {
 })
 
 test('sse adapter only converts AgentEvent to SSE data', () => {
-  const adapter = readSource('src/ai-engine/agent-v2/adapter/sse-event.adapter.ts')
+  const adapter = readSource('src/ai-runtime/adapter/sse-event.adapter.ts')
 
   assert.match(adapter, /toSseData\(event: AgentEvent\)/)
   assert.match(adapter, /event\.type === 'done'/)

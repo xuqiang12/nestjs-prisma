@@ -91,9 +91,9 @@ src/modules/agent-chat/
   persistence/
     conversation.repository.ts
 
-src/ai-engine/agent-v2/
-  agent-v2-runtime.service.ts
-  agent-v2-runtime.types.ts
+src/ai-runtime/
+  agent-runtime.service.ts
+  agent-runtime.types.ts
 
   context/
     agent-context.builder.ts
@@ -122,6 +122,8 @@ src/ai-engine/agent-v2/
 
   composer/
     agent-composer.service.ts
+
+  events/
     agent-event.types.ts
 
   adapter/
@@ -898,6 +900,24 @@ RAG 证据和答案 Guard：吸收 KnowledgeQAService、KnowledgeEvidenceService
 不为了兼容旧接口继续保留 knowledge-bot 命名作为新版智能体运行时模块名。
 ```
 
+#### 目录纠偏记录
+
+后续实现固定使用以下目录边界：
+
+```text
+src/modules/agent-chat 只负责新版智能体对话的 HTTP 入口、SSE 生命周期、会话入口和持久化边界。
+src/ai-runtime 负责新版智能体运行时核心，包括请求类型、上下文、事件、能力解析、计划、校验、执行、编排和适配。
+src/ai-engine 保留为底层 AI 能力层，包括模型解析、LLM、RAG、工具、工作流、安全等可复用基础能力。
+```
+
+纠偏原则：
+
+```text
+新版 runtime 代码不再放入 src/ai-engine/agent-v2。
+ai-runtime 可以调用 ai-engine 的底层能力，但 ai-engine 不承载新版 runtime 主流程。
+后续第 3 步及之后的 Capability、Planner、Validator、Executor、Composer、Trace 均放入 src/ai-runtime 下。
+```
+
 #### 分步实施计划
 
 ##### 第 1 步：确认 v2 文件边界和接口合同
@@ -921,8 +941,8 @@ src/modules/agent-chat/agent-chat.module.ts
 src/modules/agent-chat/stream/agent-stream.controller.ts
 src/modules/agent-chat/stream/agent-stream.service.ts
 src/modules/agent-chat/stream/dto/agent-stream.dto.ts
-src/ai-engine/agent-v2/adapter/sse-event.adapter.ts
-src/ai-engine/agent-v2/composer/agent-event.types.ts
+src/ai-runtime/adapter/sse-event.adapter.ts
+src/ai-runtime/events/agent-event.types.ts
 src/app.module.ts
 ```
 
@@ -962,9 +982,9 @@ history 不从 AgentRuntimeRequest 传入，由 ContextBuilder 通过 conversati
 预计涉及文件：
 
 ```text
-src/ai-engine/agent-v2/agent-v2-runtime.types.ts
-src/ai-engine/agent-v2/context/agent-context.types.ts
-src/ai-engine/agent-v2/context/agent-context.builder.ts
+src/ai-runtime/agent-runtime.types.ts
+src/ai-runtime/context/agent-context.types.ts
+src/ai-runtime/context/agent-context.builder.ts
 src/modules/agent-chat/persistence/conversation.repository.ts
 ```
 
@@ -1001,8 +1021,8 @@ Resolver 输出给 Planner 的能力摘要，不暴露底层检索阈值、TopK�
 预计涉及文件：
 
 ```text
-src/ai-engine/agent-v2/capability/capability.types.ts
-src/ai-engine/agent-v2/capability/capability-resolver.service.ts
+src/ai-runtime/capability/capability.types.ts
+src/ai-runtime/capability/capability-resolver.service.ts
 ```
 
 沟通门禁：
@@ -1035,10 +1055,10 @@ Planner 看不到 unavailable 能力。
 预计涉及文件：
 
 ```text
-src/ai-engine/agent-v2/planner/agent-planner.types.ts
-src/ai-engine/agent-v2/planner/agent-planner.service.ts
-src/ai-engine/agent-v2/planner/rule-planner.service.ts
-src/ai-engine/agent-v2/validator/agent-plan-validator.service.ts
+src/ai-runtime/planner/agent-planner.types.ts
+src/ai-runtime/planner/agent-planner.service.ts
+src/ai-runtime/planner/rule-planner.service.ts
+src/ai-runtime/validator/agent-plan-validator.service.ts
 ```
 
 沟通门禁：
@@ -1074,12 +1094,12 @@ Validator 是 Executor 前的强制步骤。
 预计涉及文件：
 
 ```text
-src/ai-engine/agent-v2/capability/capability-registry.service.ts
-src/ai-engine/agent-v2/executor/agent-capability-executor.service.ts
-src/ai-engine/agent-v2/executor/handlers/chat.handler.ts
-src/ai-engine/agent-v2/executor/handlers/rag.handler.ts
-src/ai-engine/agent-v2/executor/handlers/tool.handler.ts
-src/ai-engine/agent-v2/executor/handlers/workflow.handler.ts
+src/ai-runtime/capability/capability-registry.service.ts
+src/ai-runtime/executor/agent-capability-executor.service.ts
+src/ai-runtime/executor/handlers/chat.handler.ts
+src/ai-runtime/executor/handlers/rag.handler.ts
+src/ai-runtime/executor/handlers/tool.handler.ts
+src/ai-runtime/executor/handlers/workflow.handler.ts
 ```
 
 沟通门禁：
@@ -1117,9 +1137,9 @@ WorkflowHandler 只能执行绑定 workflow。
 预计涉及文件：
 
 ```text
-src/ai-engine/agent-v2/composer/agent-composer.service.ts
-src/ai-engine/agent-v2/composer/agent-event.types.ts
-src/ai-engine/agent-v2/adapter/sse-event.adapter.ts
+src/ai-runtime/composer/agent-composer.service.ts
+src/ai-runtime/events/agent-event.types.ts
+src/ai-runtime/adapter/sse-event.adapter.ts
 ```
 
 沟通门禁：
@@ -1157,7 +1177,7 @@ src/modules/agent-chat/chat/agent-chat.service.ts
 src/modules/agent-chat/conversation/agent-conversation.service.ts
 src/modules/agent-chat/conversation/dto/agent-conversation.dto.ts
 src/modules/agent-chat/persistence/conversation.repository.ts
-src/ai-engine/agent-v2/trace/agent-trace.service.ts
+src/ai-runtime/trace/agent-trace.service.ts
 ```
 
 沟通门禁：

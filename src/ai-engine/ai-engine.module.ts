@@ -3,6 +3,9 @@ import { AIRegistry } from './core/ai.registry'
 import { EmbeddingService } from './embedding/embedding.service'
 import { AiOrchestratorService } from './orchestrator/ai-orchestrator.service'
 import { DefaultToolExecutor } from './tools/tool.executor'
+import { KnowledgeAnswerGuardService } from './knowledge-qa/knowledge-answer-guard.service'
+import { KnowledgeEvidenceService } from './knowledge-qa/knowledge-evidence.service'
+import { KnowledgeQAService } from './knowledge-qa/knowledge-qa.service'
 import { LlmService } from './llm/llm.service'
 import { ModelResolverService } from './model/model-resolver.service'
 import { VectorStoreService } from './vector/vector-store.service'
@@ -34,6 +37,9 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
     WorkflowRuntimeService,
     WorkflowExecutorService,
     WorkflowRunLoggerService,
+    KnowledgeAnswerGuardService,
+    KnowledgeEvidenceService,
+    KnowledgeQAService,
     AiOrchestratorService,
     {
       provide: AIRegistry,
@@ -59,6 +65,9 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
     WorkflowRuntimeService,
     WorkflowExecutorService,
     WorkflowRunLoggerService,
+    KnowledgeAnswerGuardService,
+    KnowledgeEvidenceService,
+    KnowledgeQAService,
   ],
 })
 export class AIEngineModule {}

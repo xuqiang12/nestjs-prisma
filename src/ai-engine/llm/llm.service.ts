@@ -48,7 +48,10 @@ export class LlmService {
   }
 
   // 使用 OpenAI 兼容的流式接口逐段返回模型生成的文本内容。
-  async *streamWithMessages(messages: ChatMessage[], options: LlmOptions = {}): AsyncIterable<string> {
+  async *streamWithMessages(
+    messages: ChatMessage[],
+    options: LlmOptions = {},
+  ): AsyncIterable<string> {
     const resolved = this.assertModelOptions(options)
     // LlmService 只向上返回文本增量，SSE 事件结构由 Controller/ChatService 维护。
     const stream = await this.createClient(resolved).chat.completions.create({

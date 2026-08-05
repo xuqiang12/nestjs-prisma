@@ -7,40 +7,45 @@ const rootDir = join(__dirname, '..')
 
 test('rag answers are sanitized before saving or streaming to users', () => {
   const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
+  const qaService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-qa.service.ts'), 'utf8')
+  const evidenceService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-evidence.service.ts'), 'utf8')
+  const guardService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-answer-guard.service.ts'), 'utf8')
+  const knowledgeTypes = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge.types.ts'), 'utf8')
   const runtimeService = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.service.ts'), 'utf8')
   const responseComposer = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-response-composer.service.ts'), 'utf8')
   const answerUtil = readFileSync(join(rootDir, 'src/ai-engine/knowledge-answer.util.ts'), 'utf8')
 
-  assert.match(orchestrator, /KnowledgeAnswerFact/)
+  assert.match(orchestrator, /KnowledgeQAService/)
+  assert.match(knowledgeTypes, /KnowledgeFact/)
   assert.match(answerUtil, /requiredTerms:\s*string\[\]/)
-  assert.match(orchestrator, /knowledgeFacts:\s*KnowledgeFact\[\]/)
-  assert.match(orchestrator, /buildKnowledgeFacts\(sources\)/)
-  assert.match(orchestrator, /extractRequiredTerms/)
+  assert.match(knowledgeTypes, /knowledgeFacts:\s*KnowledgeFact\[\]/)
+  assert.match(evidenceService, /buildFacts\(sources/)
+  assert.match(evidenceService, /extractRequiredTerms/)
   assert.match(answerUtil, /validateKnowledgeAnswer/)
   assert.match(answerUtil, /buildKnowledgeFallbackAnswer/)
   assert.doesNotMatch(answerUtil, /KNOWLEDGE_QUERY_STOP_WORDS/)
   assert.doesNotMatch(answerUtil, /isQuestionAskingForValue/)
-  assert.match(orchestrator, /完整保留事实依据中的数字、期限、条件和否定结论/)
+  assert.match(qaService, /完整保留事实依据中的数字、期限、条件和否定结论/)
   assert.match(orchestrator, /sanitizeKnowledgeAnswer\(content:\s*string\)/)
-  assert.match(orchestrator, /stripCopiedKnowledgeArtifacts/)
-  assert.match(orchestrator, /知识片段/)
-  assert.doesNotMatch(orchestrator, /KNOWLEDGE_EVIDENCE_MAX_LINES/)
-  assert.doesNotMatch(orchestrator, /KNOWLEDGE_LABEL_ONLY_PATTERN/)
-  assert.doesNotMatch(orchestrator, /KNOWLEDGE_HEADING_PATTERN/)
-  assert.doesNotMatch(orchestrator, /isUsefulKnowledgeFact/)
+  assert.match(guardService, /stripCopiedKnowledgeArtifacts/)
+  assert.match(guardService, /知识片段/)
+  assert.doesNotMatch(evidenceService, /KNOWLEDGE_EVIDENCE_MAX_LINES/)
+  assert.doesNotMatch(evidenceService, /KNOWLEDGE_LABEL_ONLY_PATTERN/)
+  assert.doesNotMatch(evidenceService, /KNOWLEDGE_HEADING_PATTERN/)
+  assert.doesNotMatch(evidenceService, /isUsefulKnowledgeFact/)
 
   assert.match(responseComposer, /ensureKnowledgeAnswer\(rawAnswer,\s*result\.completionPlan\.knowledgeFacts,\s*input\.message\)/)
   assert.match(runtimeService, /answer = this\.responseComposer\.ensureKnowledgeAnswer\(answer,\s*completionPlan\.knowledgeFacts,\s*input\.message\)/)
 })
 
 test('rag facts use generic chunk content without sample-specific filters', () => {
-  const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
+  const evidenceService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-evidence.service.ts'), 'utf8')
 
-  assert.doesNotMatch(orchestrator, /产品名称\|产品型号\|产品功能/)
-  assert.doesNotMatch(orchestrator, /售价\|基础版本\|企业版本/)
-  assert.doesNotMatch(orchestrator, /\.slice\(0,\s*KNOWLEDGE_EVIDENCE_MAX_LINES\)/)
-  assert.doesNotMatch(orchestrator, /requiredTerms\.length > 0 && this\.hasQuestionOverlap/)
-  assert.match(orchestrator, /source\.content/)
+  assert.doesNotMatch(evidenceService, /产品名称\|产品型号\|产品功能/)
+  assert.doesNotMatch(evidenceService, /售价\|基础版本\|企业版本/)
+  assert.doesNotMatch(evidenceService, /\.slice\(0,\s*KNOWLEDGE_EVIDENCE_MAX_LINES\)/)
+  assert.doesNotMatch(evidenceService, /requiredTerms\.length > 0 && this\.hasQuestionOverlap/)
+  assert.match(evidenceService, /source\.content/)
 })
 
 test('rag fact extraction keeps relevant policy facts without fixed field lists', async () => {
@@ -235,7 +240,7 @@ test('knowledge answer fallback rejects numeric claims that are not in retrieved
   assert.equal(validAnswer, '基础版本的价格是1999元/年，企业版本的价格是4999元/年。')
 })
 
-test('knowledge fallback returns retrieved facts without query-specific line picking', async () => {
+test('knowledge fallback focuses facts by unsupported numeric unit without business-specific filters', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
   const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
@@ -273,7 +278,8 @@ test('knowledge fallback returns retrieved facts without query-specific line pic
   assert.match(answer, /1999元\/年/)
   assert.match(answer, /企业版本/)
   assert.match(answer, /4999元\/年/)
-  assert.match(answer, /文档管理/)
+  assert.doesNotMatch(answer, /文档管理/)
+  assert.doesNotMatch(answer, /服务期限/)
 })
 
 test('knowledge stream buffers model chunks and emits the checked answer once', async () => {

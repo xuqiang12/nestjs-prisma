@@ -41,14 +41,14 @@ export function validateKnowledgeAnswer(answer: string, facts: KnowledgeAnswerFa
   return answerNumberTerms.every((term) => factNumberTerms.has(normalizeKnowledgeTerm(term)))
 }
 
-export function buildKnowledgeFallbackAnswer(facts: KnowledgeAnswerFact[], question = '', fallback = '未找到相关制度。') {
+export function buildKnowledgeFallbackAnswer(
+  facts: KnowledgeAnswerFact[],
+  question = '',
+  fallback = '未找到相关制度。',
+) {
   const factLines = flattenKnowledgeFactLines(facts)
   if (!factLines.length) return fallback
-  return [
-    '根据知识库，相关信息如下：',
-    '',
-    ...factLines,
-  ].join('\n')
+  return ['根据知识库，相关信息如下：', '', ...factLines].join('\n')
 }
 
 function flattenKnowledgeFactLines(facts: KnowledgeAnswerFact[]) {

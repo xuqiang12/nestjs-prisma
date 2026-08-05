@@ -175,8 +175,18 @@ export class AgentRuntimeService {
               yield { event: { type: 'content', content } }
             }
           }
+          console.log('[AI回答-原始输出]', {
+            route: step.type,
+            agentCode: context.agentCode,
+            answer,
+          })
           if (step.type === 'knowledge') {
             answer = this.responseComposer.ensureKnowledgeAnswer(answer, completionPlan.knowledgeFacts, input.message)
+            console.log('[AI回答-最终返回]', {
+              route: step.type,
+              agentCode: context.agentCode,
+              answer,
+            })
             yield { event: { type: 'content', content: answer } }
           }
         }

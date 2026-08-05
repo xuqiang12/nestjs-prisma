@@ -1,47 +1,39 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
+import { KnowledgeAnswerGuardService } from '../knowledge-qa/knowledge-answer-guard.service'
+import { KnowledgeEvidenceService } from '../knowledge-qa/knowledge-evidence.service'
+import { KnowledgeQAService } from '../knowledge-qa/knowledge-qa.service'
 import {
-  buildKnowledgeFallbackAnswer,
-  extractKnowledgeNumberTerms,
-  KnowledgeAnswerFact,
-  validateKnowledgeAnswer,
-} from '../knowledge-answer.util'
+  BuildCompletionOptions,
+  ChatMode,
+  CompletionPlan,
+  KnowledgeFact,
+} from '../knowledge-qa/knowledge.types'
 import { ChatMessage, LlmOptions, LlmService } from '../llm/llm.service'
-import { SearchResult, VectorStoreService } from '../vector/vector-store.service'
+import { VectorStoreService } from '../vector/vector-store.service'
 
-export type ChatMode = 'chat' | 'knowledge'
-
-export type CompletionPlan = {
-  route: ChatMode
-  messages: ChatMessage[]
-  sources: SearchResult[]
-  knowledgeFacts: KnowledgeFact[]
-  directAnswer?: string
-}
-
-export type KnowledgeFact = KnowledgeAnswerFact
-
-export type BuildCompletionOptions = {
-  systemPrompt?: string
-  allowedToolCodes?: string[]
-  knowledgeStrict?: boolean
-  knowledgeTags?: string[]
-  knowledgeBaseIds?: string[]
-}
-
-const STRICT_KNOWLEDGE_MAX_DISTANCE = 0.45
-const KNOWLEDGE_EVIDENCE_MAX_DISTANCE = 0.55
-const KNOWLEDGE_EVIDENCE_MAX_LENGTH = 6000
-const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
-const KNOWLEDGE_ROLE_MARKER_PATTERN = /^\s*(user|assistant|system)\s*$/i
-const COPIED_KNOWLEDGE_ARTIFACT_PATTERN = /(知识片段|事实依据|来源\d*[:：])/
-const KNOWLEDGE_FACT_SPLIT_PATTERN = /[。；;]+/
+export {
+  BuildCompletionOptions,
+  ChatMode,
+  CompletionPlan,
+  KnowledgeFact,
+} from '../knowledge-qa/knowledge.types'
 
 @Injectable()
 export class AiOrchestratorService {
+  private readonly knowledgeQAService: KnowledgeQAService
+
   constructor(
     private readonly llmService: LlmService,
     private readonly vectorStoreService: VectorStoreService,
-  ) {}
+    knowledgeQAService?: KnowledgeQAService,
+  ) {
+    this.knowledgeQAService = knowledgeQAService || new KnowledgeQAService(
+      llmService,
+      vectorStoreService,
+      new KnowledgeEvidenceService(),
+      new KnowledgeAnswerGuardService(),
+    )
+  }
 
   // 执行普通聊天：构建普通对话消息后调用大模型，并返回本次路由类型。
   async chat(message: string) {
@@ -58,15 +50,15 @@ export class AiOrchestratorService {
     }
   }
 
-  // 执行知识库问答：先检索相似知识片段，再把知识上下文和用户问题一起交给模型。
+  // 执行知识库问答：knowledge 路径已收口到 KnowledgeQAService。
   async rag(message: string) {
-    const plan = await this.buildCompletion(message, 'knowledge')
-    const rawAnswer = plan.directAnswer || await this.complete(plan.messages)
-    const answer = this.ensureKnowledgeAnswer(rawAnswer, plan.knowledgeFacts, message)
-    return { answer, route: 'rag', sources: plan.sources }
+    return this.knowledgeQAService.answer({
+      question: message,
+      history: [],
+    })
   }
 
-  // 构建模型调用计划，统一处理普通聊天和知识库问答所需的消息上下文。
+  // 构建模型调用计划，普通聊天保留本地构建，知识库问答委托给 KnowledgeQAService。
   async buildCompletion(
     message: string,
     mode: ChatMode = 'chat',
@@ -74,42 +66,11 @@ export class AiOrchestratorService {
     options: BuildCompletionOptions = {},
   ): Promise<CompletionPlan> {
     if (mode === 'knowledge') {
-      this.ensureToolAllowed('search_knowledge', options.allowedToolCodes)
-      const standaloneQuestion = this.buildStandaloneKnowledgeQuestion(message, history)
-      // 知识库模式先用用户上下文补全检索问题，再把命中的片段整理为 system prompt 的事实依据。
-      const matchedSources = await this.vectorStoreService.similaritySearch(standaloneQuestion, 5, { tags: options.knowledgeTags, knowledgeBaseIds: options.knowledgeBaseIds })
-      const sources = options.knowledgeStrict
-        ? matchedSources.filter((item) => item.distance <= STRICT_KNOWLEDGE_MAX_DISTANCE)
-        : matchedSources.filter((item) => item.distance <= KNOWLEDGE_EVIDENCE_MAX_DISTANCE)
-      if (options.knowledgeStrict && !sources.length) {
-        return {
-          route: 'knowledge',
-          messages: [],
-          sources: [],
-          knowledgeFacts: [],
-          directAnswer: STRICT_KNOWLEDGE_FALLBACK,
-        }
-      }
-      // RAG 只把命中的通用事实压入 system prompt，不在这里写业务字段或样例专用过滤规则。
-      const knowledgeFacts = this.buildKnowledgeFacts(sources)
-      const evidence = this.buildKnowledgeEvidence(knowledgeFacts)
-      const systemPrompt = [
-        options.systemPrompt,
-        '你是知识库问答助手。',
-        options.knowledgeStrict
-          ? '只能根据事实依据回答；如果事实依据不足以回答，只能回答“未找到相关制度。”'
-          : '优先根据事实依据回答；如果事实依据不足以回答，请明确说明知识库中没有足够信息。',
-        '只能根据事实依据组织自然客服回答。不要复述事实依据编号，不要输出知识片段全文，不要输出 user/assistant/system。',
-        '完整保留事实依据中的数字、期限、条件和否定结论；不要省略、截断或改写关键条件。',
-        `事实依据：\n${evidence || '未检索到可用事实依据'}`,
-      ].filter(Boolean).join('\n')
-
-      return {
-        route: 'knowledge',
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: standaloneQuestion }],
-        sources,
-        knowledgeFacts,
-      }
+      return this.knowledgeQAService.buildCompletion({
+        question: message,
+        history,
+        ...options,
+      })
     }
 
     // 普通 chat 不自动检索知识库或执行工具，只拼接系统提示词、干净历史和当前用户消息。
@@ -122,6 +83,7 @@ export class AiOrchestratorService {
       ],
       sources: [],
       knowledgeFacts: [],
+      evidence: { sources: [], items: [], facts: [] },
     }
   }
 
@@ -136,12 +98,11 @@ export class AiOrchestratorService {
   }
 
   sanitizeKnowledgeAnswer(content: string) {
-    return this.stripCopiedKnowledgeArtifacts(content.replace(/\uFFFD/g, '')).trim()
+    return this.knowledgeQAService.sanitizeAnswer(content)
   }
 
   ensureKnowledgeAnswer(content: string, facts: KnowledgeFact[], question = '') {
-    const answer = this.sanitizeKnowledgeAnswer(content)
-    return validateKnowledgeAnswer(answer, facts) ? answer : buildKnowledgeFallbackAnswer(facts, question, STRICT_KNOWLEDGE_FALLBACK)
+    return this.knowledgeQAService.ensureAnswer(content, facts, question)
   }
 
   private withFinalAnswerOptions(options: LlmOptions = {}): LlmOptions {
@@ -155,76 +116,5 @@ export class AiOrchestratorService {
   // 过滤历史消息，只保留模型支持的用户消息和助手消息。
   private normalizeHistory(history: ChatMessage[]) {
     return history.filter((item) => item.role === 'user' || item.role === 'assistant')
-  }
-
-  private buildStandaloneKnowledgeQuestion(message: string, history: ChatMessage[]) {
-    const currentQuestion = message.trim()
-    const userContext = this.normalizeHistory(history)
-      .filter((item) => item.role === 'user')
-      .map((item) => item.content.trim())
-      .filter((content) => content && content !== currentQuestion)
-      .slice(-3)
-
-    return [...userContext, currentQuestion].filter(Boolean).join('\n')
-  }
-
-  private buildKnowledgeEvidence(facts: KnowledgeFact[]) {
-    const evidence = facts
-      .map((fact, index) => {
-        const requiredTerms = fact.requiredTerms.length ? `\n关键条件：${fact.requiredTerms.join('、')}` : ''
-        return `事实${index + 1}：${fact.text}${requiredTerms}`
-      })
-      .join('\n')
-
-    return evidence.length > KNOWLEDGE_EVIDENCE_MAX_LENGTH
-      ? `${evidence.slice(0, KNOWLEDGE_EVIDENCE_MAX_LENGTH)}...`
-      : evidence
-  }
-
-  private buildKnowledgeFacts(sources: SearchResult[]) {
-    return sources
-      .flatMap((source) => this.splitKnowledgeFactTexts(this.compactKnowledgeContent(source.content)))
-      .map((text) => ({
-        text,
-        requiredTerms: this.extractRequiredTerms(text),
-      }))
-      .filter((fact) => fact.text)
-  }
-
-  private compactKnowledgeContent(content: string) {
-    const lines = content.replace(/\uFFFD/g, '')
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line)
-      .filter((line) => !KNOWLEDGE_ROLE_MARKER_PATTERN.test(line))
-
-    return (lines.length ? lines : [content.trim()]).join('\n')
-  }
-
-  private splitKnowledgeFactTexts(content: string) {
-    return content
-      .split(KNOWLEDGE_FACT_SPLIT_PATTERN)
-      .map((line) => line.trim())
-      .filter(Boolean)
-  }
-
-  private extractRequiredTerms(content: string) {
-    return Array.from(new Set([
-      ...extractKnowledgeNumberTerms(content),
-    ].map((term) => term.trim()).filter(Boolean)))
-  }
-
-  private stripCopiedKnowledgeArtifacts(content: string) {
-    const sections = content.split(/\n\s*(?:-{3,}|_{3,}|\*{3,})\s*\n/)
-    if (sections.length <= 1) return content
-
-    const copiedIndex = sections.findIndex((section, index) => index > 0 && COPIED_KNOWLEDGE_ARTIFACT_PATTERN.test(section))
-    return copiedIndex > 0 ? sections.slice(0, copiedIndex).join('\n').trim() : content
-  }
-
-  private ensureToolAllowed(toolCode: string, allowedToolCodes?: string[]) {
-    if (allowedToolCodes && !allowedToolCodes.includes(toolCode)) {
-      throw new BadRequestException(`智能体未授权工具：${toolCode}`)
-    }
   }
 }

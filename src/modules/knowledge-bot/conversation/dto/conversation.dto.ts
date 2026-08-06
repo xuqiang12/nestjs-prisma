@@ -1,7 +1,8 @@
+// 定义知识机器人会话列表、创建和维护接口参数。
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator'
-import { CHAT_MODES, ChatMode } from '../../chat/dto/chat.dto'
+import { CHAT_MODES, ChatMode } from '../../../../common/constants/chat-mode.constants'
 
 export class ConversationListDto {
   @ApiPropertyOptional({ description: '页码', default: 1 })

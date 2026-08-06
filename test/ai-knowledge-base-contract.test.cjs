@@ -78,13 +78,14 @@ test('knowledge base implementation files live under modules/knowledge', () => {
   })
 })
 
-test('knowledge bot module keeps chat, conversation, and AI tools only', () => {
+test('knowledge bot module keeps conversation and AI tools only after chat v2 migration', () => {
   const module = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-bot.module.ts'), 'utf8')
 
-  assert.match(module, /ChatController/)
   assert.match(module, /ConversationController/)
   assert.match(module, /SearchKnowledgeTool/)
   assert.match(module, /GetUserMenuPermissionsTool/)
+  assert.doesNotMatch(module, /ChatController/)
+  assert.doesNotMatch(module, /ChatService/)
   assert.doesNotMatch(module, /knowledge-base\/knowledge-base\.controller/)
   assert.doesNotMatch(module, /knowledge-base\/knowledge-base\.service/)
 })
@@ -139,21 +140,19 @@ test('knowledge base detail page menu cleanup migration exists', () => {
 })
 
 test('runtime filters rag by enabled knowledge base associations', () => {
-  const runtimeTypes = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.types.ts'), 'utf8')
-  const runtimeService = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.service.ts'), 'utf8')
-  const chatService = readFileSync(join(rootDir, 'src/modules/knowledge-bot/chat/chat.service.ts'), 'utf8')
-  const agentExecutor = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-executor.service.ts'), 'utf8')
+  const contextTypes = readFileSync(join(rootDir, 'src/ai-runtime/context/agent-context.types.ts'), 'utf8')
+  const contextBuilder = readFileSync(join(rootDir, 'src/ai-runtime/context/agent-context.builder.ts'), 'utf8')
+  const ragHandler = readFileSync(join(rootDir, 'src/ai-runtime/executor/handlers/rag.handler.ts'), 'utf8')
   const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
   const knowledgeQA = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-qa.service.ts'), 'utf8')
   const workflowTypes = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow.types.ts'), 'utf8')
   const workflowExecutor = readFileSync(join(rootDir, 'src/ai-engine/workflow/workflow-executor.service.ts'), 'utf8')
   const vectorStore = readFileSync(join(rootDir, 'src/ai-engine/vector/vector-store.service.ts'), 'utf8')
 
-  assert.match(runtimeTypes, /knowledgeBaseIds:\s*string\[\]/)
-  assert.match(runtimeService, /knowledgeBases:\s*\{\s*where:\s*\{\s*knowledgeBase:\s*\{\s*status:\s*1\s*\}/)
-  assert.match(runtimeService, /knowledgeBaseIds:\s*agent\.knowledgeBases\.map\(\(item\) => item\.knowledgeBaseId\)/)
-  assert.match(chatService, /agent,\s*\n\s*\}\)/)
-  assert.match(agentExecutor, /knowledgeBaseIds:\s*context\.knowledge\.ids/)
+  assert.match(contextTypes, /knowledgeBaseIds:\s*string\[\]/)
+  assert.match(contextBuilder, /knowledgeBases:\s*\{\s*where:\s*\{\s*knowledgeBase:\s*\{\s*status:\s*1\s*\}/)
+  assert.match(contextBuilder, /knowledgeBaseIds:\s*agent\.knowledgeBases\.map\(\(item\) => item\.knowledgeBaseId\)/)
+  assert.match(ragHandler, /knowledgeBaseIds:\s*context\.capabilities\.knowledgeBaseIds/)
   assert.match(orchestrator, /knowledgeBaseIds\?:\s*string\[\]/)
   assert.match(orchestrator, /knowledgeQAService\.buildCompletion/)
   assert.match(knowledgeQA, /similaritySearch\(standaloneQuestion,\s*5,\s*\{[\s\S]*tags:\s*context\.knowledgeTags,[\s\S]*knowledgeBaseIds:\s*context\.knowledgeBaseIds,[\s\S]*\}\)/)

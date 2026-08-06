@@ -1,3 +1,4 @@
+// 校验运行时模型配置从数据库模型中心解析。
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -9,7 +10,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 test('runtime resolves model config instead of hardcoding SiliconFlow only', () => {
   const resolver = read('src/ai-engine/model/model-resolver.service.ts')
   const llm = read('src/ai-engine/llm/llm.service.ts')
-  const runtime = read('src/ai-engine/agent/agent-runtime.service.ts')
+  const contextBuilder = read('src/ai-runtime/context/agent-context.builder.ts')
 
   assert.match(resolver, /class ModelResolverService/)
   assert.match(resolver, /findFirst[\s\S]*aiModelConfig/)
@@ -21,6 +22,6 @@ test('runtime resolves model config instead of hardcoding SiliconFlow only', () 
   assert.match(llm, /baseURL:\s*options\.baseUrl/)
   assert.match(llm, /apiKey:\s*options\.apiKey/)
   assert.doesNotMatch(llm, /baseURL:\s*process\.env\.SILICONFLOW_BASE_URL/)
-  assert.match(runtime, /modelConfigId/)
-  assert.match(runtime, /modelResolver\.resolve/)
+  assert.match(contextBuilder, /modelConfigId/)
+  assert.match(contextBuilder, /modelResolver\.resolve/)
 })

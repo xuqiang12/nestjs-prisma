@@ -1,3 +1,4 @@
+// 校验模型运行时不再散落硬编码默认模型。
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -9,7 +10,8 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 test('LLM runtime requires database-resolved model options and has no hardcoded chat fallback', () => {
   const llm = read('src/ai-engine/llm/llm.service.ts')
   const resolver = read('src/ai-engine/model/model-resolver.service.ts')
-  const chat = read('src/modules/knowledge-bot/chat/chat.service.ts')
+  const contextBuilder = read('src/ai-runtime/context/agent-context.builder.ts')
+  const chatHandler = read('src/ai-runtime/executor/handlers/chat.handler.ts')
   const workflow = read('src/modules/ai-platform/workflow/workflow.service.ts')
   const reset = read('prisma/reset-ai-data.ts')
 
@@ -25,8 +27,9 @@ test('LLM runtime requires database-resolved model options and has no hardcoded 
   assert.match(resolver, /resolveDefault/)
   assert.match(resolver, /No enabled default chat model config/)
 
-  assert.match(chat, /resolveDefault/)
-  assert.match(chat, /agentRuntimeService\.resolve\(body\.agentCode\)/)
+  assert.match(contextBuilder, /modelResolver\.resolve\(agent\.modelConfigId,\s*agent\.model\)/)
+  assert.match(chatHandler, /context\.model/)
+  assert.doesNotMatch(chatHandler, /resolveDefault/)
 
   assert.match(workflow, /ModelResolverService/)
   assert.match(workflow, /modelResolver\.resolveDefault/)

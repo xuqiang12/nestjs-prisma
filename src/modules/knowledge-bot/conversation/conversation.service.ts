@@ -1,7 +1,8 @@
+// 管理知识机器人会话及历史消息持久化。
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
 import { ChatMessage } from '../../../ai-engine/llm/llm.service'
-import { ChatMode } from '../chat/dto/chat.dto'
+import { ChatMode } from '../../../common/constants/chat-mode.constants'
 import { ConversationListDto } from './dto/conversation.dto'
 
 type MessageRole = 'user' | 'assistant'
@@ -209,6 +210,7 @@ export class ConversationService {
     return title.trim() || '新会话'
   }
 
+  // 判断助手历史内容是否适合继续进入模型上下文。
   private isCleanAssistantHistoryContent(content: string) {
     return !ROLE_MARKER_PATTERN.test(content)
   }

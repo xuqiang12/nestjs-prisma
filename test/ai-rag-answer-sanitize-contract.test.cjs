@@ -1,3 +1,4 @@
+// 校验知识库问答答案清洗、事实约束和新版运行时接入合同。
 const assert = require('node:assert/strict')
 const { readFileSync } = require('node:fs')
 const { test } = require('node:test')
@@ -11,8 +12,8 @@ test('rag answers are sanitized before saving or streaming to users', () => {
   const evidenceService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-evidence.service.ts'), 'utf8')
   const guardService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-answer-guard.service.ts'), 'utf8')
   const knowledgeTypes = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge.types.ts'), 'utf8')
-  const runtimeService = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-runtime.service.ts'), 'utf8')
-  const responseComposer = readFileSync(join(rootDir, 'src/ai-engine/agent/agent-response-composer.service.ts'), 'utf8')
+  const ragHandler = readFileSync(join(rootDir, 'src/ai-runtime/executor/handlers/rag.handler.ts'), 'utf8')
+  const agentComposer = readFileSync(join(rootDir, 'src/ai-runtime/composer/agent-composer.service.ts'), 'utf8')
   const answerUtil = readFileSync(join(rootDir, 'src/ai-engine/knowledge-answer.util.ts'), 'utf8')
 
   assert.match(orchestrator, /KnowledgeQAService/)
@@ -34,8 +35,8 @@ test('rag answers are sanitized before saving or streaming to users', () => {
   assert.doesNotMatch(evidenceService, /KNOWLEDGE_HEADING_PATTERN/)
   assert.doesNotMatch(evidenceService, /isUsefulKnowledgeFact/)
 
-  assert.match(responseComposer, /ensureKnowledgeAnswer\(rawAnswer,\s*result\.completionPlan\.knowledgeFacts,\s*input\.message\)/)
-  assert.match(runtimeService, /answer = this\.responseComposer\.ensureKnowledgeAnswer\(answer,\s*completionPlan\.knowledgeFacts,\s*input\.message\)/)
+  assert.match(ragHandler, /knowledgeQAService\.answer/)
+  assert.match(agentComposer, /collectAssistantResult/)
 })
 
 test('rag facts use generic chunk content without sample-specific filters', () => {
@@ -282,79 +283,34 @@ test('knowledge fallback focuses facts by unsupported numeric unit without busin
   assert.doesNotMatch(answer, /服务期限/)
 })
 
-test('knowledge stream buffers model chunks and emits the checked answer once', async () => {
+test('knowledge qa returns the checked answer used by v2 rag handler', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { ChatService } = require(join(rootDir, 'src/modules/knowledge-bot/chat/chat.service'))
-  const savedMessages = []
-  const aiOrchestratorService = {
-    buildCompletion: async () => ({
-      route: 'knowledge',
-      messages: [{ role: 'system', content: '事实依据：基础版本：1999元/年\n企业版本：4999元/年' }],
-      sources: [{ id: 'doc-1' }],
-      knowledgeFacts: [
-        { text: '基础版本：1999元/年\n企业版本：4999元/年', requiredTerms: ['1999元', '4999元'] },
-      ],
-    }),
-    streamCompletion: async function* () {
-      yield '基础版本的价格是1111元/年，'
-      yield '企业版本的价格是4111元/年。'
+  const { KnowledgeQAService } = require(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-qa.service'))
+  const { KnowledgeEvidenceService } = require(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-evidence.service'))
+  const { KnowledgeAnswerGuardService } = require(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-answer-guard.service'))
+  const service = new KnowledgeQAService(
+    { invokeWithMessages: async () => '基础版本的价格是1111元/年，企业版本的价格是4111元/年。' },
+    {
+      similaritySearch: async () => [{
+        id: 'doc-1',
+        distance: 0.2,
+        metadata: {},
+        content: '基础版本：1999元/年\n企业版本：4999元/年',
+      }],
     },
-    ensureKnowledgeAnswer: (answer) => {
-      assert.match(answer, /1111元\/年/)
-      assert.match(answer, /4111元\/年/)
-      return '基础版本：1999元/年\n企业版本：4999元/年'
-    },
-  }
-  const conversationService = {
-    getOrCreateForMessage: async () => ({ id: 'conv-1', mode: 'knowledge' }),
-    getHistoryMessages: async () => [],
-    addMessage: async (...args) => savedMessages.push(args),
-    touchConversation: async () => undefined,
-  }
-  const agentRuntimeService = {
-    resolve: async () => ({
-      mode: 'knowledge',
-      toolCodes: ['search_knowledge'],
-      knowledgeStrict: false,
-      knowledgeTags: [],
-      knowledgeBaseIds: [],
-      llmOptions: {},
-    }),
-    stream: async function* () {
-      const plan = await aiOrchestratorService.buildCompletion()
-      let answer = ''
-      for await (const content of aiOrchestratorService.streamCompletion()) {
-        answer += content
-      }
-      answer = aiOrchestratorService.ensureKnowledgeAnswer(answer)
-      yield { event: { type: 'content', content: answer } }
-      yield { event: { type: 'sources', sources: plan.sources }, state: { workflowCode: undefined } }
-    },
-  }
-  const sensitiveWordCheckerService = {
-    checkAndApply: async (content) => ({ content }),
-  }
-  const workflowRuntimeService = {}
-  const service = new ChatService(
-    conversationService,
-    agentRuntimeService,
-    sensitiveWordCheckerService,
+    new KnowledgeEvidenceService(),
+    new KnowledgeAnswerGuardService(),
   )
 
-  const events = []
-  for await (const event of service.stream({
-    message: '智能办公助手Pro多少钱？',
-    mode: 'knowledge',
-  }, 'user-1')) {
-    events.push(event)
-  }
-  const contentEvents = events.filter((event) => event.type === 'content')
-  const assistantMessage = savedMessages.find((item) => item[1] === 'assistant')
+  const result = await service.answer({
+    question: '智能办公助手Pro多少钱？',
+    history: [],
+    allowedToolCodes: ['search_knowledge'],
+  })
 
-  assert.deepEqual(contentEvents, [
-    { type: 'content', content: '基础版本：1999元/年\n企业版本：4999元/年' },
-  ])
-  assert.ok(assistantMessage)
-  assert.equal(assistantMessage[2], '基础版本：1999元/年\n企业版本：4999元/年')
+  assert.match(result.answer, /基础版本：1999元\/年/)
+  assert.match(result.answer, /企业版本：4999元\/年/)
+  assert.doesNotMatch(result.answer, /1111元|4111元/)
+  assert.deepEqual(result.sources.map((source) => source.id), ['doc-1'])
 })

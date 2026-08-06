@@ -1,3 +1,4 @@
+// 注册 AI 引擎通用能力服务。
 import { Global, Module } from '@nestjs/common'
 import { AIRegistry } from './core/ai.registry'
 import { EmbeddingService } from './embedding/embedding.service'
@@ -9,11 +10,6 @@ import { KnowledgeQAService } from './knowledge-qa/knowledge-qa.service'
 import { LlmService } from './llm/llm.service'
 import { ModelResolverService } from './model/model-resolver.service'
 import { VectorStoreService } from './vector/vector-store.service'
-import { AgentExecutionLoggerService } from './agent/agent-execution-logger.service'
-import { AgentExecutorService } from './agent/agent-executor.service'
-import { AgentPlanService } from './agent/agent-plan.service'
-import { AgentResponseComposerService } from './agent/agent-response-composer.service'
-import { AgentRuntimeService } from './agent/agent-runtime.service'
 import { SensitiveWordCheckerService } from './safety/sensitive-word-checker.service'
 import { WorkflowExecutorService } from './workflow/workflow-executor.service'
 import { WorkflowRunLoggerService } from './workflow/workflow-run-logger.service'
@@ -27,11 +23,6 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
     ModelResolverService,
     EmbeddingService,
     VectorStoreService,
-    AgentExecutionLoggerService,
-    AgentExecutorService,
-    AgentPlanService,
-    AgentResponseComposerService,
-    AgentRuntimeService,
     SensitiveWordCheckerService,
     WorkflowValidatorService,
     WorkflowRuntimeService,
@@ -55,11 +46,6 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
     EmbeddingService,
     VectorStoreService,
     AiOrchestratorService,
-    AgentExecutionLoggerService,
-    AgentExecutorService,
-    AgentPlanService,
-    AgentResponseComposerService,
-    AgentRuntimeService,
     SensitiveWordCheckerService,
     WorkflowValidatorService,
     WorkflowRuntimeService,

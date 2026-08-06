@@ -1,7 +1,8 @@
+// 定义智能体配置管理接口参数。
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
-import { CHAT_MODES } from '../../../knowledge-bot/chat/dto/chat.dto'
+import { CHAT_MODES } from '../../../../common/constants/chat-mode.constants'
 
 export class CreateAgentDto {
   @ApiPropertyOptional({ description: '智能体编码，新增时由系统自动生成' })

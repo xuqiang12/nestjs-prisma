@@ -1,38 +1,37 @@
-# 智能体平台目录结构与运行链路重构确认计划
+# AI 对话开发 V2 五目录收敛计划
 
 ## 文档目的
 
-本文是智能体平台后端重构的确认文档，用于确认当前剩余迁移范围、模块职责、调用方向、接口边界、文件迁移范围和验收口径。
+本文是 AI 对话开发 V2 的当前权威计划，用于统一目录边界、迁移顺序、禁止事项和验收口径。
 
-已完成或不作为下一步执行内容的旧阶段说明已删除。后续实施以本文件的“当前剩余迁移范围”和对应阶段计划为准。
+本文只授权计划确认，不授权源码迁移、Prisma 修改、数据库写入、旧代码删除或前端切换。真正执行前，必须按本文阶段逐步确认。
 
-本文本身不直接授权数据库迁移、接口破坏性调整或源码删除。真正执行前仍需按阶段计划和验收项推进。
+## 当前结论
 
-## 范围原则
+这次已经撤回的改动暴露出一个方向问题：不能为了让 V2 不引用旧目录，就把旧的模型、RAG、工具、工作流、安全检查整套搬到 `src/ai-runtime`。
 
-本次重构以现有能力边界整理为目标，不新增 AI 平台能力。
+V2 的目标是建立一套干净的运行链路，而不是复制一份旧 AI 平台。
 
-当前不包含：
+后续只围绕以下 5 个 AI V2 目录收敛：
 
 ```text
-不实现 Rerank
-不实现 Evaluation
-不实现 Memory
-不实现 Multi Agent
-不实现自主循环 Agent
-不实现 LLM 自由规划
-不实现自动 Prompt 优化
-不实现 Agent 自学习
-不新增 AiEvaluation 表
-不新增 AiTrace 表
-不新增 AiMemory 表
+src/modules/chat/          普通对话入口
+src/modules/agent-chat/    Agent 对话和会话入口
+src/modules/ai-config/     AI 基础配置中心
+src/modules/knowledge/     知识资产管理
+src/ai-runtime/            AI 内部运行时能力层
 ```
 
-下一步目标是修正智能体对话链路职责，不扩展完整 AI 平台能力。
+入口决定对话模式：
 
-## 核心结论
+```text
+/chat        表示普通聊天入口
+/agent/chat  表示 Agent 聊天入口
+```
 
-当前历史结构把业务入口、运行引擎、配置管理和知识库业务混在一起：
+普通聊天不再靠 `mode`、`knowledgeEnabled` 或 `agentCode` 判断是否进入 Agent。Agent 聊天也不再承担普通对话兜底。
+
+旧目录后续只作为迁移来源，不能继续扩展为 V2 能力入口：
 
 ```text
 src/ai-engine
@@ -40,328 +39,231 @@ src/modules/knowledge-bot
 src/modules/ai-platform
 ```
 
-目标结构按职责分层：
+## 核心原则
 
-```text
-业务入口层
--> 能力运行层
--> 配置管理层 / 业务资源层
-```
+### 简洁原则
 
-目标目录方向：
+V2 不追求一次性拥有完整 AI 平台能力，只迁移当前对话闭环真实需要的能力。
 
-```text
-src/
-  modules/
-    ai-chat/       普通 AI 聊天入口，后续单独确认
-    agent-chat/    智能体聊天入口
-    ai-admin/      AI 配置管理，后续单独迁移
-    knowledge/     知识库业务管理
+禁止因为旧目录后续要删除，就提前把所有旧文件搬到新目录。
 
-  ai-runtime/      AI 执行能力层，后续纯目录迁移
-```
+### 真实链路原则
 
-当前下一步不直接把 `src/ai-engine` 改名为 `src/ai-runtime`，先在 `src/ai-engine/agent` 内完成智能体运行链路职责拆分。
+每一处新增目录、Provider、Handler、分支和默认值，都必须对应当前真实调用链。
 
-## 模块职责
+如果某个能力当前没有 V2 入口调用，先不迁移，只在计划中标记为后续阶段。
 
-### modules/agent-chat
+### 单一入口原则
+
+运行时配置、模型选择、RAG 检索、工具执行、工作流执行、安全检查都必须有明确入口。
+
+禁止在 Controller、Service、Handler 多处补默认值、补环境变量、补兼容分支。
+
+### 分阶段删除原则
+
+旧代码只能在新入口已接管、测试通过、引用清零后删除。
+
+不得先删除旧链路再补新链路。
+
+## 五个目录职责
+
+### `src/modules/chat`
+
+普通对话入口。
 
 职责：
 
 ```text
-智能体聊天 HTTP 入口
-用户身份读取
-请求参数校验
-智能体会话管理
-用户消息和助手消息保存
-SSE 协议输出
-调用 ai-engine/agent
+普通聊天 HTTP 入口
+普通会话创建、读取、消息保存
+普通模型对话请求适配
+输入和输出安全检查闭环
+调用已确认的统一模型入口
 ```
 
 禁止：
 
 ```text
-不在 Controller 判断用户意图
-不在 Controller 做 RAG 检索
-不在 Controller 选择工具
-不在 Controller 拼 Agent prompt
-不在 Controller 执行工作流
-不把 Controller 写成 Agent 大脑
+不处理 Agent 配置
+不读取 Agent toolCodes / workflowCode
+不自动 RAG
+不执行工具
+不执行工作流
 ```
 
-### modules/knowledge
+当前状态：
+
+```text
+第一版已建立 `POST /chat`。
+当前只做非流式普通聊天，不做 `/chat/stream`。
+当前使用既有 `ModelResolverService`、`LlmService`、`SensitiveWordCheckerService` 作为已确认底层入口。
+未迁移模型底层实现到 `ai-runtime`，也未新增通用中转层。
+```
+
+### `src/modules/agent-chat`
+
+Agent 对话和会话入口。
 
 职责：
 
 ```text
-Knowledge Base 管理
-知识库列表和详情
-文件上传
-文件替换
-文件下载
+Agent 聊天 HTTP/SSE 入口
+Agent 会话创建、读取、消息保存
+agentCode 校验和请求适配
+输入和输出安全检查闭环
+调用 ai-runtime 的 Agent 运行链路
+```
+
+禁止：
+
+```text
+不在 Controller 中判断意图
+不在 Controller 中做 RAG 检索
+不在 Controller 中执行工具
+不在 Controller 中执行工作流
+不直接拼接模型 prompt
+```
+
+### `src/modules/ai-config`
+
+AI 基础配置中心。
+
+职责：
+
+```text
+模型供应商配置
+模型配置
+Prompt 配置
+敏感词配置
+Agent 配置
+工具、工作流、技能包是否并入本目录，需要后续单独确认
+```
+
+当前取舍：
+
+```text
+当前已有 prompt 和 sensitive-word。
+model-provider、model-config、agent 仍在 ai-platform。
+后续若迁移 ai-platform，优先迁入 ai-config，而不是新建 ai-admin。
+```
+
+### `src/modules/knowledge`
+
+知识资产管理。
+
+职责：
+
+```text
+知识库管理
+文件上传、替换、下载
 Chunk 管理
-向量生成流程
+向量入库和重建
 检索测试
 ```
 
 禁止：
 
 ```text
-modules/knowledge 不负责 Agent 意图识别
-modules/knowledge 不负责 Agent 最终回答
-modules/knowledge 不直接编排 Tool 或 Workflow
+不负责 Agent 最终回答
+不负责对话意图判断
+不负责工具和工作流编排
 ```
 
-### ai-engine / 后续 ai-runtime
+### `src/ai-runtime`
+
+AI 内部运行时能力层。
 
 职责：
 
 ```text
-AI 执行能力层
-Agent 执行
-LLM 调用
-RAG 检索增强回答
-Tool 执行
-Workflow 执行
-Embedding
-Vector 检索
-Safety / Guardrails 能力
+运行时请求类型
+Context 构建
+Capability 解析
+Router / Planner
+Validator
+Executor
+Composer
+Trace
+运行时端口和统一 Provider
 ```
 
-它不是 HTTP 业务模块，不暴露 Controller。
-
-## RAG 与 Knowledge 的边界
-
-RAG 不等于知识库。
+允许：
 
 ```text
-modules/knowledge
-  表示知识库业务管理，负责 Knowledge Base、文件、Chunk、向量生成流程。
-
-ai-engine/rag 或后续 ai-runtime/rag
-  表示运行时检索增强能力，负责检索、证据整理、回答生成和答案 Guard。
+保留运行时主链和薄端口
+保留 Chat / RAG / Tool / Workflow Handler
+保留协议无关 AgentEvent
+保留 SSE Adapter
 ```
 
-运行能力不再命名为 `knowledge`，统一按 `rag` 表达，避免和 `modules/knowledge` 混淆。
-
-本轮不新增 Rerank、多路召回或复杂检索策略。
-
-## Safety / Guardrails 边界
-
-当前已有实现：
+禁止：
 
 ```text
-输入敏感词检测
-输出敏感词检测
+不复制一整套 ai-engine
+不复制完整模型管理
+不复制完整向量库管理
+不复制完整知识库管理
+不复制完整工作流管理
+不复制完整工具管理
+不为了摆脱旧 import 而新增重复 RuntimeModelResolver / RuntimeVectorStore / RuntimeWorkflowExecutor
 ```
 
-下一步只复用已有敏感词能力，不新增内容审核、权限控制或数据脱敏能力。
+## 运行时能力边界
 
-## SkillPackage 边界
+`ai-runtime` 可以调度能力，但不等于把所有底层能力都重写一遍。
 
-`SkillPackage` 属于配置聚合层概念，不是 Runtime 直接执行对象。
+第一版不新增通用中转层或适配层目录。当前已经存在且运行稳定的 LLM、RAG、Tool、Workflow、Safety 底层服务，可以先作为运行时 Handler 的依赖保留。
 
-Runtime 不直接执行 Skill。Skill 只影响 Agent 可用能力集合，最终执行对象仍然是具体 Tool、Workflow、RAG 或 LLM。
-
-## Trace 边界
-
-Agent 一次执行链路在概念上称为 Trace。
-
-当前持久化仍复用：
+关键要求：
 
 ```text
-AiAgentExecutionLog
+ai-runtime 主链不直接依赖旧 ChatService、旧 AgentRuntimeService、旧 AgentPlanService、旧 AgentExecutorService、旧 Composer。
+ai-runtime Handler 不散落默认模型、默认知识库、默认工具、环境变量兜底。
+旧能力如果要搬迁，必须按能力逐个迁移，不为所有能力一次性新增中转层。
 ```
 
-本轮不新增 `AiTrace` 表。若后续补 Trace 字段，必须单独确认数据库闭环。
+## V2 目标链路
 
-## 当前剩余迁移范围
-
-已经存在或已完成的内容，不再作为本文待办：
+### 普通对话
 
 ```text
-src/modules/agent-chat 目录骨架已经存在
-/agent/chat 外部接口已经存在
-/agent/chat/stream 外部接口已经存在
-/agent/conversation/* 外部接口已经存在
-Vue2 聊天页已经调用 /agent/chat/stream 和 /agent/conversation/*
-基础配置和知识库管理迁移不再纳入本轮智能体聊天任务
-```
-
-当前仍需迁移：
-
-```text
-src/modules/knowledge-bot/chat
--> src/modules/agent-chat/chat
-
-src/modules/knowledge-bot/conversation
--> src/modules/agent-chat/conversation
-
-src/ai-engine/agent/agent-plan.service.ts
--> src/ai-engine/agent/context/agent-context.builder.ts
--> src/ai-engine/agent/router/agent-router.service.ts
--> src/ai-engine/agent/validator/agent-validator.service.ts
-
-src/ai-engine/agent/agent-executor.service.ts
--> src/ai-engine/agent/executor/agent-executor.service.ts
-
-src/ai-engine/agent/agent-response-composer.service.ts
--> src/ai-engine/agent/composer/agent-composer.service.ts
-
-src/ai-engine/agent/agent-execution-logger.service.ts
--> src/ai-engine/agent/trace/agent-trace.service.ts
-```
-
-本轮不迁移：
-
-```text
-src/modules/ai-platform/agent
-src/modules/ai-chat
-src/ai-engine -> src/ai-runtime
-workflow 管理页面
-tool 管理页面
-skill-package 管理页面
-```
-
-## 当前链路事实
-
-当前 `/agent/chat` 链路：
-
-```text
-POST /agent/chat
--> knowledge-bot/chat/ChatController
--> ChatService
--> 输入敏感词检测
--> AgentRuntimeService.resolve(agentCode)
--> ConversationService 获取或创建会话
--> 加载历史消息
+POST /chat 或 /chat/stream
+-> modules/chat
+-> 输入安全检查
+-> 普通会话处理
 -> 保存 user message
--> AgentRuntimeService.execute()
--> buildContext()
--> AgentPlanService.createPlan()
--> AgentPlanService.validate()
--> AgentExecutorService.execute()
--> AgentResponseComposerService.compose()
--> 输出敏感词检测
+-> ai-runtime Chat capability
+-> LLM 调用能力
+-> 输出安全检查
 -> 保存 assistant message
--> 返回
+-> 返回 HTTP 或 SSE
 ```
 
-当前问题：
+普通对话不自动走 RAG。
 
-```text
-对外已经是 /agent/chat，但内部仍放在 knowledge-bot/chat。
-ChatService 同时承担会话闭环和运行时解析，边界偏宽。
-AgentPlanService 名称像 Planner，但实际是固定优先级路由和校验。
-运行时 route 仍使用 knowledge 命名，容易和 modules/knowledge 知识库管理混淆。
-```
-
-## 目标 Agent 对话链路
-
-目标链路：
+### Agent 对话
 
 ```text
 POST /agent/chat 或 /agent/chat/stream
--> modules/agent-chat/ChatController
--> modules/agent-chat/ChatService
--> 输入 Safety / Guardrails 检查
--> 获取或创建智能体会话
--> 读取历史消息
+-> modules/agent-chat
+-> 输入安全检查
+-> Agent 会话处理
 -> 保存 user message
--> ai-engine/agent/AgentRuntimeService
--> AgentContextBuilder
--> AgentRouter
--> AgentValidator
--> AgentExecutor
--> AgentComposer
--> AgentTrace
--> 输出 Safety / Guardrails 检查
--> 保存安全后的 assistant message
--> 返回普通响应或 SSE
+-> ai-runtime AgentRuntime
+-> ContextBuilder
+-> CapabilityResolver
+-> Planner / Router
+-> Validator
+-> Executor
+-> Handler
+-> Composer
+-> Trace
+-> 输出安全检查
+-> 保存 assistant message
+-> 返回 HTTP 或 SSE
 ```
 
-输出保存顺序必须保持：
-
-```text
-生成回答
--> 输出 Safety / Guardrails 检查
--> 保存安全后的 assistant message
--> 返回用户
-```
-
-禁止保存未通过输出检查的原始 assistant 内容。
-
-## AgentContext
-
-`AgentContext` 是一次 Agent 运行的可信上下文，不是普通 DTO。
-
-建议结构：
-
-```text
-AgentContext
-  agent
-    id
-    code
-    name
-
-  user
-    id
-    roles
-    permissions
-
-  conversation
-    id
-    agentCode
-
-  history
-    recentMessages
-
-  prompt
-    promptId
-    systemPrompt
-    promptSnapshot
-
-  model
-    provider
-    modelName
-    temperature
-    topP
-
-  capabilities
-    rag
-      enabled
-      knowledgeBaseIds
-      tags
-      strict
-
-    tools
-      allowedToolCodes
-
-    workflow
-      workflowCode
-
-  metadata
-    requestId
-    channel
-    createdAt
-```
-
-原则：
-
-```text
-AgentRouter 可以读取 AgentContext。
-AgentValidator 只信任 AgentContext。
-AgentExecutor 只能执行 Validator 通过的 route。
-```
-
-## AgentRouter 定位
-
-本阶段要走 `AgentRouter`，但它不是 LLM Planner。
-
-`AgentRouter` 只根据 `AgentContext`、Agent 配置、能力绑定和显式请求参数选择当前允许执行的单一步骤。
-
-支持 route：
+Agent 对话可以根据 Agent 配置和用户请求选择：
 
 ```text
 chat
@@ -370,61 +272,167 @@ tool
 workflow
 ```
 
-第一阶段选择规则：
+当前源码状态：
 
 ```text
-1. Agent 绑定 workflowCode
-   -> route = workflow
-
-2. 请求显式指定 requestedToolCode，并且 Agent 授权该工具
-   -> route = tool
-
-3. Agent 开启 knowledgeEnabled，或当前 mode = knowledge
-   -> route = rag
-
-4. 其他情况
-   -> route = chat
+当前后端只暴露 POST /agent/chat/stream。
+当前 Vue2 前端已调用 POST /agent/chat/stream。
+POST /agent/chat/stream-v2 已删除，不再保留兼容入口。
 ```
 
-`AgentRouter` 不负责：
+## 第一版执行边界
+
+第一版只做入口和职责收敛，不做通用运行时包装抽象。
+
+第一版允许暂时保留的旧底层依赖：
 
 ```text
-自然语言意图理解
-LLM 自由规划
-多步骤任务拆解
-自主循环执行
-发明工具、工作流或知识库
+ModelResolverService
+LlmService
+SensitiveWordCheckerService
+KnowledgeQAService
+DefaultToolExecutor
+WorkflowRuntimeService
 ```
 
-## Conversation 边界
-
-Conversation 不属于 Agent 大脑。
-
-Conversation 职责：
+第一版不搬：
 
 ```text
-创建会话
-校验会话归属
-保存用户消息
-保存助手消息
-读取历史消息
-清理非法历史格式
-软删除会话
+VectorStoreService
+EmbeddingService
+KnowledgeEvidenceService
+KnowledgeAnswerGuardService
+WorkflowExecutorService
+WorkflowValidatorService
+WorkflowRunLoggerService
+AIRegistry
+knowledge-bot/ai/tools 整包
 ```
 
-`ConversationService` 不应该：
+这批能力只能在后续确认有真实 V2 调用链时，再决定是否迁入 `ai-runtime` 或抽成公共底层。
+
+## 分阶段计划
+
+### 阶段 0：冻结旧方向并修正文档
+
+目标：明确 V2 不是旧代码全量搬迁。
+
+执行内容：
 
 ```text
-不读取 Agent 配置
-不调用 AgentRouter
-不调用 AgentExecutor
-不调用 Tool
+更新本文为唯一权威计划。
+标记旧阶段计划中过时的 ai-admin、纯目录搬迁、复制 ai-engine 思路。
+不修改源码。
+不修改数据库。
+```
+
+验收标准：
+
+```text
+本文明确五目录边界。
+本文明确 ai-runtime 不全量复制旧能力。
+本文明确旧代码删除需要迁移验收。
+```
+
+### 阶段 1：补边界合同测试
+
+目标：先让测试约束正确方向，避免再次把旧能力复制到 `ai-runtime`。
+
+建议新增或更新：
+
+```text
+test/ai-v2-directory-boundary-contract.test.cjs
+test/ai-v2-runtime-boundary-contract.test.cjs
+test/ai-v2-entry-contract.test.cjs
+```
+
+验收点：
+
+```text
+src/modules/chat 必须是普通对话入口落点。
+src/modules/agent-chat 必须是 Agent 对话入口落点。
+src/modules/ai-config 必须是 AI 基础配置落点。
+src/modules/knowledge 必须是知识资产管理落点。
+src/ai-runtime 不允许出现完整复制型目录扩张断言。
+V2 测试不再把 modules/knowledge-bot/ai 纳入 V2 运行链路。
+```
+
+禁止：
+
+```text
+不为了让测试通过创建假 Service。
+不为了让测试通过复制旧实现。
+```
+
+验证命令：
+
+```powershell
+cd F:\公司项目\node-vue2-vue3\nestjs-prisma
+node --test test/ai-v2-directory-boundary-contract.test.cjs
+node --test test/ai-v2-runtime-boundary-contract.test.cjs
+node --test test/ai-v2-entry-contract.test.cjs
+npx.cmd tsc --noEmit
+git diff --check
+```
+
+### 阶段 2：建立普通对话入口
+
+目标：让 `src/modules/chat` 真正承担普通对话，而不是空目录。
+
+迁移或新增范围：
+
+```text
+src/modules/chat/chat.module.ts
+src/modules/chat/chat.controller.ts
+src/modules/chat/chat.service.ts
+src/modules/chat/dto/chat.dto.ts
+src/modules/chat/persistence/chat-conversation.repository.ts
+```
+
+暂定外部路径需单独确认：
+
+```text
+POST /chat
+POST /chat/stream
+```
+
+本阶段不做：
+
+```text
+不迁移 Agent 对话
 不自动 RAG
+不执行工具
+不执行工作流
+不修改 Prisma schema
 ```
 
-## 接口边界确认
+验收标准：
 
-本轮保持现有外部路径：
+```text
+普通对话入口不依赖 Agent 配置。
+普通对话不读取 knowledgeEnabled、toolCodes、workflowCode。
+普通对话历史和消息落库闭环清楚。
+模型调用只通过已确认的统一模型入口。
+第一版不新增 `/chat/stream`。
+```
+
+### 阶段 3：收敛 Agent 对话入口
+
+目标：让 `src/modules/agent-chat` 成为唯一 Agent 对话和会话入口。
+
+迁移范围：
+
+```text
+src/modules/knowledge-bot/chat
+-> src/modules/agent-chat/chat
+已完成：旧 chat 入口文件已移除，当前 Agent 流式入口在 agent-chat。
+
+src/modules/knowledge-bot/conversation
+-> src/modules/agent-chat/conversation
+已完成：/agent/conversation/* Controller、Service、DTO 已迁入 agent-chat。
+```
+
+外部路径优先保持：
 
 ```text
 POST /agent/chat
@@ -436,179 +444,287 @@ POST /agent/conversation/rename
 POST /agent/conversation/delete
 ```
 
-本轮不新增：
+本阶段不做：
 
 ```text
-POST /ai/chat
-POST /ai/chat/stream
+不改数据库
+不切前端新路径
+不删除 knowledge-bot 其他工具代码
+不把旧 Agent 主流程作为 V2 长期依赖
 ```
 
-当前 `/agent/chat` 仍支持不传 `agentCode` 后走默认对话。本轮默认保持这个兼容行为。
-
-如果后续决定强制 `agentCode` 必传，必须单独确认并同步设计普通 AI 对话入口：
+验收标准：
 
 ```text
-/agent/chat 不再承担普通 AI 对话
-/ai/chat 承担普通 AI 对话
-Vue2 聊天页发送智能体对话时必须带 agentCode
-旧的 resolveDefault 默认对话路径不再用于 /agent/chat
+/agent/chat/stream 的 Controller 位于 modules/agent-chat。
+/agent/conversation/* 的 Controller 位于 modules/agent-chat。
+modules/agent-chat Controller 不直接依赖 LLM、Vector、Tool、Workflow。
+输出安全检查发生在 assistant message 保存前。
+旧 knowledge-bot/chat 和 conversation 已清出正式源码。
+前端已从 /agent/chat/stream-v2 切换到 /agent/chat/stream，后端兼容入口已同步删除。
 ```
 
-## 文件确认清单
+### 阶段 4：建立 ai-runtime 主链和端口
 
-### 智能体入口迁移
+目标：建立干净的 Agent Runtime 主链，不复制旧底层能力。
 
-| 文件 | 目标 |
-| --- | --- |
-| `src/modules/agent-chat/agent-chat.module.ts` | 新增智能体聊天模块 |
-| `src/modules/agent-chat/chat/chat.controller.ts` | 迁移 `/agent/chat` 和 `/agent/chat/stream` |
-| `src/modules/agent-chat/chat/chat.service.ts` | 迁移智能体对话外层编排 |
-| `src/modules/agent-chat/chat/dto/chat.dto.ts` | 迁移智能体对话 DTO，暂不强制 agentCode |
-| `src/modules/agent-chat/conversation/conversation.controller.ts` | 迁移 `/agent/conversation/*` |
-| `src/modules/agent-chat/conversation/conversation.service.ts` | 迁移智能体会话服务 |
-| `src/modules/agent-chat/conversation/dto/conversation.dto.ts` | 迁移智能体会话 DTO |
-| `src/modules/knowledge-bot/knowledge-bot.module.ts` | 移除 Chat / Conversation 注册，只保留工具注册 |
-| `src/app.module.ts` | 注册 `AgentChatModule` |
-| `src/common/swagger/swagger-docs.ts` | AI 分组加入 `AgentChatModule` |
-
-迁移验证通过后删除：
+建议文件：
 
 ```text
-src/modules/knowledge-bot/chat
-src/modules/knowledge-bot/conversation
+src/ai-runtime/agent-runtime.service.ts
+src/ai-runtime/agent-runtime.types.ts
+src/ai-runtime/context/agent-context.builder.ts
+src/ai-runtime/context/agent-context.types.ts
+src/ai-runtime/capability/capability-resolver.service.ts
+src/ai-runtime/capability/capability.types.ts
+src/ai-runtime/planner/agent-planner.service.ts
+src/ai-runtime/planner/agent-planner.types.ts
+src/ai-runtime/validator/agent-plan-validator.service.ts
+src/ai-runtime/executor/agent-capability-executor.service.ts
+src/ai-runtime/executor/handlers/chat.handler.ts
+src/ai-runtime/executor/handlers/rag.handler.ts
+src/ai-runtime/executor/handlers/tool.handler.ts
+src/ai-runtime/executor/handlers/workflow.handler.ts
+src/ai-runtime/composer/agent-composer.service.ts
+src/ai-runtime/events/agent-event.types.ts
+src/ai-runtime/adapter/sse-event.adapter.ts
+src/ai-runtime/trace/agent-trace.service.ts
 ```
 
-### Agent 内核拆分
+本阶段只允许主链和必要 Handler。
 
-| 文件 | 目标 |
-| --- | --- |
-| `src/ai-engine/agent/agent-runtime.service.ts` | 保留为运行时总入口，调用 Context / Router / Validator / Executor / Composer / Trace |
-| `src/ai-engine/agent/context/agent-context.builder.ts` | 从 Agent 配置、用户、会话、历史构建可信 `AgentContext` |
-| `src/ai-engine/agent/context/agent-context.types.ts` | `AgentContext` 类型 |
-| `src/ai-engine/agent/router/agent-router.service.ts` | 确定性配置路由 |
-| `src/ai-engine/agent/router/agent-router.types.ts` | Router 输入输出类型 |
-| `src/ai-engine/agent/validator/agent-validator.service.ts` | 根据 `AgentContext` 校验 route 权限和参数 |
-| `src/ai-engine/agent/executor/agent-executor.service.ts` | 迁移现有执行能力 |
-| `src/ai-engine/agent/composer/agent-composer.service.ts` | 迁移最终回答组织能力 |
-| `src/ai-engine/agent/trace/agent-trace.service.ts` | 复用 `AiAgentExecutionLog` 做请求级记录 |
-| `src/ai-engine/ai-engine.module.ts` | 注册新增 provider |
-
-新职责文件接管后删除：
+禁止新增：
 
 ```text
-src/ai-engine/agent/agent-plan.service.ts
-src/ai-engine/agent/agent-executor.service.ts
-src/ai-engine/agent/agent-response-composer.service.ts
-src/ai-engine/agent/agent-execution-logger.service.ts
+src/ai-runtime/model/runtime-model-resolver.service.ts
+src/ai-runtime/vector/runtime-vector-store.service.ts
+src/ai-runtime/embedding/runtime-embedding.service.ts
+src/ai-runtime/knowledge/runtime-knowledge-qa.service.ts
+src/ai-runtime/workflow/runtime-workflow-executor.service.ts
+src/ai-runtime/tools/runtime-ai.registry.ts
 ```
 
-## 数据库模型确认
+除非后续单独确认某个旧能力必须迁入，并说明为什么当前直接依赖旧底层服务已经无法满足边界。
 
-本轮默认不改 Prisma schema。
-
-本轮继续兼容现有会话字段，例如 `agentCode`、`mode` 和消息元数据。
-
-不新增：
+验收标准：
 
 ```text
-AiEvaluation
-AiTrace
-AiMemory
+AgentRuntime 主链清晰。
+Planner / Router 输出必须经过 Validator。
+Executor 只调度 Handler，不堆具体业务实现。
+Handler 不复制底层能力实现。
+不新增通用中转目录。
 ```
 
-如果后续单独确认以下字段，必须执行数据库闭环：
+### 阶段 5：收敛 AI 配置中心
+
+目标：把 AI 基础配置逐步收敛到 `src/modules/ai-config`。
+
+候选迁移：
 
 ```text
-AiConversation.type = CHAT | AGENT
-AiConversation.agentId nullable
-AiAgentExecutionLog 补 requestId / capability / toolCode / workflowCode / knowledgeBaseIds / error
+src/modules/ai-platform/model-provider
+-> src/modules/ai-config/model-provider
+
+src/modules/ai-platform/model-config
+-> src/modules/ai-config/model-config
+
+src/modules/ai-platform/agent
+-> src/modules/ai-config/agent
 ```
 
-数据库闭环要求：
+已在目标目录的内容：
 
 ```text
-确认目标数据库
-生成 Prisma migration
-执行 migrate:deploy
-执行 prisma:generate
-执行 migrate:status
-查询关键字段确认
+src/modules/ai-config/prompt
+src/modules/ai-config/sensitive-word
 ```
 
-## 禁止依赖关系
-
-必须禁止：
+待确认：
 
 ```text
-modules/agent-chat/controller -> VectorStoreService
-modules/agent-chat/controller -> DefaultToolExecutor
-modules/agent-chat/controller -> WorkflowRuntimeService
-modules/agent-chat/controller -> LlmService
-modules/agent-chat/service -> VectorStoreService
-modules/agent-chat/service -> DefaultToolExecutor
-modules/agent-chat/service -> WorkflowRuntimeService
-modules/agent-chat/service -> LlmService
-modules/ai-admin -> AgentRouter
-modules/knowledge -> AgentRouter
-ai-engine/agent -> modules/* Controller
+workflow 管理是否归入 ai-config
+tool 管理是否归入 ai-config
+skill-package 是否归入 ai-config
 ```
 
-允许：
+本阶段不做：
 
 ```text
-modules/agent-chat/service -> ai-engine/agent/AgentRuntimeService
-ai-engine/agent -> ai-engine/orchestrator
-ai-engine/agent -> ai-engine/tools
-ai-engine/agent -> ai-engine/workflow
-ai-engine/agent -> ai-engine/llm
+不改 /ai-platform/* 外部路径，除非前端同步确认。
+不改 Prisma schema。
+不删除 ai-platform，除非所有子模块迁移验收通过。
 ```
 
-## 测试文件确认
-
-建议新增或更新：
-
-| 文件 | 用途 |
-| --- | --- |
-| `test/ai-agent-runtime-routes-contract.test.cjs` | 验证 `/agent/chat` 和 `/agent/conversation` 迁到 `modules/agent-chat` 后路径不变 |
-| `test/ai-agent-runtime-clean-contract.test.cjs` | 验证 ChatService 只做外层闭环，AgentRuntime 使用新职责文件 |
-| `test/ai-chat-stream-error-contract.test.cjs` | 验证 Agent SSE 错误仍转为 error event 并输出 `[DONE]` |
-| `test/ai-chat-history-cleanup-contract.test.cjs` | 验证会话历史清理和归属校验仍保留 |
-| `test/ai-agent-router-route-contract.test.cjs` | 验证 `chat`、`rag`、`tool`、`workflow` route 选择 |
-| `test/ai-agent-validator-contract.test.cjs` | 验证越权工具、未绑定工作流、未绑定 RAG 范围不能执行 |
-
-## 当前执行大纲
-
-本文后续只按以下顺序推进：
+验收标准：
 
 ```text
-1. 补充或更新智能体聊天迁移合同测试。
-2. 迁移 knowledge-bot/chat 到 modules/agent-chat/chat。
-3. 迁移 knowledge-bot/conversation 到 modules/agent-chat/conversation。
-4. 注册 AgentChatModule，移除 KnowledgeBotModule 中的 Chat / Conversation 注册。
-5. 拆分 AgentContextBuilder、AgentRouter、AgentValidator、AgentExecutor、AgentComposer、AgentTrace。
-6. 更新 import、测试路径和 Swagger 分组。
-7. 验证 /agent/chat、/agent/chat/stream、/agent/conversation/*。
-8. 验证通过后删除旧 chat / conversation 和旧 Agent 聚合文件。
+配置 CRUD 路径保持兼容。
+Agent 配置仍能被 ai-runtime ContextBuilder 读取。
+Provider -> Model config -> Agent -> Runtime 链路唯一。
+旧 ai-platform 对应子目录引用清零后才允许删除。
 ```
 
-验收命令：
+### 阶段 6：收敛知识资产管理
+
+目标：让 `src/modules/knowledge` 成为唯一知识资产管理目录。
+
+当前已有：
+
+```text
+src/modules/knowledge/knowledge-base
+```
+
+本阶段重点：
+
+```text
+确认旧 knowledge-bot/knowledge-base 是否已经清空或迁移。
+确认知识库管理、文件、Chunk、向量入库、检索测试都只在 modules/knowledge。
+确认运行时 RAG 只使用已确认的 RAG 能力入口，不反向依赖 Controller。
+```
+
+本阶段不做：
+
+```text
+不把 RAG 最终回答放进 modules/knowledge。
+不让 modules/knowledge 调用 AgentRuntime。
+不新增 Rerank、多路召回或复杂检索策略。
+```
+
+验收标准：
+
+```text
+知识资产管理入口唯一。
+RAG 运行时和知识库管理边界清楚。
+旧 knowledge-bot 知识管理引用清零后才允许删除。
+```
+
+### 阶段 7：旧目录删除
+
+目标：在新链路真实接管后，删除旧目录。
+
+删除候选：
+
+```text
+src/modules/knowledge-bot
+src/modules/ai-platform
+src/ai-engine
+```
+
+删除前必须逐项满足：
+
+```text
+新目录已注册到 Nest 模块。
+外部接口路径已保持兼容或前端已同步切换。
+rg 搜索无旧路径业务 import。
+focused 合同测试通过。
+TypeScript 检查通过。
+真实需要的浏览器 / SSE / 模型 / 数据库验证已按范围执行。
+```
+
+数据库相关说明：
+
+```text
+删除目录不等于删除表。
+任何 Prisma schema、migration、字段、枚举、seed 变更都必须单独确认并执行数据库闭环。
+```
+
+## 需要立即避免的错误方向
+
+```text
+不要新增 RuntimeModelResolverService 来复制 ModelResolverService。
+不要新增 RuntimeVectorStoreService 来复制 VectorStoreService。
+不要新增 RuntimeWorkflowExecutorService 来复制 WorkflowExecutorService。
+不要新增 RuntimeAIRegistry 来复制 AIRegistry。
+不要让 knowledge-bot 工具同时注册到旧注册表和新注册表。
+不要把 test 写成“ai-runtime 必须拥有所有底层实现”。
+不要把 src/modules/chat 长期留成空目录。
+不要把 ai-platform 改名为 ai-admin；本计划目标是 ai-config。
+```
+
+## 测试策略
+
+先测试稳定产品合同，不测试变量名、三元表达式或某个临时实现细节。
+
+建议合同测试覆盖：
+
+```text
+五目录存在且职责边界正确。
+普通 chat 不读取 Agent 配置。
+Agent chat 不直接依赖底层 LLM / Vector / Tool / Workflow。
+ai-runtime 主链不复制旧能力实现。
+不新增通用中转目录来包装所有能力。
+Planner / Router 输出必须经过 Validator。
+Executor 只能调度 Handler。
+输出安全检查发生在 assistant message 保存前。
+旧目录删除前引用必须清零。
+```
+
+建议基础验证命令：
 
 ```powershell
 cd F:\公司项目\node-vue2-vue3\nestjs-prisma
-node --test test/ai-agent-runtime-routes-contract.test.cjs
-node --test test/ai-agent-runtime-clean-contract.test.cjs
-node --test test/ai-chat-stream-error-contract.test.cjs
-node --test test/ai-chat-history-cleanup-contract.test.cjs
-node --test test/ai-agent-router-route-contract.test.cjs
-node --test test/ai-agent-validator-contract.test.cjs
+node --test test/ai-v2-directory-boundary-contract.test.cjs
+node --test test/ai-v2-runtime-boundary-contract.test.cjs
+node --test test/ai-v2-entry-contract.test.cjs
 npx.cmd tsc --noEmit
 git diff --check
 ```
 
-## 仍需确认的问题
+真实验证必须单独说明：
 
-1. 后续是否强制 `/agent/chat` 和 `/agent/chat/stream` 必传 `agentCode`。
-2. 后续是否新增普通 AI 对话入口 `/ai/chat` 和 `/ai/chat/stream`。
-3. 后续是否修改数据库，新增或确认 `AiConversation.type` 和 `AiConversation.agentId`。
-4. 后续是否同步补齐 `AiAgentExecutionLog` 的 Trace 字段。
-5. 后续是否用于纯目录迁移 `src/ai-engine -> src/ai-runtime`。
+```text
+静态测试不等于真实模型调用。
+TypeScript 通过不等于数据库字段存在。
+HTTP 200 不等于浏览器 SSE 消费正常。
+构建通过不等于前端页面已验证。
+```
+
+## 数据库边界
+
+本文当前不计划修改 Prisma schema。
+
+以下事项如后续出现，必须停止当前阶段并单独确认数据库闭环：
+
+```text
+新增 AiConversation.type
+新增 AiConversation.agentId
+修改 AiConversation.mode
+新增 AiAgentExecutionLog 字段
+新增模型、工具、工作流、Trace、Memory、Evaluation 表
+删除任何 AI 相关字段或表
+```
+
+闭环要求：
+
+```text
+确认目标数据库来源
+生成或更新 Prisma migration
+执行 migrate:deploy
+执行 prisma:generate
+执行 migrate:status
+用查询、接口、测试或构建确认关键字段可用
+```
+
+## 当前建议下一步
+
+下一步优先收敛 Agent 运行时内部边界。
+
+原因：
+
+```text
+当前入口口径已经明确：/chat 是普通聊天，/agent/chat 是 Agent。
+`POST /chat` 第一版已经建立，可以把普通对话从 Agent 兜底中拆出来。
+`/agent/conversation/*` 已迁入 agent-chat。
+Vue2 前端已切换到 /agent/chat/stream，后端不再保留 /agent/chat/stream-v2 兼容入口。
+```
+
+下一步不做：
+
+```text
+不删除 ai-engine
+不删除 knowledge-bot 工具代码
+不改 Prisma schema
+不切前端旧 SSE 入口
+不继续复制旧底层能力到 ai-runtime
+```

@@ -2,6 +2,7 @@
 import type { Type } from '@nestjs/common'
 import { AuthModule } from '../../modules/auth/auth.module'
 import { AgentChatModule } from '../../modules/agent-chat/agent-chat.module'
+import { ChatModule } from '../../modules/chat/chat.module'
 import { KnowledgeBotModule } from '../../modules/knowledge-bot/knowledge-bot.module'
 import { MenuModule } from '../../modules/menu/menu.module'
 import { RoleModule } from '../../modules/role/role.module'
@@ -24,10 +25,10 @@ export function isApiDocsEnabled(nodeEnv?: string) {
   return enabledEnvironments.includes(nodeEnv || 'development')
 }
 
-// 生成 Knife4j 分组配置，确保新版智能体对话入口进入 AI 分组。
+// 生成 Knife4j 分组配置，确保 V2 对话入口进入 AI 分组。
 export function getKnife4jGroups(): Knife4jGroup[] {
   return [
     { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule, RoleModule, HomeModule, MobileTabBarModule] },
-    { name: 'AI模块', url: '/api-docs/ai-json', modules: [AgentChatModule, KnowledgeBotModule, AiPlatformModule, AiConfigModule] },
+    { name: 'AI模块', url: '/api-docs/ai-json', modules: [ChatModule, AgentChatModule, KnowledgeBotModule, AiPlatformModule, AiConfigModule] },
   ]
 }

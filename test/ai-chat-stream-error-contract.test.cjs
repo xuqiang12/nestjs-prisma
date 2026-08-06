@@ -18,7 +18,8 @@ test('agent stream service converts runtime errors into SSE error events', () =>
 test('agent stream controller keeps SSE protocol boundary only', () => {
   const controller = readFileSync(join(rootDir, 'src/modules/agent-chat/stream/agent-stream.controller.ts'), 'utf8')
 
-  assert.match(controller, /@Post\('stream-v2'\)/)
+  assert.match(controller, /@Post\('stream'\)/)
+  assert.doesNotMatch(controller, /stream-v2|streamV2/)
   assert.match(controller, /text\/event-stream/)
   assert.match(controller, /sseEventAdapter\.toSseData\(event\)/)
   assert.doesNotMatch(controller, /toStreamErrorEvent/)

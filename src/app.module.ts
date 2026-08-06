@@ -22,6 +22,7 @@ import { AiPlatformModule } from './modules/ai-platform/ai-platform.module'
 import { AiConfigModule } from './modules/ai-config/ai-config.module'
 import { KnowledgeModule } from './modules/knowledge/knowledge.module'
 import { AgentChatModule } from './modules/agent-chat/agent-chat.module'
+import { ChatModule } from './modules/chat/chat.module'
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { AgentChatModule } from './modules/agent-chat/agent-chat.module'
     AuthModule,
     AIEngineModule,
     KnowledgeBotModule,
+    ChatModule,
     AgentChatModule,
     AiPlatformModule,
     AiConfigModule,

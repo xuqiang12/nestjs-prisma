@@ -39,5 +39,6 @@ test('AgentChatModule is the remaining agent chat stream runtime', () => {
   assert.match(appModule, /AgentChatModule/)
   assert.match(agentChatModule, /AgentStreamController/)
   assert.match(agentChatModule, /AgentRuntimeService/)
-  assert.match(streamController, /@Post\('stream-v2'\)/)
+  assert.match(streamController, /@Post\('stream'\)/)
+  assert.doesNotMatch(streamController, /stream-v2|streamV2/)
 })

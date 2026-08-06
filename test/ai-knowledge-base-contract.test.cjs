@@ -78,12 +78,13 @@ test('knowledge base implementation files live under modules/knowledge', () => {
   })
 })
 
-test('knowledge bot module keeps conversation and AI tools only after chat v2 migration', () => {
+test('knowledge bot module keeps AI tools only after agent conversation migration', () => {
   const module = readFileSync(join(rootDir, 'src/modules/knowledge-bot/knowledge-bot.module.ts'), 'utf8')
 
-  assert.match(module, /ConversationController/)
   assert.match(module, /SearchKnowledgeTool/)
   assert.match(module, /GetUserMenuPermissionsTool/)
+  assert.doesNotMatch(module, /ConversationController/)
+  assert.doesNotMatch(module, /ConversationService/)
   assert.doesNotMatch(module, /ChatController/)
   assert.doesNotMatch(module, /ChatService/)
   assert.doesNotMatch(module, /knowledge-base\/knowledge-base\.controller/)

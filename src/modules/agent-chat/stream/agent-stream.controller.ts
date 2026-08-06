@@ -28,11 +28,11 @@ export class AgentStreamController {
     private readonly sseEventAdapter: SseEventAdapter,
   ) {}
 
-  @ApiOperation({ summary: '新版智能体流式对话' })
+  @ApiOperation({ summary: 'Agent 流式对话' })
   @ApiBody({ type: AgentStreamRequestDto })
   @Permissions('ai:chat:send')
-  @Post('stream-v2')
-  // 处理 v2 流式对话请求，只维护 SSE 协议边界并转发内部事件。
+  @Post('stream')
+  // 处理正式 Agent 流式对话请求，并写出 SSE 事件。
   async stream(@Body() body: AgentStreamRequestDto, @Req() req: AuthenticatedRequest, @Res() res: AgentStreamResponse) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
     res.setHeader('Cache-Control', 'no-cache')

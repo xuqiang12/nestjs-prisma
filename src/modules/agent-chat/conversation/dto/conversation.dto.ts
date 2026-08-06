@@ -1,4 +1,4 @@
-// 定义知识机器人会话列表、创建和维护接口参数。
+// 定义 Agent 会话列表、创建和维护接口参数。
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator'

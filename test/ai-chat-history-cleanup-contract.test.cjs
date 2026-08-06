@@ -4,7 +4,7 @@ const test = require('node:test')
 const assert = require('node:assert')
 
 const root = path.resolve(__dirname, '..')
-const conversationService = fs.readFileSync(path.join(root, 'src/modules/knowledge-bot/conversation/conversation.service.ts'), 'utf8')
+const conversationService = fs.readFileSync(path.join(root, 'src/modules/agent-chat/conversation/conversation.service.ts'), 'utf8')
 
 test('chat history excludes assistant messages that leaked role template markers', () => {
   assert.match(conversationService, /isCleanAssistantHistoryContent/)

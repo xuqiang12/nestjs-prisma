@@ -37,7 +37,7 @@ function createRequest() {
     metadata: {
       requestId: 'req-1',
       channel: 'agent-chat-v2',
-      source: 'stream-v2',
+      source: 'stream',
       createdAt: new Date('2026-08-05T00:00:00.000Z'),
     },
   }

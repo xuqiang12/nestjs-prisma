@@ -1,4 +1,4 @@
-// 管理知识机器人会话及历史消息持久化。
+// 管理 Agent 会话及历史消息持久化。
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
 import { ChatMessage } from '../../../ai-engine/llm/llm.service'
@@ -13,6 +13,7 @@ const ROLE_MARKER_PATTERN = /(^|\n)\s*(user|assistant|system)\s*(\n|$)/i
 
 @Injectable()
 export class ConversationService {
+  // 注入 Prisma 以读写 Agent 会话和消息记录。
   constructor(private readonly prisma: PrismaService) {}
 
   // 查询当前用户的会话列表，并支持按聊天模式过滤。

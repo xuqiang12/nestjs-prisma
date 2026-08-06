@@ -74,7 +74,7 @@ export class AgentChatService {
       metadata: {
         requestId: metadata?.requestId || `agent-chat-v2-${Date.now()}`,
         channel: 'agent-chat-v2',
-        source: 'stream-v2',
+        source: 'stream',
         createdAt: new Date(),
       },
     }

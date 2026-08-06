@@ -1,3 +1,4 @@
+// 暴露 Agent 会话列表、创建和维护入口。
 import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common'
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { Request } from 'express'
@@ -20,6 +21,7 @@ type AuthenticatedRequest = Request & {
 @ApiTags('智能体运行时')
 @Controller('agent/conversation')
 export class ConversationController {
+  // 注入 Agent 会话服务，保持 Controller 只负责 HTTP 入参和用户身份传递。
   constructor(private readonly conversationService: ConversationService) {}
 
   @ApiOperation({ summary: '查询 AI 会话列表' })

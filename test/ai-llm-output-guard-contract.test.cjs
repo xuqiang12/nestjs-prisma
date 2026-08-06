@@ -4,8 +4,8 @@ const test = require('node:test')
 const assert = require('node:assert')
 
 const root = path.resolve(__dirname, '..')
-const llmService = fs.readFileSync(path.join(root, 'src/ai-engine/llm/llm.service.ts'), 'utf8')
-const orchestratorService = fs.readFileSync(path.join(root, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
+const llmService = fs.readFileSync(path.join(root, 'src/ai-runtime/llm/llm.service.ts'), 'utf8')
+const knowledgeQAService = fs.readFileSync(path.join(root, 'src/ai-runtime/knowledge/knowledge-qa.service.ts'), 'utf8')
 
 test('LLM output guard is opt-in instead of global default', () => {
   assert.match(llmService, /FINAL_ANSWER_GUARD/)
@@ -20,6 +20,6 @@ test('LLM output guard is opt-in instead of global default', () => {
 })
 
 test('chat and knowledge final-answer calls explicitly enable output guard', () => {
-  assert.match(orchestratorService, /finalAnswerGuard:\s*true/)
-  assert.match(orchestratorService, /roleTemplateStops:\s*true/)
+  assert.match(knowledgeQAService, /finalAnswerGuard:\s*true/)
+  assert.match(knowledgeQAService, /roleTemplateStops:\s*true/)
 })

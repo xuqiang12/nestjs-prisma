@@ -1,6 +1,6 @@
 // 处理新版智能体对话的安全检查、会话消息和运行时调用闭环。
 import { Injectable } from '@nestjs/common'
-import { SensitiveWordCheckerService } from '../../../ai-engine/safety/sensitive-word-checker.service'
+import { SensitiveWordCheckerService } from '../../../ai-runtime/safety/sensitive-word-checker.service'
 import { AgentRuntimeService } from '../../../ai-runtime/agent-runtime.service'
 import { AgentRuntimeRequest } from '../../../ai-runtime/agent-runtime.types'
 import { AgentComposer } from '../../../ai-runtime/composer/agent-composer.service'

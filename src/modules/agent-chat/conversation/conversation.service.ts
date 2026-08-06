@@ -1,7 +1,7 @@
 // 管理 Agent 会话及历史消息持久化。
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
-import { ChatMessage } from '../../../ai-engine/llm/llm.service'
+import { ChatMessage } from '../../../ai-runtime/llm/llm.service'
 import { ChatMode } from '../../../common/constants/chat-mode.constants'
 import { ConversationListDto } from './dto/conversation.dto'
 

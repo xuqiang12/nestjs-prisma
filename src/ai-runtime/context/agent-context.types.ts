@@ -1,5 +1,5 @@
 // 定义新版智能体运行时的统一上下文结构。
-import { ChatMessage, LlmOptions } from '../../ai-engine/llm/llm.service'
+import { ChatMessage, LlmOptions } from '../llm/llm.service'
 import { AgentRuntimeRequest } from '../agent-runtime.types'
 
 export type AgentContext = {

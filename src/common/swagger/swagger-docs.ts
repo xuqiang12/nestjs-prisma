@@ -3,7 +3,6 @@ import type { Type } from '@nestjs/common'
 import { AuthModule } from '../../modules/auth/auth.module'
 import { AgentChatModule } from '../../modules/agent-chat/agent-chat.module'
 import { ChatModule } from '../../modules/chat/chat.module'
-import { KnowledgeBotModule } from '../../modules/knowledge-bot/knowledge-bot.module'
 import { MenuModule } from '../../modules/menu/menu.module'
 import { RoleModule } from '../../modules/role/role.module'
 import { UserModule } from '../../modules/user/user.module'
@@ -29,6 +28,6 @@ export function isApiDocsEnabled(nodeEnv?: string) {
 export function getKnife4jGroups(): Knife4jGroup[] {
   return [
     { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule, RoleModule, HomeModule, MobileTabBarModule] },
-    { name: 'AI模块', url: '/api-docs/ai-json', modules: [ChatModule, AgentChatModule, KnowledgeBotModule, AiPlatformModule, AiConfigModule] },
+    { name: 'AI模块', url: '/api-docs/ai-json', modules: [ChatModule, AgentChatModule, AiPlatformModule, AiConfigModule] },
   ]
 }

@@ -9,7 +9,7 @@ import { ChatHandler } from '../../ai-runtime/executor/handlers/chat.handler'
 import { RagHandler } from '../../ai-runtime/executor/handlers/rag.handler'
 import { ToolHandler } from '../../ai-runtime/executor/handlers/tool.handler'
 import { WorkflowHandler } from '../../ai-runtime/executor/handlers/workflow.handler'
-import { RuntimeLlmClientService } from '../../ai-runtime/llm/runtime-llm-client.service'
+import { LlmService } from '../../ai-runtime/llm/llm.service'
 import { AgentPlanner } from '../../ai-runtime/planner/agent-planner.service'
 import { AgentRuntimeService } from '../../ai-runtime/agent-runtime.service'
 import { IntentClassifierService } from '../../ai-runtime/planner/intent-classifier.service'
@@ -33,7 +33,7 @@ import { AgentStreamService } from './stream/agent-stream.service'
     AgentContextBuilder,
     ConversationRepository,
     CapabilityResolver,
-    RuntimeLlmClientService,
+    LlmService,
     IntentClassifierService,
     RulePlanner,
     AgentPlanner,

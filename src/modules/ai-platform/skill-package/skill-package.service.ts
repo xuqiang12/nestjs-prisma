@@ -1,7 +1,8 @@
+// 提供 AI 技能包管理和安装到智能体的配置能力。
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
-import { AIRegistry } from '../../../ai-engine/core/ai.registry'
+import { RuntimeToolRegistry } from '../../../ai-runtime/tools/runtime-tool-registry.service'
 import {
   CreateSkillPackageDto,
   InstallSkillPackageDto,
@@ -12,9 +13,10 @@ import {
 
 @Injectable()
 export class SkillPackageService {
+  // 注入 Prisma 和运行时工具注册表以校验技能包引用。
   constructor(
     private readonly prisma: PrismaService,
-    private readonly registry: AIRegistry,
+    private readonly registry: RuntimeToolRegistry,
   ) {}
 
   async list(query: SkillPackageListDto) {

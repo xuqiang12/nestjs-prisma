@@ -1,8 +1,8 @@
 // 处理 V2 普通聊天的安全检查、模型调用和消息保存闭环。
 import { Injectable } from '@nestjs/common'
-import { LlmService } from '../../ai-engine/llm/llm.service'
-import { ModelResolverService } from '../../ai-engine/model/model-resolver.service'
-import { SensitiveWordCheckerService } from '../../ai-engine/safety/sensitive-word-checker.service'
+import { LlmService } from '../../ai-runtime/llm/llm.service'
+import { ModelResolverService } from '../../ai-runtime/model/model-resolver.service'
+import { SensitiveWordCheckerService } from '../../ai-runtime/safety/sensitive-word-checker.service'
 import { ChatRequestDto } from './dto/chat.dto'
 import { ChatConversationRepository } from './persistence/chat-conversation.repository'
 

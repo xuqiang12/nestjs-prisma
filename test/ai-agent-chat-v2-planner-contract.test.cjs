@@ -19,7 +19,7 @@ function loadRuntime() {
   require('tsconfig-paths/register')
   return {
     ...require(join(rootDir, 'src/ai-runtime/capability/capability-resolver.service')),
-    ...require(join(rootDir, 'src/ai-runtime/llm/runtime-llm-client.service')),
+    ...require(join(rootDir, 'src/ai-runtime/llm/llm.service')),
     ...require(join(rootDir, 'src/ai-runtime/planner/intent-classifier.service')),
     ...require(join(rootDir, 'src/ai-runtime/planner/rule-planner.service')),
     ...require(join(rootDir, 'src/ai-runtime/planner/agent-planner.service')),
@@ -133,7 +133,7 @@ test('RulePlanner falls back to chat when AI classification is unavailable or un
   assert.equal(JSON.stringify(unavailablePlan).includes('未绑定可用知识库'), false)
 })
 
-test('IntentClassifierService uses ai-runtime local model client instead of ai-engine LLM service', async () => {
+test('IntentClassifierService uses shared runtime LLM service instead of a second model client', async () => {
   const { IntentClassifierService } = loadRuntime()
   const calls = []
   const classifier = new IntentClassifierService({
@@ -143,7 +143,7 @@ test('IntentClassifierService uses ai-runtime local model client instead of ai-e
     },
   })
   const intentClassifier = readSource('src/ai-runtime/planner/intent-classifier.service.ts')
-  const runtimeClient = readSource('src/ai-runtime/llm/runtime-llm-client.service.ts')
+  const llmService = readSource('src/ai-runtime/llm/llm.service.ts')
   const module = readSource('src/modules/agent-chat/agent-chat.module.ts')
 
   const result = await classifier.classify({
@@ -161,10 +161,10 @@ test('IntentClassifierService uses ai-runtime local model client instead of ai-e
   assert.equal(calls[0].options.topP, 0.1)
   assert.equal(calls[0].options.finalAnswerGuard, undefined)
   assert.match(calls[0].messages[0].content, /只输出 JSON/)
-  assert.match(runtimeClient, /^\/\/ 封装新版智能体运行时内部使用的模型调用客户端。/)
-  assert.match(intentClassifier, /RuntimeLlmClientService/)
-  assert.match(module, /RuntimeLlmClientService/)
-  assert.doesNotMatch(intentClassifier, /ai-engine\/llm|LlmService/)
+  assert.match(llmService, /^\/\/ 封装 OpenAI 兼容模型的非流式与流式调用。/)
+  assert.match(intentClassifier, /LlmService/)
+  assert.match(module, /LlmService/)
+  assert.doesNotMatch(intentClassifier, /ai-engine\/llm|RuntimeLlmClientService/)
 })
 
 test('RulePlanner keeps tool and workflow codes from AgentContext instead of AI input', async () => {

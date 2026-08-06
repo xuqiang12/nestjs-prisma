@@ -13,8 +13,7 @@ import { RolesGuard } from './common/guards/roles.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
 import { JwtModule } from '@nestjs/jwt'
 import { MenuModule } from './modules/menu/menu.module'
-import { AIEngineModule } from './ai-engine/ai-engine.module'
-import { KnowledgeBotModule } from './modules/knowledge-bot/knowledge-bot.module'
+import { AiRuntimeModule } from './ai-runtime/ai-runtime.module'
 import { RoleModule } from './modules/role/role.module'
 import { HomeModule } from './modules/home/home.module'
 import { MobileTabBarModule } from './modules/mobile-tabbar/mobile-tabbar.module'
@@ -41,8 +40,7 @@ import { ChatModule } from './modules/chat/chat.module'
     }),
     UserModule,
     AuthModule,
-    AIEngineModule,
-    KnowledgeBotModule,
+    AiRuntimeModule,
     ChatModule,
     AgentChatModule,
     AiPlatformModule,

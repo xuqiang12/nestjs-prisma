@@ -1,7 +1,8 @@
+// 负责知识库资产管理、文件分片和向量重建。
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
-import { VectorStoreService } from '../../../ai-engine/vector/vector-store.service'
+import { VectorStoreService } from '../../../ai-runtime/vector/vector-store.service'
 import {
   CreateKnowledgeBaseDto,
   KnowledgeBaseListDto,
@@ -19,7 +20,7 @@ const FAILED = 'failed'
 
 /**
  * 知识库资产管理服务，负责知识库配置、源文件、分片和向量重建。
- * Agent/RAG 的最终回答链路仍由 ai-engine/runtime 消费这些资产，这里只提供管理侧能力。
+ * Agent/RAG 的最终回答链路由 ai-runtime 消费这些资产，这里只提供管理侧能力。
  */
 @Injectable()
 export class KnowledgeBaseService {

@@ -8,8 +8,8 @@ const root = path.join(__dirname, '..')
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 
 test('LLM runtime requires database-resolved model options and has no hardcoded chat fallback', () => {
-  const llm = read('src/ai-engine/llm/llm.service.ts')
-  const resolver = read('src/ai-engine/model/model-resolver.service.ts')
+  const llm = read('src/ai-runtime/llm/llm.service.ts')
+  const resolver = read('src/ai-runtime/model/model-resolver.service.ts')
   const contextBuilder = read('src/ai-runtime/context/agent-context.builder.ts')
   const chatHandler = read('src/ai-runtime/executor/handlers/chat.handler.ts')
   const workflow = read('src/modules/ai-platform/workflow/workflow.service.ts')

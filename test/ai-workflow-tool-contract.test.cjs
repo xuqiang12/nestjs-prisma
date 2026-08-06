@@ -49,18 +49,18 @@ test('agent config tool options use tool descriptions as display names', () => {
 })
 
 test('runtime tool registry does not register demo or mock tools', () => {
-  const executor = readFileSync(join(rootDir, 'src/ai-engine/tools/tool.executor.ts'), 'utf8')
-  const register = readFileSync(join(rootDir, 'src/modules/knowledge-bot/ai/register.ts'), 'utf8')
+  const executor = readFileSync(join(rootDir, 'src/ai-runtime/tools/default-tool.executor.ts'), 'utf8')
+  const runtimeModule = readFileSync(join(rootDir, 'src/ai-runtime/ai-runtime.module.ts'), 'utf8')
 
   assert.doesNotMatch(executor, /registerDefaultTools/)
   assert.doesNotMatch(executor, /search_web/)
   assert.doesNotMatch(executor, /get_time/)
-  assert.doesNotMatch(register, /AddDocumentTool/)
+  assert.doesNotMatch(runtimeModule, /AddDocumentTool/)
   assert.equal(existsSync(join(rootDir, 'src/modules/knowledge-bot/ai/tools/add-document.tool.ts')), false)
 })
 
 test('search knowledge tool uses the vector store instead of hardcoded demo data', () => {
-  const tool = readFileSync(join(rootDir, 'src/modules/knowledge-bot/ai/tools/search-knowledge.tool.ts'), 'utf8')
+  const tool = readFileSync(join(rootDir, 'src/ai-runtime/tools/builtin/search-knowledge.tool.ts'), 'utf8')
 
   assert.match(tool, /class SearchKnowledgeTool/)
   assert.match(tool, /VectorStoreService/)

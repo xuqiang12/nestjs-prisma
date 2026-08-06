@@ -1,7 +1,7 @@
 // 读取新版智能体对话需要的会话历史数据。
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
-import { ChatMessage } from '../../../ai-engine/llm/llm.service'
+import { ChatMessage } from '../../../ai-runtime/llm/llm.service'
 
 type MessageRole = 'user' | 'assistant'
 

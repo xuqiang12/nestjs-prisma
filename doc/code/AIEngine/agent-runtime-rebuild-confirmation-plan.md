@@ -449,7 +449,7 @@ POST /agent/conversation/delete
 ```text
 不改数据库
 不切前端新路径
-不删除 knowledge-bot 其他工具代码
+当时不删除 knowledge-bot 其他工具代码；第三优先级完成后该工具壳已迁入 ai-runtime/tools 并删除
 不把旧 Agent 主流程作为 V2 长期依赖
 ```
 
@@ -706,25 +706,301 @@ HTTP 200 不等于浏览器 SSE 消费正常。
 用查询、接口、测试或构建确认关键字段可用
 ```
 
-## 当前建议下一步
+## 当前旧能力取舍清单
 
-下一步优先收敛 Agent 运行时内部边界。
+本清单基于当前源码静态复核，用于回答“旧模块里哪些不要、哪些保留、哪些迁入新目录”。执行前仍需按对应阶段重新搜索调用链。
+
+### 直接淘汰候选
+
+这些能力不建议迁成 V2 能力，只在确认无真实调用后删除。
+
+```text
+src/ai-engine/orchestrator/ai-orchestrator.service.ts
+```
 
 原因：
 
 ```text
-当前入口口径已经明确：/chat 是普通聊天，/agent/chat 是 Agent。
-`POST /chat` 第一版已经建立，可以把普通对话从 Agent 兜底中拆出来。
-`/agent/conversation/*` 已迁入 agent-chat。
-Vue2 前端已切换到 /agent/chat/stream，后端不再保留 /agent/chat/stream-v2 兼容入口。
+它是旧 chat/rag 门面，新 Agent 链路已经由 src/ai-runtime/agent-runtime.service.ts 编排。
+其中有手动 new KnowledgeQAService 的兜底式构造，不符合 V2 的 DI 和统一入口边界。
+保留价值不在 Orchestrator 本身，而在它调用的 KnowledgeQAService / LlmService 等底层能力。
+```
+
+```text
+src/modules/knowledge-bot
+```
+
+原因：
+
+```text
+当前主要承担 search_knowledge 和 get_user_menu_permissions 的旧 AIRegistry 注册壳。
+V2 不应长期依赖模块启动副作用注册工具。
+工具本体如仍有价值，应迁入 ai-runtime/tools 或明确的运行时工具目录后再删除 knowledge-bot。
+```
+
+```text
+Vue2 src/api/ai.js 中的 agent-run / route-evaluation / route-feedback 调用
+```
+
+原因：
+
+```text
+当前后端源码没有对应 Controller / Service。
+历史迁移中 route evaluation / feedback 相关表曾新增后回滚。
+不建议为旧页面残留补兜底接口；若需要运行排查页，应基于 AiAgentExecutionLog 重新设计。
+```
+
+### 保留并迁入新目录的成熟能力
+
+这些能力当前仍被真实链路使用，不能为了清旧目录直接删除。迁移时应先换引用，再删旧目录。
+
+| 当前能力 | 当前目录 | 建议目标目录 | 取舍 |
+| --- | --- | --- | --- |
+| 模型解析 | `src/ai-engine/model` | `src/ai-runtime/model` 或 `src/ai-runtime/model-gateway` | 保留，数据库模型链路正确 |
+| LLM 调用 | `src/ai-engine/llm` | `src/ai-runtime/llm` | 保留，并与 `RuntimeLlmClientService` 合并为单一模型网关 |
+| 敏感词运行时检查 | `src/ai-engine/safety` | `src/ai-runtime/safety` | 保留，配置 CRUD 仍归 `modules/ai-config` |
+| RAG 问答、证据和 Guard | `src/ai-engine/knowledge-qa` | `src/ai-runtime/knowledge` | 保留，这是当前知识问答质量核心 |
+| 向量检索和 embedding | `src/ai-engine/vector`、`src/ai-engine/embedding` | `src/ai-runtime/vector`、`src/ai-runtime/embedding`，资产管理继续由 `modules/knowledge` 使用 | 保留，但不要把知识库管理搬进 runtime |
+| 工具执行 | `src/ai-engine/tools`、`src/ai-engine/core/ai.registry.ts` | `src/ai-runtime/tools` | 保留执行能力，淘汰旧全局注册表副作用 |
+| 工作流执行 | `src/ai-engine/workflow` | `src/ai-runtime/workflow` | 保留，但迁移时要复用统一 RAG 能力，避免 workflow 内继续复制知识问答逻辑 |
+
+### 保留但迁入配置模块的管理能力
+
+这些不是运行时能力，不应该迁进 `ai-runtime`。
+
+| 当前能力 | 当前目录 | 建议目标目录 | 外部路径策略 |
+| --- | --- | --- | --- |
+| 模型供应商 | `src/modules/ai-platform/model-provider` | `src/modules/ai-config/model-provider` | 第一阶段保持 `/ai-platform/model-provider/*`，前端确认后再考虑改路径 |
+| 模型配置 | `src/modules/ai-platform/model-config` | `src/modules/ai-config/model-config` | 第一阶段保持 `/ai-platform/model/*` |
+| Agent 配置 | `src/modules/ai-platform/agent` | `src/modules/ai-config/agent` | 第一阶段保持 `/ai-platform/agent/*` |
+| 工具列表 | `src/modules/ai-platform/tool` | `src/modules/ai-config/tool` | 只做管理侧查询，不承担运行时执行 |
+| 工作流管理 | `src/modules/ai-platform/workflow` | `src/modules/ai-config/workflow` 或后续单独确认 `modules/workflow` | 管理 CRUD 与运行时执行分开 |
+| 技能包 | `src/modules/ai-platform/skill-package` | `src/modules/ai-config/skill-package` | 暂按配置模板保留，不作为 runtime 节点 |
+| 工作流运行记录 | `src/modules/ai-platform/workflow-run` | 暂保留或迁到运行记录查询模块 | 与 Agent 请求级 `AiAgentExecutionLog` 不等同 |
+
+### 暂不迁移或需单独设计
+
+```text
+普通 /chat 是否改为调用 ai-runtime Chat capability
+```
+
+当前普通聊天已经有独立入口，但仍直接依赖模型解析、LLM 和敏感词检查。是否进一步把普通聊天也纳入 `ai-runtime` 的 Chat capability，需要单独确认，避免普通聊天被 Agent 运行时复杂度反向污染。
+
+```text
+Agent 运行日志页面
+```
+
+当前只有 `AgentTraceService` 写 `AiAgentExecutionLog`，没有对应后台列表和详情接口。若要恢复页面，应按 `AiAgentExecutionLog` 重新设计查询接口，不恢复旧 `agent-run` 或 route evaluation 方案。
+
+```text
+流式输出敏感词检查
+```
+
+当前输出安全检查发生在 assistant message 保存前，不等于前端已接收的 SSE 内容已经被拦截。这个问题会改变流式输出策略，应作为独立安全方案设计，不混入目录迁移。
+
+## 当前执行优先级
+
+### 第一优先级：运行时底座迁移
+
+目标是先切掉 V2 对 `ai-engine` 最基础的直接依赖，但不改变业务行为。
+
+```text
+ModelResolverService -> ai-runtime/model
+LlmService + RuntimeLlmClientService -> ai-runtime/llm 单一模型网关
+SensitiveWordCheckerService -> ai-runtime/safety
+```
+
+验收：
+
+```text
+src/modules/chat 和 src/modules/agent-chat 仍能完成输入检查、模型调用、输出检查。
+Provider -> Model config -> Agent -> Runtime 仍是唯一模型选择链路。
+不新增硬编码模型名、默认 baseUrl、默认 apiKey 环境变量。
+不修改 Prisma schema。
+```
+
+### 第二优先级：RAG 迁移
+
+目标是把已成熟的知识问答质量逻辑迁入运行时，而不是复制一份新 RAG。
+
+```text
+KnowledgeQAService
+KnowledgeEvidenceService
+KnowledgeAnswerGuardService
+knowledge-answer.util.ts
+VectorStoreService
+EmbeddingService
+text-chunker.ts
+```
+
+验收：
+
+```text
+Agent knowledge/rag 能力仍只在授权 search_knowledge 且绑定可用知识库时进入。
+严格模式和非严格模式阈值保持当前行为。
+答案 Guard 仍基于 evidence/facts，不把所有检索事实无差别铺给用户。
+workflow knowledge 节点后续必须复用统一 RAG 能力，不再保留第二套知识问答规则。
+```
+
+当前进度：
+
+```text
+已迁移 KnowledgeQAService / KnowledgeEvidenceService / KnowledgeAnswerGuardService 到 src/ai-runtime/knowledge。
+已迁移 knowledge-answer.util.ts 到 src/ai-runtime/knowledge。
+已迁移 VectorStoreService 到 src/ai-runtime/vector，EmbeddingService 到 src/ai-runtime/embedding。
+已迁移 text-chunker.ts 到 src/ai-runtime/infra，避免 ai-runtime/vector 反向引用 ai-engine/infra。
+src/ai-runtime/executor/handlers/rag.handler.ts 和 src/modules/knowledge/knowledge-base/knowledge-base.service.ts 已改用新路径。
+AiRuntimeModule 已接管这些运行时服务的全局 DI 注册，不再依赖 AIEngineModule。
+workflow knowledge 节点已在第四优先级迁入 ai-runtime/workflow，并复用新 RAG 底座。
+```
+
+### 第三优先级：工具注册迁移
+
+目标是淘汰 `knowledge-bot -> AIRegistry` 的启动副作用。
+
+```text
+search_knowledge
+get_user_menu_permissions
+DefaultToolExecutor
+RuntimeToolRegistry
+```
+
+验收：
+
+```text
+后台工具列表仍能看到可用工具。
+Agent toolCodes 仍只是授权列表，不变成自动工具调用开关。
+工具执行只走 V2 运行时工具注册表。
+knowledge-bot 不再作为工具注册模块挂载到 AppModule。
+```
+
+当前进度：
+
+```text
+已迁移 ToolDefinition 到 src/ai-runtime/tools/tool.types.ts。
+已迁移 AIRegistry 为 src/ai-runtime/tools/runtime-tool-registry.service.ts。
+已迁移 DefaultToolExecutor 到 src/ai-runtime/tools/default-tool.executor.ts。
+已迁移 search_knowledge 和 get_user_menu_permissions 到 src/ai-runtime/tools/builtin。
+AiRuntimeModule 通过 DI 工厂注册内置工具定义，不再依赖 KnowledgeBotModule.onModuleInit。
+AppModule 和 Swagger AI 分组已移除 KnowledgeBotModule。
+ai-platform/tool、ai-platform/agent、ai-platform/skill-package 已改读 RuntimeToolRegistry。
+```
+
+### 第四优先级：工作流执行迁移
+
+目标是保留成熟工作流执行能力，同时把重复 RAG 规则收口。
+
+```text
+WorkflowRuntimeService
+WorkflowExecutorService
+WorkflowValidatorService
+WorkflowRunLoggerService
+workflow.types.ts
+```
+
+验收：
+
+```text
+工作流 CRUD 和图保存仍在管理模块。
+运行时 workflow handler 只调用 ai-runtime/workflow 入口。
+workflow run step 级日志仍可查询。
+workflow knowledge 节点不再复制独立 evidence / guard / fallback 规则。
+```
+
+当前进度：
+
+```text
+已迁移 WorkflowRuntimeService 到 src/ai-runtime/workflow/workflow-runtime.service.ts。
+已迁移 WorkflowExecutorService 到 src/ai-runtime/workflow/workflow-executor.service.ts。
+已迁移 WorkflowValidatorService 到 src/ai-runtime/workflow/workflow-validator.service.ts。
+已迁移 WorkflowRunLoggerService 到 src/ai-runtime/workflow/workflow-run-logger.service.ts。
+已迁移 workflow.types.ts 到 src/ai-runtime/workflow/workflow.types.ts。
+src/ai-runtime/executor/handlers/workflow.handler.ts 已改用 ai-runtime/workflow。
+src/modules/ai-platform/workflow/workflow.service.ts 仍负责管理侧 CRUD 和 test-run，但运行时依赖已改用 ai-runtime/workflow。
+workflow knowledge 节点已复用 KnowledgeEvidenceService 和 KnowledgeAnswerGuardService，不再直接调用 knowledge-answer.util.ts。
+```
+
+### 最终清理：旧 ai-engine 删除
+
+目标是删除最后的旧运行时目录壳，让新版目录成为唯一运行时入口。
+
+```text
+src/ai-engine/ai-engine.module.ts
+src/ai-engine/orchestrator/ai-orchestrator.service.ts
+src/ai-engine/orchestrator/ai-orchestrator.service.spec.ts
+```
+
+验收：
+
+```text
+AppModule 注册 AiRuntimeModule，不再 import AIEngineModule。
+src/ai-engine 目录不存在。
+src/ai-runtime 和 src/modules/agent-chat 不出现 ai-engine 引用。
+旧 Orchestrator 的知识问答行为由 KnowledgeQAService 和 RAG 合同测试继续覆盖。
+```
+
+当前进度：
+
+```text
+已新增 src/ai-runtime/ai-runtime.module.ts 统一注册模型、LLM、安全、RAG、向量、工具和工作流运行时服务。
+已将 src/app.module.ts 从 AIEngineModule 切换为 AiRuntimeModule。
+已删除 src/ai-engine 最后残余目录和 Orchestrator 兼容门面。
+```
+
+### 第五优先级：管理目录迁移和旧目录删除
+
+目标是最后清理目录，而不是一开始就删旧目录。
+
+```text
+ai-platform/model-provider -> ai-config/model-provider
+ai-platform/model-config -> ai-config/model-config
+ai-platform/agent -> ai-config/agent
+ai-platform/tool -> ai-config/tool
+ai-platform/workflow -> 待确认目标管理目录
+ai-platform/skill-package -> ai-config/skill-package
+```
+
+验收：
+
+```text
+外部路径兼容或前端已同步切换。
+AppModule 和 Swagger 注册已更新。
+rg 搜索旧目录 import 清零。
+focused 合同测试、TypeScript、git diff --check 通过。
+真实接口、SSE、模型和数据库验证按实际变更范围单独说明。
+```
+
+## 与历史阶段文档的冲突处理
+
+历史阶段文档中出现的以下方向已经过时，以本文为准：
+
+```text
+ai-admin 作为目标目录。
+/knowledge-bot/knowledge-base/* 作为长期知识库管理路径。
+把 ai-engine/agent 拆到 ai-engine/agent/router、validator、executor 等子目录。
+把 route evaluation / feedback 当作当前阶段目标。
+```
+
+当前目标目录只允许收敛到本文定义的五个目录。旧阶段文档可作为迁移历史参考，不能作为新的执行授权。
+
+## 当前建议下一步
+
+下一步优先做管理目录迁移审计。
+
+原因：
+
+```text
+当前模型、RAG、工具、工作流运行时底座已经迁入 ai-runtime。
+旧 ai-engine 已完成删除，运行时全局注册由 AiRuntimeModule 接管。
+ai-platform 仍承担模型、Agent、工具、工作流和技能包管理接口。
+下一步需要决定管理目录是否迁入 modules/ai-config，并逐项确认外部路径兼容策略。
 ```
 
 下一步不做：
 
 ```text
-不删除 ai-engine
-不删除 knowledge-bot 工具代码
 不改 Prisma schema
 不切前端旧 SSE 入口
 不继续复制旧底层能力到 ai-runtime
+不在本阶段迁移 ai-platform 管理接口外部路径
 ```

@@ -15,8 +15,8 @@ const files = {
   promptService: 'src/modules/ai-config/prompt/prompt.service.ts',
   agentRuntime: 'src/ai-runtime/agent-runtime.service.ts',
   agentContext: 'src/ai-runtime/context/agent-context.builder.ts',
-  workflowExecutor: 'src/ai-engine/workflow/workflow-executor.service.ts',
-  aiEngineModule: 'src/ai-engine/ai-engine.module.ts',
+  workflowExecutor: 'src/ai-runtime/workflow/workflow-executor.service.ts',
+  aiRuntimeModule: 'src/ai-runtime/ai-runtime.module.ts',
 }
 
 Object.entries(files).forEach(([name, relativePath]) => {

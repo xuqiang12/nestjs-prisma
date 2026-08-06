@@ -1,6 +1,6 @@
 // 执行新版智能体普通对话能力。
 import { Injectable } from '@nestjs/common'
-import { LlmService } from '../../../ai-engine/llm/llm.service'
+import { LlmService } from '../../llm/llm.service'
 import { CapabilityHandler } from '../../capability/capability.types'
 import { AgentContext } from '../../context/agent-context.types'
 import { AgentEvent } from '../../events/agent-event.types'

@@ -1,7 +1,7 @@
 // 负责 V2 普通聊天会话和消息持久化。
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
-import { ChatMessage } from '../../../ai-engine/llm/llm.service'
+import { ChatMessage } from '../../../ai-runtime/llm/llm.service'
 
 type MessageRole = 'user' | 'assistant'
 

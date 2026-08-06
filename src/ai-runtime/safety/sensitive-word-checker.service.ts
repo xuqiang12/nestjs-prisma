@@ -1,0 +1,52 @@
+// 执行运行时输入输出敏感词检查和替换。
+import { BadRequestException, Injectable } from '@nestjs/common'
+import { PrismaService } from 'nestjs-prisma'
+
+export type SensitiveWordScope = 'input' | 'output'
+
+export type SensitiveWordHit = {
+  word: string
+  action: string
+}
+
+@Injectable()
+export class SensitiveWordCheckerService {
+  // 注入 Prisma 以读取启用状态的敏感词配置。
+  constructor(private readonly prisma: PrismaService) {}
+
+  // 检查内容是否包含敏感词，并根据配置执行拦截或替换。
+  async checkAndApply(content: string, scope: SensitiveWordScope) {
+    const words = await this.prisma.aiSensitiveWord.findMany({
+      where: {
+        status: 1,
+        scope: { in: [scope, 'both'] },
+      },
+      select: {
+        word: true,
+        action: true,
+        replaceWith: true,
+      },
+    })
+
+    const hits: SensitiveWordHit[] = []
+    let nextContent = content
+
+    for (const item of words) {
+      if (!item.word || !nextContent.includes(item.word)) {
+        continue
+      }
+
+      hits.push({ word: item.word, action: item.action })
+
+      if (item.action === 'block') {
+        throw new BadRequestException('内容包含敏感词，已拦截')
+      }
+
+      if (item.action === 'replace') {
+        nextContent = nextContent.split(item.word).join(item.replaceWith || '*')
+      }
+    }
+
+    return { content: nextContent, hits }
+  }
+}

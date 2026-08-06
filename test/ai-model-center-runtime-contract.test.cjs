@@ -8,8 +8,8 @@ const root = path.join(__dirname, '..')
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 
 test('runtime resolves model config instead of hardcoding SiliconFlow only', () => {
-  const resolver = read('src/ai-engine/model/model-resolver.service.ts')
-  const llm = read('src/ai-engine/llm/llm.service.ts')
+  const resolver = read('src/ai-runtime/model/model-resolver.service.ts')
+  const llm = read('src/ai-runtime/llm/llm.service.ts')
   const contextBuilder = read('src/ai-runtime/context/agent-context.builder.ts')
 
   assert.match(resolver, /class ModelResolverService/)

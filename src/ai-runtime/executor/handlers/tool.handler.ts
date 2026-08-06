@@ -1,6 +1,6 @@
 // 执行新版智能体普通工具能力。
 import { Injectable } from '@nestjs/common'
-import { DefaultToolExecutor } from '../../../ai-engine/tools/tool.executor'
+import { DefaultToolExecutor } from '../../tools/default-tool.executor'
 import { CapabilityHandler } from '../../capability/capability.types'
 import { AgentContext } from '../../context/agent-context.types'
 import { AgentEvent } from '../../events/agent-event.types'

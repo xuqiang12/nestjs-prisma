@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common'
 import { CapabilityType } from '../capability/capability.types'
 import { AgentContext } from '../context/agent-context.types'
-import { RuntimeLlmClientService } from '../llm/runtime-llm-client.service'
+import { LlmService } from '../llm/llm.service'
 
 export type IntentClassifierInput = {
   message: string
@@ -22,8 +22,8 @@ const DEFAULT_CONFIDENCE = 0
 
 @Injectable()
 export class IntentClassifierService {
-  // 注入运行时本地模型客户端，避免 Planner 直接依赖 ai-engine 服务。
-  constructor(private readonly llmClient: RuntimeLlmClientService) {}
+  // 注入统一运行时模型服务，避免 Planner 保留第二套模型客户端。
+  constructor(private readonly llmClient: LlmService) {}
 
   // 让模型在可用能力范围内返回结构化意图结果，失败时交给 Planner 降级。
   async classify(input: IntentClassifierInput, context: AgentContext): Promise<IntentClassification> {

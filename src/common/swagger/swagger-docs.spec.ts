@@ -1,7 +1,8 @@
 // 验证 Swagger 文档开关和 Knife4j 分组配置。
 import '../utils/logger'
+import { AgentChatModule } from '../../modules/agent-chat/agent-chat.module'
 import { AuthModule } from '../../modules/auth/auth.module'
-import { KnowledgeBotModule } from '../../modules/knowledge-bot/knowledge-bot.module'
+import { ChatModule } from '../../modules/chat/chat.module'
 import { MenuModule } from '../../modules/menu/menu.module'
 import { RoleModule } from '../../modules/role/role.module'
 import { UserModule } from '../../modules/user/user.module'
@@ -26,7 +27,7 @@ describe('swagger docs config', () => {
 
     expect(groups).toEqual([
       { name: '授权模块', url: '/api-docs/authorization-json', modules: [AuthModule, UserModule, MenuModule, RoleModule, HomeModule, MobileTabBarModule] },
-      { name: 'AI模块', url: '/api-docs/ai-json', modules: [KnowledgeBotModule, AiPlatformModule, AiConfigModule] },
+      { name: 'AI模块', url: '/api-docs/ai-json', modules: [ChatModule, AgentChatModule, AiPlatformModule, AiConfigModule] },
     ])
     expect(groups.some((group) => group.url === '/api-json')).toBe(false)
   })

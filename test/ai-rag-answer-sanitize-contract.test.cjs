@@ -6,17 +6,27 @@ const { join } = require('node:path')
 
 const rootDir = join(__dirname, '..')
 
+function createKnowledgeQAService(vectorStoreService, llmService = {}) {
+  const { KnowledgeQAService } = require(join(rootDir, 'src/ai-runtime/knowledge/knowledge-qa.service'))
+  const { KnowledgeEvidenceService } = require(join(rootDir, 'src/ai-runtime/knowledge/knowledge-evidence.service'))
+  const { KnowledgeAnswerGuardService } = require(join(rootDir, 'src/ai-runtime/knowledge/knowledge-answer-guard.service'))
+  return new KnowledgeQAService(
+    { invokeWithMessages: async () => '', ...llmService },
+    vectorStoreService,
+    new KnowledgeEvidenceService(),
+    new KnowledgeAnswerGuardService(),
+  )
+}
+
 test('rag answers are sanitized before saving or streaming to users', () => {
-  const orchestrator = readFileSync(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service.ts'), 'utf8')
-  const qaService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-qa.service.ts'), 'utf8')
-  const evidenceService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-evidence.service.ts'), 'utf8')
-  const guardService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-answer-guard.service.ts'), 'utf8')
-  const knowledgeTypes = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge.types.ts'), 'utf8')
+  const qaService = readFileSync(join(rootDir, 'src/ai-runtime/knowledge/knowledge-qa.service.ts'), 'utf8')
+  const evidenceService = readFileSync(join(rootDir, 'src/ai-runtime/knowledge/knowledge-evidence.service.ts'), 'utf8')
+  const guardService = readFileSync(join(rootDir, 'src/ai-runtime/knowledge/knowledge-answer-guard.service.ts'), 'utf8')
+  const knowledgeTypes = readFileSync(join(rootDir, 'src/ai-runtime/knowledge/knowledge.types.ts'), 'utf8')
   const ragHandler = readFileSync(join(rootDir, 'src/ai-runtime/executor/handlers/rag.handler.ts'), 'utf8')
   const agentComposer = readFileSync(join(rootDir, 'src/ai-runtime/composer/agent-composer.service.ts'), 'utf8')
-  const answerUtil = readFileSync(join(rootDir, 'src/ai-engine/knowledge-answer.util.ts'), 'utf8')
+  const answerUtil = readFileSync(join(rootDir, 'src/ai-runtime/knowledge/knowledge-answer.util.ts'), 'utf8')
 
-  assert.match(orchestrator, /KnowledgeQAService/)
   assert.match(knowledgeTypes, /KnowledgeFact/)
   assert.match(answerUtil, /requiredTerms:\s*string\[\]/)
   assert.match(knowledgeTypes, /knowledgeFacts:\s*KnowledgeFact\[\]/)
@@ -27,7 +37,7 @@ test('rag answers are sanitized before saving or streaming to users', () => {
   assert.doesNotMatch(answerUtil, /KNOWLEDGE_QUERY_STOP_WORDS/)
   assert.doesNotMatch(answerUtil, /isQuestionAskingForValue/)
   assert.match(qaService, /完整保留事实依据中的数字、期限、条件和否定结论/)
-  assert.match(orchestrator, /sanitizeKnowledgeAnswer\(content:\s*string\)/)
+  assert.match(qaService, /sanitizeAnswer\(content:\s*string\)/)
   assert.match(guardService, /stripCopiedKnowledgeArtifacts/)
   assert.match(guardService, /知识片段/)
   assert.doesNotMatch(evidenceService, /KNOWLEDGE_EVIDENCE_MAX_LINES/)
@@ -40,7 +50,7 @@ test('rag answers are sanitized before saving or streaming to users', () => {
 })
 
 test('rag facts use generic chunk content without sample-specific filters', () => {
-  const evidenceService = readFileSync(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-evidence.service.ts'), 'utf8')
+  const evidenceService = readFileSync(join(rootDir, 'src/ai-runtime/knowledge/knowledge-evidence.service.ts'), 'utf8')
 
   assert.doesNotMatch(evidenceService, /产品名称\|产品型号\|产品功能/)
   assert.doesNotMatch(evidenceService, /售价\|基础版本\|企业版本/)
@@ -52,8 +62,7 @@ test('rag facts use generic chunk content without sample-specific filters', () =
 test('rag fact extraction keeps relevant policy facts without fixed field lists', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
-  const service = new AiOrchestratorService({}, {
+  const service = createKnowledgeQAService({
     similaritySearch: async () => [{
       id: 'doc-1',
       distance: 0.2,
@@ -73,11 +82,13 @@ test('rag fact extraction keeps relevant policy facts without fixed field lists'
     }],
   })
 
-  const plan = await service.buildCompletion('退货政策是什么', 'knowledge', [], {
+  const plan = await service.buildCompletion({
+    question: '退货政策是什么',
+    history: [],
     allowedToolCodes: ['search_knowledge'],
   })
   const factText = plan.knowledgeFacts.map((item) => item.text).join('\n')
-  const fallback = service.ensureKnowledgeAnswer('', plan.knowledgeFacts)
+  const fallback = service.ensureAnswer('', plan.knowledgeFacts)
 
   assert.match(factText, /购买7天内/)
   assert.match(factText, /不支持无理由退款/)
@@ -88,8 +99,7 @@ test('rag fact extraction keeps relevant policy facts without fixed field lists'
 test('rag fact extraction keeps later structured values instead of truncating to leading lines', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
-  const service = new AiOrchestratorService({}, {
+  const service = createKnowledgeQAService({
     similaritySearch: async () => [{
       id: 'doc-1',
       distance: 0.2,
@@ -121,11 +131,13 @@ test('rag fact extraction keeps later structured values instead of truncating to
     }],
   })
 
-  const plan = await service.buildCompletion('智能办公助手Pro多少钱？', 'knowledge', [], {
+  const plan = await service.buildCompletion({
+    question: '智能办公助手Pro多少钱？',
+    history: [],
     allowedToolCodes: ['search_knowledge'],
   })
   const factText = plan.knowledgeFacts.map((item) => item.text).join('\n')
-  const fallback = service.ensureKnowledgeAnswer('', plan.knowledgeFacts)
+  const fallback = service.ensureAnswer('', plan.knowledgeFacts)
 
   assert.match(factText, /产品名称：智能办公助手Pro/)
   assert.match(factText, /售价/)
@@ -140,8 +152,7 @@ test('rag fact extraction keeps later structured values instead of truncating to
 test('knowledge prompts exclude assistant history so stale answers do not override retrieved facts', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
-  const service = new AiOrchestratorService({}, {
+  const service = createKnowledgeQAService({
     similaritySearch: async () => [{
       id: 'doc-1',
       distance: 0.2,
@@ -155,10 +166,12 @@ test('knowledge prompts exclude assistant history so stale answers do not overri
     }],
   })
 
-  const plan = await service.buildCompletion('智能办公助手Pro多少钱？', 'knowledge', [
-    { role: 'user', content: '智能办公助手Pro多少钱？' },
-    { role: 'assistant', content: '基础版本价格为1111元/年，企业版本价格为2222元/年。' },
-  ], {
+  const plan = await service.buildCompletion({
+    question: '智能办公助手Pro多少钱？',
+    history: [
+      { role: 'user', content: '智能办公助手Pro多少钱？' },
+      { role: 'assistant', content: '基础版本价格为1111元/年，企业版本价格为2222元/年。' },
+    ],
     allowedToolCodes: ['search_knowledge'],
   })
   const messagesText = plan.messages.map((message) => message.content).join('\n')
@@ -174,9 +187,8 @@ test('knowledge prompts exclude assistant history so stale answers do not overri
 test('knowledge retrieval uses recent user context to make follow-up questions searchable', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
   let receivedQuery = ''
-  const service = new AiOrchestratorService({}, {
+  const service = createKnowledgeQAService({
     similaritySearch: async (query) => {
       receivedQuery = query
       return [{
@@ -188,10 +200,12 @@ test('knowledge retrieval uses recent user context to make follow-up questions s
     },
   })
 
-  const plan = await service.buildCompletion('企业版呢？', 'knowledge', [
-    { role: 'user', content: '智能办公助手Pro多少钱？' },
-    { role: 'assistant', content: '基础版本价格为1111元/年。' },
-  ], {
+  const plan = await service.buildCompletion({
+    question: '企业版呢？',
+    history: [
+      { role: 'user', content: '智能办公助手Pro多少钱？' },
+      { role: 'assistant', content: '基础版本价格为1111元/年。' },
+    ],
     allowedToolCodes: ['search_knowledge'],
   })
   const finalUserMessage = plan.messages[plan.messages.length - 1]
@@ -207,8 +221,7 @@ test('knowledge retrieval uses recent user context to make follow-up questions s
 test('knowledge answer fallback rejects numeric claims that are not in retrieved facts', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
-  const service = new AiOrchestratorService({}, {
+  const service = createKnowledgeQAService({
     similaritySearch: async () => [{
       id: 'doc-1',
       distance: 0.2,
@@ -222,14 +235,16 @@ test('knowledge answer fallback rejects numeric claims that are not in retrieved
     }],
   })
 
-  const plan = await service.buildCompletion('智能办公助手Pro多少钱？', 'knowledge', [], {
+  const plan = await service.buildCompletion({
+    question: '智能办公助手Pro多少钱？',
+    history: [],
     allowedToolCodes: ['search_knowledge'],
   })
-  const answer = service.ensureKnowledgeAnswer(
+  const answer = service.ensureAnswer(
     '基础版本的价格是1111元/年，企业版本的价格是4111元/年。',
     plan.knowledgeFacts,
   )
-  const validAnswer = service.ensureKnowledgeAnswer(
+  const validAnswer = service.ensureAnswer(
     '基础版本的价格是1999元/年，企业版本的价格是4999元/年。',
     plan.knowledgeFacts,
   )
@@ -244,8 +259,7 @@ test('knowledge answer fallback rejects numeric claims that are not in retrieved
 test('knowledge fallback focuses facts by unsupported numeric unit without business-specific filters', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { AiOrchestratorService } = require(join(rootDir, 'src/ai-engine/orchestrator/ai-orchestrator.service'))
-  const service = new AiOrchestratorService({}, {
+  const service = createKnowledgeQAService({
     similaritySearch: async () => [{
       id: 'doc-1',
       distance: 0.2,
@@ -266,10 +280,12 @@ test('knowledge fallback focuses facts by unsupported numeric unit without busin
     }],
   })
 
-  const plan = await service.buildCompletion('智能办公助手Pro基础版多少钱？', 'knowledge', [], {
+  const plan = await service.buildCompletion({
+    question: '智能办公助手Pro基础版多少钱？',
+    history: [],
     allowedToolCodes: ['search_knowledge'],
   })
-  const answer = service.ensureKnowledgeAnswer(
+  const answer = service.ensureAnswer(
     '基础版价格是1111元/年。',
     plan.knowledgeFacts,
     '智能办公助手Pro基础版多少钱？',
@@ -286,9 +302,9 @@ test('knowledge fallback focuses facts by unsupported numeric unit without busin
 test('knowledge qa returns the checked answer used by v2 rag handler', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { KnowledgeQAService } = require(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-qa.service'))
-  const { KnowledgeEvidenceService } = require(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-evidence.service'))
-  const { KnowledgeAnswerGuardService } = require(join(rootDir, 'src/ai-engine/knowledge-qa/knowledge-answer-guard.service'))
+  const { KnowledgeQAService } = require(join(rootDir, 'src/ai-runtime/knowledge/knowledge-qa.service'))
+  const { KnowledgeEvidenceService } = require(join(rootDir, 'src/ai-runtime/knowledge/knowledge-evidence.service'))
+  const { KnowledgeAnswerGuardService } = require(join(rootDir, 'src/ai-runtime/knowledge/knowledge-answer-guard.service'))
   const service = new KnowledgeQAService(
     { invokeWithMessages: async () => '基础版本的价格是1111元/年，企业版本的价格是4111元/年。' },
     {

@@ -1,14 +1,16 @@
+// 提供智能体配置管理和运行时配置选项查询能力。
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
-import { AIRegistry } from '../../../ai-engine/core/ai.registry'
+import { RuntimeToolRegistry } from '../../../ai-runtime/tools/runtime-tool-registry.service'
 import { AgentListDto, AgentStatusDto, CreateAgentDto, UpdateAgentDto } from './dto/agent.dto'
 
 @Injectable()
 export class AgentService {
+  // 注入 Prisma 和运行时工具注册表以校验智能体配置引用。
   constructor(
     private readonly prisma: PrismaService,
-    private readonly registry: AIRegistry,
+    private readonly registry: RuntimeToolRegistry,
   ) {}
 
   async list(query: AgentListDto) {

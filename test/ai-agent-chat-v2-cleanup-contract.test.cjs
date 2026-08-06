@@ -21,9 +21,10 @@ test('legacy knowledge-bot chat entry and legacy ai-engine agent chain are gone'
   })
 })
 
-test('AIEngineModule no longer registers legacy agent providers', () => {
-  const module = read('src/ai-engine/ai-engine.module.ts')
+test('AiRuntimeModule no longer registers legacy agent providers', () => {
+  const module = read('src/ai-runtime/ai-runtime.module.ts')
 
+  assert.equal(existsSync(join(rootDir, 'src/ai-engine')), false)
   assert.doesNotMatch(module, /agent\/agent-runtime\.service/)
   assert.doesNotMatch(module, /AgentPlanService/)
   assert.doesNotMatch(module, /AgentExecutorService/)

@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
-import { ModelResolverService } from '../../../ai-engine/model/model-resolver.service'
+import { ModelResolverService } from '../../../ai-runtime/model/model-resolver.service'
 import { PrismaService } from 'nestjs-prisma'
-import { WorkflowRuntimeService } from '../../../ai-engine/workflow/workflow-runtime.service'
-import { WorkflowValidatorService } from '../../../ai-engine/workflow/workflow-validator.service'
+import { WorkflowRuntimeService } from '../../../ai-runtime/workflow/workflow-runtime.service'
+import { WorkflowValidatorService } from '../../../ai-runtime/workflow/workflow-validator.service'
 import {
   CreateWorkflowDto,
   SaveWorkflowGraphDto,

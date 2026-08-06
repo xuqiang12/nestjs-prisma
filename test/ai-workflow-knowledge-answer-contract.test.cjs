@@ -25,7 +25,9 @@ function createGraph() {
 function createExecutor(overrides = {}) {
   require('ts-node/register')
   require('tsconfig-paths/register')
-  const { WorkflowExecutorService } = require(path.join(root, 'src/ai-engine/workflow/workflow-executor.service'))
+  const { WorkflowExecutorService } = require(path.join(root, 'src/ai-runtime/workflow/workflow-executor.service'))
+  const { KnowledgeEvidenceService } = require(path.join(root, 'src/ai-runtime/knowledge/knowledge-evidence.service'))
+  const { KnowledgeAnswerGuardService } = require(path.join(root, 'src/ai-runtime/knowledge/knowledge-answer-guard.service'))
   const prompt = overrides.prompt || '你是企业知识库问答助手。优先依据知识库检索结果回答。'
   const sources = overrides.sources || [{
     id: 'doc-1',
@@ -67,7 +69,15 @@ function createExecutor(overrides = {}) {
     finishRun: async () => undefined,
     failRun: async () => undefined,
   }
-  const executor = new WorkflowExecutorService(prisma, vectorStore, llmService, {}, runLogger)
+  const executor = new WorkflowExecutorService(
+    prisma,
+    vectorStore,
+    llmService,
+    {},
+    runLogger,
+    new KnowledgeEvidenceService(),
+    new KnowledgeAnswerGuardService(),
+  )
   return { executor, captured }
 }
 
@@ -115,7 +125,7 @@ test('workflow knowledge stream buffers model chunks and emits checked facts', a
   const doneEvent = events.find((event) => event.type === 'workflow_done')
 
   assert.deepEqual(contentEvents, [
-    { type: 'content', content: '根据知识库，相关信息如下：\n\n产品名称：智能办公助手Pro\n售价：\n基础版本：1999元/年\n企业版本：4999元/年' },
+    { type: 'content', content: '根据知识库，相关信息如下：\n\n售价：\n基础版本：1999元/年\n企业版本：4999元/年' },
   ])
   assert.ok(doneEvent)
   assert.match(doneEvent.answer, /1999元\/年/)

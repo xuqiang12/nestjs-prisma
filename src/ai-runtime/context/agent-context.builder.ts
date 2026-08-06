@@ -2,7 +2,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
-import { ModelResolverService } from '../../ai-engine/model/model-resolver.service'
+import { ModelResolverService } from '../model/model-resolver.service'
 import { ConversationRepository } from '../../modules/agent-chat/persistence/conversation.repository'
 import { AgentRuntimeRequest } from '../agent-runtime.types'
 import { AgentContext } from './agent-context.types'

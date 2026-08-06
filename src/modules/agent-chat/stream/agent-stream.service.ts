@@ -21,7 +21,7 @@ export class AgentStreamService {
         type: 'error',
         payload: {
           code: 'AGENT_CODE_REQUIRED',
-          message: 'agentCode is required for agent chat v2 stream',
+          message: 'agent聊天流式接口必须提供agentCode',
         },
         metadata,
       }
@@ -34,7 +34,7 @@ export class AgentStreamService {
         type: 'error',
         payload: {
           code: 'AGENT_CHAT_V2_USER_REQUIRED',
-          message: 'userId is required for agent chat v2 stream',
+          message: '用户未登录或登录状态已失效，请重新登录',
         },
         metadata,
       }
@@ -43,7 +43,11 @@ export class AgentStreamService {
     }
 
     try {
-      for await (const event of this.agentChatService.stream(body as AgentStreamRequestDto, userId, metadata)) {
+      for await (const event of this.agentChatService.stream(
+        body as AgentStreamRequestDto,
+        userId,
+        metadata,
+      )) {
         yield event
       }
     } catch (error) {

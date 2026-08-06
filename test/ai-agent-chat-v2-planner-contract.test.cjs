@@ -19,6 +19,8 @@ function loadRuntime() {
   require('tsconfig-paths/register')
   return {
     ...require(join(rootDir, 'src/ai-runtime/capability/capability-resolver.service')),
+    ...require(join(rootDir, 'src/ai-runtime/llm/runtime-llm-client.service')),
+    ...require(join(rootDir, 'src/ai-runtime/planner/intent-classifier.service')),
     ...require(join(rootDir, 'src/ai-runtime/planner/rule-planner.service')),
     ...require(join(rootDir, 'src/ai-runtime/planner/agent-planner.service')),
     ...require(join(rootDir, 'src/ai-runtime/validator/agent-plan-validator.service')),
@@ -79,38 +81,114 @@ test('Planner types define ExecutionPlan without route output', () => {
   assert.doesNotMatch(types, /\broute\b/)
 })
 
-test('RulePlanner chooses RAG for customer price questions when RAG is available', () => {
+test('RulePlanner uses AI intent classification instead of hardcoded keyword routing', async () => {
   const { CapabilityResolver, RulePlanner } = loadRuntime()
-  const questions = [
-    '企业版价格是多少？',
-    '企业版怎么收费？',
-    '企业版收费标准是什么？',
-    '企业版年费多少？',
-    '企业版套餐怎么订阅？',
-  ]
+  const context = createContext('请问这套方案怎么卖？')
+  const capabilities = new CapabilityResolver().resolve(context)
+  const classifierCalls = []
+  const classifier = {
+    classify: async (input) => {
+      classifierCalls.push(input)
+      return {
+        capability: 'rag',
+        confidence: 0.91,
+        reason: '用户在询问企业方案售卖信息，需要查询知识库',
+        input: { query: input.message },
+      }
+    },
+  }
 
-  questions.forEach((question) => {
-    const context = createContext(question)
-    const capabilities = new CapabilityResolver().resolve(context)
-    const plan = new RulePlanner().plan(context, capabilities.plannerView)
+  const plan = await new RulePlanner(classifier).plan(context, capabilities.plannerView)
 
-    assert.deepEqual(plan.metadata, { version: 1 })
-    assert.deepEqual(plan.strategy, { mode: 'sequential' })
-    assert.equal(plan.steps.length, 1)
-    assert.equal(plan.steps[0].capability, 'rag', `${question} should use RAG`)
-    assert.equal(plan.steps[0].input.query, question)
-    assert.equal(Object.prototype.hasOwnProperty.call(plan, 'route'), false)
-  })
+  assert.equal(classifierCalls.length, 1)
+  assert.equal(classifierCalls[0].message, '请问这套方案怎么卖？')
+  assert.deepEqual(classifierCalls[0].availableCapabilities, ['chat', 'rag', 'tool', 'workflow'])
+  assert.deepEqual(plan.metadata, { version: 1 })
+  assert.deepEqual(plan.strategy, { mode: 'sequential' })
+  assert.equal(plan.steps.length, 1)
+  assert.equal(plan.steps[0].capability, 'rag')
+  assert.equal(plan.steps[0].reason, '用户在询问企业方案售卖信息，需要查询知识库')
+  assert.equal(plan.steps[0].input.query, '请问这套方案怎么卖？')
+  assert.equal(Object.prototype.hasOwnProperty.call(plan, 'route'), false)
 })
 
-test('AgentPlanner only receives plannerView and falls back to chat when RAG is unavailable', () => {
+test('RulePlanner falls back to chat when AI classification is unavailable or unsafe', async () => {
   const { AgentPlanner, RulePlanner } = loadRuntime()
   const context = createContext('企业版价格是多少？')
-  const planner = new AgentPlanner(new RulePlanner())
-  const plan = planner.plan(context, ['chat'])
+  const unavailablePlan = await new AgentPlanner(new RulePlanner({
+    classify: async () => ({ capability: 'rag', confidence: 0.95, reason: '模型选择了未授权知识库', input: {} }),
+  })).plan(context, ['chat'])
+  const lowConfidencePlan = await new AgentPlanner(new RulePlanner({
+    classify: async () => ({ capability: 'tool', confidence: 0.49, reason: '模型不确定', input: {} }),
+  })).plan(context, ['chat', 'tool'])
+  const failedClassifierPlan = await new AgentPlanner(new RulePlanner({
+    classify: async () => {
+      throw new Error('classifier failed')
+    },
+  })).plan(context, ['chat', 'rag'])
 
-  assert.deepEqual(plan.steps.map((step) => step.capability), ['chat'])
-  assert.equal(JSON.stringify(plan).includes('未绑定可用知识库'), false)
+  assert.deepEqual(unavailablePlan.steps.map((step) => step.capability), ['chat'])
+  assert.deepEqual(lowConfidencePlan.steps.map((step) => step.capability), ['chat'])
+  assert.deepEqual(failedClassifierPlan.steps.map((step) => step.capability), ['chat'])
+  assert.equal(JSON.stringify(unavailablePlan).includes('未绑定可用知识库'), false)
+})
+
+test('IntentClassifierService uses ai-runtime local model client instead of ai-engine LLM service', async () => {
+  const { IntentClassifierService } = loadRuntime()
+  const calls = []
+  const classifier = new IntentClassifierService({
+    invokeWithMessages: async (messages, options) => {
+      calls.push({ messages, options })
+      return '{"capability":"tool","confidence":0.88,"reason":"需要工具","input":{"params":{"city":"上海"}}}'
+    },
+  })
+  const intentClassifier = readSource('src/ai-runtime/planner/intent-classifier.service.ts')
+  const runtimeClient = readSource('src/ai-runtime/llm/runtime-llm-client.service.ts')
+  const module = readSource('src/modules/agent-chat/agent-chat.module.ts')
+
+  const result = await classifier.classify({
+    message: '帮我查上海天气',
+    availableCapabilities: ['chat', 'tool'],
+    agent: { id: 'agent-1', code: 'customer_service', name: '客服智能体', mode: 'chat' },
+    capabilities: createContext().capabilities,
+  }, createContext())
+
+  assert.equal(result.capability, 'tool')
+  assert.equal(result.confidence, 0.88)
+  assert.equal(result.input.params.city, '上海')
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].options.temperature, 0)
+  assert.equal(calls[0].options.topP, 0.1)
+  assert.equal(calls[0].options.finalAnswerGuard, undefined)
+  assert.match(calls[0].messages[0].content, /只输出 JSON/)
+  assert.match(runtimeClient, /^\/\/ 封装新版智能体运行时内部使用的模型调用客户端。/)
+  assert.match(intentClassifier, /RuntimeLlmClientService/)
+  assert.match(module, /RuntimeLlmClientService/)
+  assert.doesNotMatch(intentClassifier, /ai-engine\/llm|LlmService/)
+})
+
+test('RulePlanner keeps tool and workflow codes from AgentContext instead of AI input', async () => {
+  const { RulePlanner } = loadRuntime()
+  const context = createContext('执行客户流程')
+  const toolPlan = await new RulePlanner({
+    classify: async () => ({
+      capability: 'tool',
+      confidence: 0.9,
+      input: { toolCode: 'not_allowed', params: { city: '上海' } },
+    }),
+  }).plan(context, ['chat', 'tool'])
+  const workflowPlan = await new RulePlanner({
+    classify: async () => ({
+      capability: 'workflow',
+      confidence: 0.9,
+      input: { workflowCode: 'other_workflow', message: '覆盖消息' },
+    }),
+  }).plan(context, ['chat', 'workflow'])
+
+  assert.equal(toolPlan.steps[0].input.toolCode, 'weather')
+  assert.equal(toolPlan.steps[0].input.params.city, '上海')
+  assert.equal(workflowPlan.steps[0].input.workflowCode, 'customer_workflow')
+  assert.equal(workflowPlan.steps[0].input.message, '执行客户流程')
 })
 
 test('Validator rejects unavailable capabilities before executor can run', () => {
@@ -162,12 +240,15 @@ test('Validator enforces maxSteps from AgentContext execution config', () => {
 test('Planner and Validator do not reference old route runtime services', () => {
   const planner = readSource('src/ai-runtime/planner/agent-planner.service.ts')
   const rulePlanner = readSource('src/ai-runtime/planner/rule-planner.service.ts')
+  const intentClassifier = readSource('src/ai-runtime/planner/intent-classifier.service.ts')
   const validator = readSource('src/ai-runtime/validator/agent-plan-validator.service.ts')
-  const combined = [planner, rulePlanner, validator].join('\n')
+  const combined = [planner, rulePlanner, intentClassifier, validator].join('\n')
 
   assert.match(planner, /^\/\/ 协调新版智能体计划生成入口。/)
-  assert.match(rulePlanner, /^\/\/ 基于明确规则生成新版智能体第一版执行计划。/)
+  assert.match(rulePlanner, /^\/\/ 基于 AI 意图识别生成新版智能体第一版执行计划。/)
+  assert.match(intentClassifier, /^\/\/ 使用大模型识别新版智能体本次请求应进入的能力。/)
   assert.match(validator, /^\/\/ 校验新版智能体执行计划是否只使用已授权能力。/)
+  assert.doesNotMatch(rulePlanner, /INTENT_PATTERN|价格|多少钱|售价|费用|收费|weather|天气/)
   assert.doesNotMatch(combined, /AgentPlanService|AgentRuntimeService|AgentExecutorService|ChatService/)
   assert.doesNotMatch(combined, /\broute\b/)
 })

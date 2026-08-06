@@ -1,71 +1,110 @@
-// 基于明确规则生成新版智能体第一版执行计划。
+// 基于 AI 意图识别生成新版智能体第一版执行计划。
 import { Injectable } from '@nestjs/common'
 import { CapabilityType } from '../capability/capability.types'
 import { AgentContext } from '../context/agent-context.types'
+import { IntentClassification, IntentClassifierService } from './intent-classifier.service'
 import { ExecutionPlan, ExecutionStep } from './agent-planner.types'
 
-const KNOWLEDGE_INTENT_PATTERN = /(价格|多少钱|售价|费用|收费|收费标准|年费|套餐|订阅价|订阅|资费|政策|制度|售后|期限|知识库|产品|报价)/
-const TOOL_INTENT_PATTERN = /(工具|查询工具|调用工具|weather|天气)/
-const WORKFLOW_INTENT_PATTERN = /(工作流|流程|审批|自动处理|执行流程)/
 const KNOWLEDGE_TOOL_CODE = 'search_knowledge'
+const MIN_INTENT_CONFIDENCE = 0.6
 
 @Injectable()
 export class RulePlanner {
-  // 根据用户问题和 Planner 可见能力生成第一版单步执行计划。
-  plan(context: AgentContext, plannerView: CapabilityType[]): ExecutionPlan {
+  // 注入 AI 意图识别器，Planner 只消费结构化意图结果。
+  constructor(private readonly intentClassifier: IntentClassifierService) {}
+
+  // 根据用户问题、Planner 可见能力和 AI 意图识别结果生成第一版单步执行计划。
+  async plan(context: AgentContext, plannerView: CapabilityType[]): Promise<ExecutionPlan> {
     return {
       metadata: { version: 1 },
       strategy: { mode: 'sequential' },
-      steps: [this.createStep(context, plannerView)],
+      steps: [await this.createStep(context, plannerView)],
     }
   }
 
-  // 按明确关键词和能力列表选择本次要进入的能力步骤。
-  private createStep(context: AgentContext, plannerView: CapabilityType[]): ExecutionStep {
+  // 按 AI 意图结果和能力列表选择本次要进入的能力步骤。
+  private async createStep(context: AgentContext, plannerView: CapabilityType[]): Promise<ExecutionStep> {
     const message = context.request.message.content
-    if (this.hasCapability(plannerView, 'workflow') && WORKFLOW_INTENT_PATTERN.test(message)) {
+    const classification = await this.classifyIntent(message, plannerView, context)
+    const capability = this.resolveCapability(classification, plannerView)
+    return this.createCapabilityStep(capability, message, context, classification)
+  }
+
+  // 调用 AI 意图识别器，识别失败时返回低置信度普通对话候选。
+  private async classifyIntent(
+    message: string,
+    plannerView: CapabilityType[],
+    context: AgentContext,
+  ): Promise<IntentClassification> {
+    try {
+      return await this.intentClassifier.classify({
+        message,
+        availableCapabilities: plannerView,
+        agent: context.agent,
+        capabilities: context.capabilities,
+      }, context)
+    } catch {
       return {
-        id: 'step_1',
-        capability: 'workflow',
-        reason: '用户问题显式触发已绑定工作流',
-        input: { workflowCode: context.capabilities.workflowCode, message },
-      }
-    }
-    if (this.hasCapability(plannerView, 'tool') && TOOL_INTENT_PATTERN.test(message)) {
-      return {
-        id: 'step_1',
-        capability: 'tool',
-        reason: '用户问题显式触发已授权工具',
-        input: { toolCode: this.getFirstNormalToolCode(context), params: { message } },
-      }
-    }
-    if (this.hasCapability(plannerView, 'rag') && KNOWLEDGE_INTENT_PATTERN.test(message)) {
-      return {
-        id: 'step_1',
-        capability: 'rag',
-        reason: '用户问题需要查询企业知识',
-        input: { query: message },
-      }
-    }
-    if (this.hasCapability(plannerView, 'chat')) {
-      return {
-        id: 'step_1',
-        capability: 'chat',
-        reason: '使用普通对话生成回答',
+        capability: plannerView.includes('chat') ? 'chat' : plannerView[0],
+        confidence: 0,
+        reason: 'AI 意图识别失败，使用普通对话处理',
         input: { message },
+      }
+    }
+  }
+
+  // 判断 AI 返回能力是否可信且处于 Planner 可见能力范围内。
+  private resolveCapability(classification: IntentClassification, plannerView: CapabilityType[]) {
+    if (
+      classification.confidence >= MIN_INTENT_CONFIDENCE
+      && plannerView.includes(classification.capability)
+    ) {
+      return classification.capability
+    }
+    return plannerView.includes('chat') ? 'chat' : plannerView[0]
+  }
+
+  // 根据最终能力生成执行器可消费的单步计划。
+  private createCapabilityStep(
+    capability: CapabilityType,
+    message: string,
+    context: AgentContext,
+    classification: IntentClassification,
+  ): ExecutionStep {
+    if (capability === 'workflow') {
+      return {
+        id: 'step_1',
+        capability,
+        reason: classification.reason || 'AI 意图识别选择已绑定工作流',
+        input: { ...classification.input, workflowCode: context.capabilities.workflowCode, message },
+      }
+    }
+    if (capability === 'tool') {
+      return {
+        id: 'step_1',
+        capability,
+        reason: classification.reason || 'AI 意图识别选择已授权工具',
+        input: {
+          ...classification.input,
+          toolCode: this.getFirstNormalToolCode(context),
+          params: { ...classification.input?.params, message },
+        },
+      }
+    }
+    if (capability === 'rag') {
+      return {
+        id: 'step_1',
+        capability,
+        reason: classification.reason || 'AI 意图识别选择查询企业知识',
+        input: { query: message, ...classification.input },
       }
     }
     return {
       id: 'step_1',
-      capability: plannerView[0],
-      reason: '使用当前唯一可用能力处理请求',
-      input: { message },
+      capability,
+      reason: classification.reason || 'AI 意图识别选择普通对话',
+      input: { ...classification.input, message },
     }
-  }
-
-  // 判断 Planner 可见能力中是否包含指定能力。
-  private hasCapability(plannerView: CapabilityType[], capability: CapabilityType) {
-    return plannerView.includes(capability)
   }
 
   // 从上下文授权工具中取第一个普通工具编码。

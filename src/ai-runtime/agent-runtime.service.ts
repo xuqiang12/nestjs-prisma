@@ -27,7 +27,7 @@ export class AgentRuntimeService {
   async *stream(request: AgentRuntimeRequest): AsyncIterable<AgentEvent> {
     const context = await this.contextBuilder.build(request)
     const capabilities = this.capabilityResolver.resolve(context)
-    const plan = this.planner.plan(context, capabilities.plannerView)
+    const plan = await this.planner.plan(context, capabilities.plannerView)
     const validatedPlan = this.validator.validate(plan, context, capabilities.plannerView)
     yield this.composer.createPlanEvent(validatedPlan, capabilities.plannerView, context)
 

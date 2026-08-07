@@ -39,7 +39,11 @@ export class AgentContextBuilder {
     }
 
     const model = await this.modelResolver.resolve(agent.modelConfigId, agent.model)
-    const history = await this.conversationRepository.getHistoryMessages(request.conversation.id)
+    const history = await this.conversationRepository.getHistoryMessages(
+      request.conversation.id,
+      20,
+      request.message.content,
+    )
 
     return {
       agent: {

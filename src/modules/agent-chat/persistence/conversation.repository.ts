@@ -77,8 +77,8 @@ export class ConversationRepository {
     })
   }
 
-  // 读取会话最近历史消息，并清洗不适合再次进入模型的 assistant 内容。
-  async getHistoryMessages(conversationId?: string, limit = 20): Promise<ChatMessage[]> {
+  // 读取会话最近历史消息，并从末尾排除本轮刚保存的用户问题。
+  async getHistoryMessages(conversationId?: string, limit = 20, currentMessage?: string): Promise<ChatMessage[]> {
     if (!conversationId) {
       return []
     }
@@ -93,16 +93,28 @@ export class ConversationRepository {
       },
     })
 
-    return messages
+    const history = messages
       .reverse()
       .filter((item) => item.role === 'user' || item.role === 'assistant')
       .filter((item) => item.role !== 'assistant' || this.isCleanAssistantHistoryContent(item.content))
       .map((item) => ({ role: item.role as MessageRole, content: item.content }))
+
+    return this.excludeCurrentMessageFromHistory(history, currentMessage)
   }
 
   // 判断 assistant 历史内容是否不含角色模板标记。
   private isCleanAssistantHistoryContent(content: string) {
     return !ROLE_MARKER_PATTERN.test(content)
+  }
+
+  // 只移除末尾与当前请求相同的用户消息，保留更早的同内容历史。
+  private excludeCurrentMessageFromHistory(history: ChatMessage[], currentMessage?: string) {
+    const normalizedMessage = currentMessage?.trim()
+    const latest = history[history.length - 1]
+    if (normalizedMessage && latest?.role === 'user' && latest.content.trim() === normalizedMessage) {
+      return history.slice(0, -1)
+    }
+    return history
   }
 
   // 根据首条用户消息生成会话标题。

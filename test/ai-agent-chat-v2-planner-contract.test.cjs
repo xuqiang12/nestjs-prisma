@@ -33,7 +33,7 @@ function createContext(message = '企业版多少钱？', overrides = {}) {
     agent: { id: 'agent-1', code: 'customer_service', name: '客服智能体', mode: 'chat' },
     user: { id: 'user-1', roles: [], permissions: [] },
     conversation: { id: 'conv-1' },
-    history: [],
+    history: overrides.history || [],
     request: {
       message: { content: message },
       agent: { code: 'customer_service' },
@@ -93,7 +93,12 @@ test('RulePlanner uses AI intent classification instead of hardcoded keyword rou
         capability: 'rag',
         confidence: 0.91,
         reason: '用户在询问企业方案售卖信息，需要查询知识库',
-        input: { query: input.message },
+        input: {
+          originalQuestion: input.message,
+          rewrittenQuestion: '企业版的售卖价格是多少？',
+          rewriteApplied: true,
+          query: '企业版的售卖价格是多少？',
+        },
       }
     },
   }
@@ -108,8 +113,60 @@ test('RulePlanner uses AI intent classification instead of hardcoded keyword rou
   assert.equal(plan.steps.length, 1)
   assert.equal(plan.steps[0].capability, 'rag')
   assert.equal(plan.steps[0].reason, '用户在询问企业方案售卖信息，需要查询知识库')
-  assert.equal(plan.steps[0].input.query, '请问这套方案怎么卖？')
+  assert.equal(plan.steps[0].input.originalQuestion, '请问这套方案怎么卖？')
+  assert.equal(plan.steps[0].input.rewrittenQuestion, '企业版的售卖价格是多少？')
+  assert.equal(plan.steps[0].input.rewriteApplied, true)
+  assert.equal(plan.steps[0].input.query, '企业版的售卖价格是多少？')
   assert.equal(Object.prototype.hasOwnProperty.call(plan, 'route'), false)
+})
+
+test('RulePlanner passes recent history to intent classifier and keeps rewritten question for every capability', async () => {
+  const { RulePlanner } = loadRuntime()
+  const context = createContext('售后怎么样', {
+    history: [
+      { role: 'user', content: '智能办公助手Pro怎么样？' },
+      { role: 'assistant', content: '智能办公助手Pro 是面向企业办公的产品。' },
+    ],
+  })
+  const classifierCalls = []
+  const makeClassification = (capability) => ({
+    capability,
+    confidence: 0.91,
+    reason: '用户追问上一轮产品售后政策',
+    input: {
+      originalQuestion: '售后怎么样',
+      rewrittenQuestion: '智能办公助手Pro 的售后服务政策是什么？',
+      rewriteApplied: true,
+      query: '智能办公助手Pro 的售后服务政策是什么？',
+    },
+  })
+  const classifier = {
+    classify: async (input) => {
+      classifierCalls.push(input)
+      return makeClassification('rag')
+    },
+  }
+
+  const ragPlan = await new RulePlanner(classifier).plan(context, ['chat', 'rag'])
+  const chatPlan = await new RulePlanner({ classify: async () => makeClassification('chat') }).plan(context, ['chat'])
+  const toolPlan = await new RulePlanner({
+    classify: async () => ({
+      ...makeClassification('tool'),
+      input: { ...makeClassification('tool').input, params: { city: '上海' } },
+    }),
+  }).plan(context, ['chat', 'tool'])
+  const workflowPlan = await new RulePlanner({ classify: async () => makeClassification('workflow') }).plan(context, ['chat', 'workflow'])
+
+  assert.deepEqual(classifierCalls[0].history, context.history)
+  assert.equal(ragPlan.steps[0].input.query, '智能办公助手Pro 的售后服务政策是什么？')
+  assert.equal(chatPlan.steps[0].input.message, '智能办公助手Pro 的售后服务政策是什么？')
+  assert.equal(toolPlan.steps[0].input.params.message, '智能办公助手Pro 的售后服务政策是什么？')
+  assert.equal(workflowPlan.steps[0].input.message, '智能办公助手Pro 的售后服务政策是什么？')
+  for (const plan of [ragPlan, chatPlan, toolPlan, workflowPlan]) {
+    assert.equal(plan.steps[0].input.originalQuestion, '售后怎么样')
+    assert.equal(plan.steps[0].input.rewrittenQuestion, '智能办公助手Pro 的售后服务政策是什么？')
+    assert.equal(plan.steps[0].input.rewriteApplied, true)
+  }
 })
 
 test('RulePlanner falls back to chat when AI classification is unavailable or unsafe', async () => {
@@ -151,6 +208,7 @@ test('IntentClassifierService uses shared runtime LLM service instead of a secon
     availableCapabilities: ['chat', 'tool'],
     agent: { id: 'agent-1', code: 'customer_service', name: '客服智能体', mode: 'chat' },
     capabilities: createContext().capabilities,
+    history: [{ role: 'user', content: '我在上海' }],
   }, createContext())
 
   assert.equal(result.capability, 'tool')
@@ -161,10 +219,48 @@ test('IntentClassifierService uses shared runtime LLM service instead of a secon
   assert.equal(calls[0].options.topP, 0.1)
   assert.equal(calls[0].options.finalAnswerGuard, undefined)
   assert.match(calls[0].messages[0].content, /只输出 JSON/)
+  assert.match(calls[0].messages[0].content, /originalQuestion/)
+  assert.match(calls[0].messages[0].content, /rewrittenQuestion/)
+  assert.match(calls[0].messages[0].content, /rewriteApplied/)
+  assert.match(calls[0].messages[1].content, /"recentHistory"/)
   assert.match(llmService, /^\/\/ 封装 OpenAI 兼容模型的非流式与流式调用。/)
   assert.match(intentClassifier, /LlmService/)
   assert.match(module, /LlmService/)
   assert.doesNotMatch(intentClassifier, /ai-engine\/llm|RuntimeLlmClientService/)
+})
+
+test('IntentClassifierService separates current message from recent history for follow-up rewrite', async () => {
+  const { IntentClassifierService } = loadRuntime()
+  const calls = []
+  const classifier = new IntentClassifierService({
+    invokeWithMessages: async (messages) => {
+      calls.push({ messages })
+      return '{"capability":"rag","confidence":0.92,"reason":"追问产品售后","input":{"originalQuestion":"售后怎么样","rewrittenQuestion":"智能办公助手Pro 的售后政策是什么？","rewriteApplied":true,"query":"智能办公助手Pro 的售后政策是什么？"}}'
+    },
+  })
+
+  await classifier.classify({
+    message: '售后怎么样',
+    availableCapabilities: ['chat', 'rag'],
+    agent: { id: 'agent-1', code: 'customer_service', name: '客服智能体', mode: 'chat' },
+    capabilities: createContext().capabilities,
+    history: [
+      { role: 'user', content: '智能办公助手Pro多少钱一年' },
+      { role: 'assistant', content: '智能办公助手Pro 的基础版本 1999 元/年。' },
+      { role: 'user', content: '售后怎么样' },
+    ],
+  }, createContext('售后怎么样'))
+
+  const systemPrompt = calls[0].messages[0].content
+  const userPrompt = JSON.parse(calls[0].messages[1].content)
+  assert.match(systemPrompt, /省略了主体、对象、产品或场景/)
+  assert.match(systemPrompt, /智能办公助手Pro 的售后政策是什么/)
+  assert.equal(userPrompt.currentMessage, '售后怎么样')
+  assert.deepEqual(userPrompt.recentHistory, [
+    { role: 'user', content: '智能办公助手Pro多少钱一年' },
+    { role: 'assistant', content: '智能办公助手Pro 的基础版本 1999 元/年。' },
+  ])
+  assert.equal(Object.prototype.hasOwnProperty.call(userPrompt, 'history'), false)
 })
 
 test('RulePlanner keeps tool and workflow codes from AgentContext instead of AI input', async () => {
@@ -189,6 +285,9 @@ test('RulePlanner keeps tool and workflow codes from AgentContext instead of AI 
   assert.equal(toolPlan.steps[0].input.params.city, '上海')
   assert.equal(workflowPlan.steps[0].input.workflowCode, 'customer_workflow')
   assert.equal(workflowPlan.steps[0].input.message, '执行客户流程')
+  assert.equal(workflowPlan.steps[0].input.originalQuestion, '执行客户流程')
+  assert.equal(workflowPlan.steps[0].input.rewrittenQuestion, '执行客户流程')
+  assert.equal(workflowPlan.steps[0].input.rewriteApplied, false)
 })
 
 test('Validator rejects unavailable capabilities before executor can run', () => {

@@ -1,6 +1,7 @@
 // 读取新版智能体对话需要的会话历史数据。
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { PrismaService } from 'nestjs-prisma'
+import { ExecutionTrace } from '../../../ai-runtime/trace/execution-trace.types'
 import { ChatMessage } from '../../../ai-runtime/llm/llm.service'
 
 type MessageRole = 'user' | 'assistant'
@@ -13,6 +14,7 @@ export type SaveAgentMessageInput = {
   role: MessageRole
   content: string
   sources?: any[]
+  executionTrace?: ExecutionTrace
   agentCode?: string
   promptId?: string
   workflowCode?: string
@@ -58,6 +60,7 @@ export class ConversationRepository {
         role: input.role,
         content: input.content,
         sources: input.sources as any,
+        executionTrace: input.executionTrace as any,
         agentCode: input.agentCode,
         promptId: input.promptId,
         workflowCode: input.workflowCode,

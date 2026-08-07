@@ -1,3 +1,4 @@
+// 定义 Prisma 数据模型和数据库连接配置。
 datasource db {
   provider = "postgresql"
 
@@ -261,6 +262,7 @@ model AiMessage {
   role           String // 消息角色：user / assistant
   content        String // 消息内容
   sources        Json? // 知识库问答引用来源
+  executionTrace Json? // 智能体执行轨迹，用于历史消息展示问题改写和行为聚合
   agentCode      String? // 生成消息时使用的智能体编码
   promptId       String?        @db.VarChar(32) // 生成消息时使用的提示词ID
   workflowCode   String? // 生成消息时使用的工作流编码

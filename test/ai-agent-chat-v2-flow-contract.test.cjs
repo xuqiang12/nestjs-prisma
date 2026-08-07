@@ -21,6 +21,7 @@ function loadRuntime() {
     ...require(join(rootDir, 'src/ai-runtime/agent-runtime.service')),
     ...require(join(rootDir, 'src/ai-runtime/composer/agent-composer.service')),
     ...require(join(rootDir, 'src/ai-runtime/trace/agent-trace.service')),
+    ...require(join(rootDir, 'src/ai-runtime/trace/execution-trace-builder.service')),
     ...require(join(rootDir, 'src/modules/agent-chat/chat/agent-chat.service')),
     ...require(join(rootDir, 'src/modules/agent-chat/stream/agent-stream.service')),
   }
@@ -111,7 +112,7 @@ test('AgentRuntimeService runs context, capability, planner, validator, executor
 })
 
 test('AgentChatService checks safety, persists messages and keeps knowledge price answer for customer agent', async () => {
-  const { AgentChatService, AgentComposer } = loadRuntime()
+  const { AgentChatService, AgentComposer, ExecutionTraceBuilderService } = loadRuntime()
   const calls = []
   const repository = {
     getOrCreateConversation: async (userId, agentCode, message, conversationId) => {
@@ -119,7 +120,7 @@ test('AgentChatService checks safety, persists messages and keeps knowledge pric
       return { id: conversationId || 'conv-created' }
     },
     saveMessage: async (message) => {
-      calls.push(['message', message.role, message.content, message.sources, message.promptId, message.workflowCode])
+      calls.push(['message', message.role, message.content, message.sources, message.executionTrace, message.promptId, message.workflowCode])
       return { id: `${message.role}-message` }
     },
     touchConversation: async (conversationId) => calls.push(['touch', conversationId]),
@@ -149,7 +150,7 @@ test('AgentChatService checks safety, persists messages and keeps knowledge pric
       }
     },
   }
-  const service = new AgentChatService(safety, repository, runtime, new AgentComposer())
+  const service = new AgentChatService(safety, repository, runtime, new AgentComposer(), new ExecutionTraceBuilderService())
   const events = await collect(service.stream({
     agentCode: 'customer_service',
     message: '企业版价格是多少？',
@@ -159,15 +160,16 @@ test('AgentChatService checks safety, persists messages and keeps knowledge pric
   assert.deepEqual(events.map((event) => event.type), ['plan', 'content', 'sources'])
   assert.equal(events[1].payload.text, '企业版价格为4999元/年。')
   assert.deepEqual(calls.map((item) => item[0]), ['safety', 'conversation', 'message', 'safety', 'message', 'touch'])
-  assert.deepEqual(calls[2], ['message', 'user', '企业版价格是多少？', undefined, undefined, undefined])
-  assert.deepEqual(calls[4], [
+  assert.deepEqual(calls[2], ['message', 'user', '企业版价格是多少？', undefined, undefined, undefined, undefined])
+  assert.deepEqual(calls[4].slice(0, 4), [
     'message',
     'assistant',
     '企业版价格为4999元/年。',
     [{ id: 'doc-price', content: '企业版价格为4999元/年。' }],
-    'prompt-1',
-    'workflow-price',
   ])
+  assert.equal(calls[4][4].status, 'done')
+  assert.equal(calls[4][4].steps.some((step) => step.type === 'rewrite'), true)
+  assert.deepEqual(calls[4].slice(5), ['prompt-1', 'workflow-price'])
 })
 
 test('AgentStreamService starts from user request and always emits done', async () => {

@@ -18,7 +18,7 @@ export class ChatHandler implements CapabilityHandler {
     const messages = [
       { role: 'system' as const, content: context.prompt.system },
       ...context.history,
-      { role: 'user' as const, content: step.input.message || context.request.message.content },
+      { role: 'user' as const, content: this.buildUserQuestionPrompt(context, step) },
     ]
 
     for await (const text of this.llmService.streamWithMessages(messages, {
@@ -39,5 +39,16 @@ export class ChatHandler implements CapabilityHandler {
         },
       }
     }
+  }
+
+  // 构造第二次模型回答时可同时理解原问题和改写问题的用户消息。
+  private buildUserQuestionPrompt(context: AgentContext, step: ExecutionStep) {
+    const originalQuestion = step.input.originalQuestion || context.request.message.content
+    const rewrittenQuestion = step.input.rewrittenQuestion || step.input.message || originalQuestion
+    return [
+      `用户原始问题：${originalQuestion}`,
+      `上下文改写问题：${rewrittenQuestion}`,
+      '请优先围绕上下文改写问题回答，同时保持对用户原始问题的自然回应。',
+    ].join('\n')
   }
 }

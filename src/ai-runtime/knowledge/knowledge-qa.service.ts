@@ -44,7 +44,9 @@ export class KnowledgeQAService {
   // 构建知识库回答所需的检索结果、证据事实和模型消息。
   async buildCompletion(context: KnowledgeRuntimeContext): Promise<CompletionPlan> {
     this.ensureToolAllowed('search_knowledge', context.allowedToolCodes)
-    const standaloneQuestion = this.buildRetrievalQuestion(context.question, context.history || [])
+    const standaloneQuestion = context.rewriteApplied
+      ? context.question.trim()
+      : this.buildRetrievalQuestion(context.question, context.history || [])
     const matchedSources = await this.vectorStoreService.similaritySearch(standaloneQuestion, 5, {
       tags: context.knowledgeTags,
       knowledgeBaseIds: context.knowledgeBaseIds,
@@ -78,11 +80,22 @@ export class KnowledgeQAService {
 
     return {
       route: 'knowledge',
-      messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: standaloneQuestion }],
+      messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: this.buildAnswerQuestionPrompt(context, standaloneQuestion) }],
       sources,
       knowledgeFacts,
       evidence,
     }
+  }
+
+  // 构造知识库最终回答时的问题提示，同时保留用户原话和独立检索问题。
+  private buildAnswerQuestionPrompt(context: KnowledgeRuntimeContext, standaloneQuestion: string) {
+    const originalQuestion = context.originalQuestion || context.question
+    const rewrittenQuestion = context.rewrittenQuestion || standaloneQuestion
+    return [
+      `用户原始问题：${originalQuestion}`,
+      `上下文改写问题：${rewrittenQuestion}`,
+      '请根据事实依据回答用户原始问题。',
+    ].join('\n')
   }
 
   // 对外复用知识库答案校验后的安全回答生成机制。

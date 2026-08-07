@@ -5,6 +5,7 @@ import { AgentRuntimeService } from '../../../ai-runtime/agent-runtime.service'
 import { AgentRuntimeRequest } from '../../../ai-runtime/agent-runtime.types'
 import { AgentComposer } from '../../../ai-runtime/composer/agent-composer.service'
 import { AgentEvent, AgentEventMetadata } from '../../../ai-runtime/events/agent-event.types'
+import { ExecutionTraceBuilderService } from '../../../ai-runtime/trace/execution-trace-builder.service'
 import { ConversationRepository } from '../persistence/conversation.repository'
 import { AgentStreamRequestDto } from '../stream/dto/agent-stream.dto'
 
@@ -16,6 +17,7 @@ export class AgentChatService {
     private readonly conversationRepository: ConversationRepository,
     private readonly runtime: AgentRuntimeService,
     private readonly composer: AgentComposer,
+    private readonly executionTraceBuilder: ExecutionTraceBuilderService,
   ) {}
 
   // 从用户消息开始完成 v2 对话安全检查、运行时调用和消息保存。
@@ -56,11 +58,13 @@ export class AgentChatService {
     console.log('[agent-chat][ai-answer]', result.answer)
     if (result.answer) {
       const output = await this.sensitiveWordChecker.checkAndApply(result.answer, 'output')
+      const finalTrace = this.executionTraceBuilder.buildFinalTrace(events, input.content)
       await this.conversationRepository.saveMessage({
         conversationId: conversation.id,
         role: 'assistant',
         content: output.content,
         sources: result.sources,
+        executionTrace: finalTrace,
         agentCode: body.agentCode,
         promptId: result.promptId,
         workflowCode: result.workflowCode,

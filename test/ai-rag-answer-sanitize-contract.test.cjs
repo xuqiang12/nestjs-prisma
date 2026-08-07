@@ -96,6 +96,37 @@ test('rag fact extraction keeps relevant policy facts without fixed field lists'
   assert.match(fallback, /不支持无理由退款/)
 })
 
+test('rag completion uses rewritten question for retrieval and gives final AI both questions', async () => {
+  require('ts-node/register')
+  require('tsconfig-paths/register')
+  const calls = []
+  const service = createKnowledgeQAService({
+    similaritySearch: async (query) => {
+      calls.push(['search', query])
+      return [{
+        id: 'doc-after-sale',
+        distance: 0.2,
+        metadata: {},
+        content: '智能办公助手Pro 购买7天内未激活可以退款，购买超过7天不支持无理由退款。',
+      }]
+    },
+  })
+
+  const plan = await service.buildCompletion({
+    question: '智能办公助手Pro 的售后服务政策是什么？',
+    originalQuestion: '售后怎么样',
+    rewrittenQuestion: '智能办公助手Pro 的售后服务政策是什么？',
+    rewriteApplied: true,
+    history: [{ role: 'user', content: '智能办公助手Pro怎么样？' }],
+    allowedToolCodes: ['search_knowledge'],
+  })
+
+  assert.deepEqual(calls, [['search', '智能办公助手Pro 的售后服务政策是什么？']])
+  assert.match(plan.messages[1].content, /用户原始问题：售后怎么样/)
+  assert.match(plan.messages[1].content, /上下文改写问题：智能办公助手Pro 的售后服务政策是什么？/)
+  assert.doesNotMatch(calls[0][1], /智能办公助手Pro怎么样/)
+})
+
 test('rag fact extraction keeps later structured values instead of truncating to leading lines', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')

@@ -42,6 +42,7 @@ export class RulePlanner {
         availableCapabilities: plannerView,
         agent: context.agent,
         capabilities: context.capabilities,
+        history: context.history,
       }, context)
     } catch {
       return {
@@ -71,12 +72,13 @@ export class RulePlanner {
     context: AgentContext,
     classification: IntentClassification,
   ): ExecutionStep {
+    const questionInput = this.buildQuestionInput(message, classification)
     if (capability === 'workflow') {
       return {
         id: 'step_1',
         capability,
         reason: classification.reason || 'AI 意图识别选择已绑定工作流',
-        input: { ...classification.input, workflowCode: context.capabilities.workflowCode, message },
+        input: { ...classification.input, ...questionInput, workflowCode: context.capabilities.workflowCode, message: questionInput.rewrittenQuestion },
       }
     }
     if (capability === 'tool') {
@@ -86,8 +88,15 @@ export class RulePlanner {
         reason: classification.reason || 'AI 意图识别选择已授权工具',
         input: {
           ...classification.input,
+          ...questionInput,
           toolCode: this.getFirstNormalToolCode(context),
-          params: { ...classification.input?.params, message },
+          params: {
+            ...classification.input?.params,
+            message: questionInput.rewrittenQuestion,
+            originalQuestion: questionInput.originalQuestion,
+            rewrittenQuestion: questionInput.rewrittenQuestion,
+            rewriteApplied: questionInput.rewriteApplied,
+          },
         },
       }
     }
@@ -96,14 +105,34 @@ export class RulePlanner {
         id: 'step_1',
         capability,
         reason: classification.reason || 'AI 意图识别选择查询企业知识',
-        input: { query: message, ...classification.input },
+        input: { ...classification.input, ...questionInput, query: questionInput.rewrittenQuestion },
       }
     }
     return {
       id: 'step_1',
       capability,
       reason: classification.reason || 'AI 意图识别选择普通对话',
-      input: { ...classification.input, message },
+      input: { ...classification.input, ...questionInput, message: questionInput.rewrittenQuestion },
+    }
+  }
+
+  // 构造所有能力共用的问题改写字段，保证执行和展示使用同一组语义。
+  private buildQuestionInput(message: string, classification: IntentClassification) {
+    const input = classification.input || {}
+    const originalQuestion = typeof input.originalQuestion === 'string' && input.originalQuestion.trim()
+      ? input.originalQuestion.trim()
+      : message
+    const rewrittenCandidate = typeof input.rewrittenQuestion === 'string' && input.rewrittenQuestion.trim()
+      ? input.rewrittenQuestion.trim()
+      : typeof input.standaloneQuestion === 'string' && input.standaloneQuestion.trim()
+        ? input.standaloneQuestion.trim()
+        : originalQuestion
+    const rewriteApplied = Boolean(input.rewriteApplied && rewrittenCandidate !== originalQuestion)
+
+    return {
+      originalQuestion,
+      rewrittenQuestion: rewrittenCandidate,
+      rewriteApplied,
     }
   }
 

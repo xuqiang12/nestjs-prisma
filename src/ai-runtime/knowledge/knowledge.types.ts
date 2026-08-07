@@ -53,6 +53,9 @@ export type BuildCompletionOptions = {
 
 export type KnowledgeRuntimeContext = {
   question: string
+  originalQuestion?: string
+  rewrittenQuestion?: string
+  rewriteApplied?: boolean
   history: ChatMessage[]
   systemPrompt?: string
   allowedToolCodes?: string[]

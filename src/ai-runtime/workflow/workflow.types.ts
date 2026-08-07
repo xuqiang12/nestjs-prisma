@@ -29,6 +29,9 @@ export type WorkflowGraph = {
 
 export type WorkflowExecutionInput = {
   message: string
+  originalQuestion?: string
+  rewrittenQuestion?: string
+  rewriteApplied?: boolean
   userId?: string
   history?: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
   agentCode: string

@@ -16,6 +16,7 @@ import { IntentClassifierService } from '../../ai-runtime/planner/intent-classif
 import { RulePlanner } from '../../ai-runtime/planner/rule-planner.service'
 import { SseEventAdapter } from '../../ai-runtime/adapter/sse-event.adapter'
 import { AgentTraceService } from '../../ai-runtime/trace/agent-trace.service'
+import { ExecutionTraceBuilderService } from '../../ai-runtime/trace/execution-trace-builder.service'
 import { ExecutionTracePresenterService } from '../../ai-runtime/trace/execution-trace-presenter.service'
 import { AgentPlanValidator } from '../../ai-runtime/validator/agent-plan-validator.service'
 import { AgentChatService } from './chat/agent-chat.service'
@@ -41,6 +42,7 @@ import { AgentStreamService } from './stream/agent-stream.service'
     AgentPlanValidator,
     AgentComposer,
     AgentTraceService,
+    ExecutionTraceBuilderService,
     ExecutionTracePresenterService,
     AgentRuntimeService,
     AgentChatService,

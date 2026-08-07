@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common'
 import { CapabilityType } from '../capability/capability.types'
 import { AgentContext } from '../context/agent-context.types'
+import { ChatMessage } from '../llm/llm.service'
 import { LlmService } from '../llm/llm.service'
 
 export type IntentClassifierInput = {
@@ -9,6 +10,7 @@ export type IntentClassifierInput = {
   availableCapabilities: CapabilityType[]
   agent: AgentContext['agent']
   capabilities: AgentContext['capabilities']
+  history?: ChatMessage[]
 }
 
 export type IntentClassification = {
@@ -46,15 +48,30 @@ export class IntentClassifierService {
       '你负责判断用户本次请求应该进入哪个智能体能力。',
       `只能从这些能力中选择：${availableCapabilities.join(', ')}`,
       'chat 表示普通对话；rag 表示需要查询企业知识库；tool 表示需要调用已授权工具；workflow 表示需要执行已绑定工作流。',
+      '输入里的 currentMessage 是用户本轮原始问题；recentHistory 是不含本轮问题的最近上下文。',
+      '需要结合 recentHistory 判断 currentMessage 是否是追问；如果是追问，把它改写成可独立执行的问题。',
+      '如果 currentMessage 省略了主体、对象、产品或场景，必须从 recentHistory 最近明确话题中补全。',
+      '示例：recentHistory 最后话题是“智能办公助手Pro多少钱一年”，currentMessage 是“售后怎么样”，rewrittenQuestion 应为“智能办公助手Pro 的售后政策是什么？”，rewriteApplied 应为 true。',
+      'input.originalQuestion 必须是用户本轮原始问题；input.rewrittenQuestion 必须是可独立执行的问题；input.rewriteApplied 表示是否真实改写；input.query 优先等于 rewrittenQuestion。',
       '只输出 JSON，不要输出解释性文本。',
-      'JSON 格式：{"capability":"chat|rag|tool|workflow","confidence":0到1之间的数字,"reason":"一句中文原因","input":{}}',
+      'JSON 格式：{"capability":"chat|rag|tool|workflow","confidence":0到1之间的数字,"reason":"一句中文原因","input":{"originalQuestion":"用户原问题","rewrittenQuestion":"上下文改写问题","rewriteApplied":true或false,"query":"用于检索或执行的问题"}}',
     ].join('\n')
   }
 
   // 构造包含当前请求和授权边界的用户提示词。
   private buildUserPrompt(input: IntentClassifierInput) {
+    const recentHistory = [...(input.history || [])]
+    while (
+      recentHistory.length
+      && recentHistory[recentHistory.length - 1].role === 'user'
+      && recentHistory[recentHistory.length - 1].content.trim() === input.message.trim()
+    ) {
+      recentHistory.pop()
+    }
+
     return JSON.stringify({
-      message: input.message,
+      currentMessage: input.message,
+      recentHistory,
       agent: input.agent,
       availableCapabilities: input.availableCapabilities,
       capabilities: input.capabilities,

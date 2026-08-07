@@ -56,8 +56,10 @@ export class AgentContextBuilder {
       conversation: {
         id: request.conversation.id,
       },
+      message: {
+        content: request.message.content,
+      },
       history,
-      request,
       prompt: {
         id: prompt.id,
         system: this.buildSystemPrompt(agent.promptSnapshot || prompt.content, agent.promptEnhancement),
@@ -76,9 +78,6 @@ export class AgentContextBuilder {
         workflowCode: agent.workflowCode || undefined,
       },
       execution: {
-        stream: request.stream.enabled,
-        temperature: agent.temperature ?? undefined,
-        topP: agent.topP ?? undefined,
         maxSteps: 1,
       },
       metadata: request.metadata,

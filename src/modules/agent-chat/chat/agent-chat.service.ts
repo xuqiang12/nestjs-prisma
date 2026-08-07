@@ -86,12 +86,8 @@ export class AgentChatService {
       agent: { code: body.agentCode },
       user: { id: userId, roles: [], permissions: [] },
       conversation: { id: conversationId },
-      stream: { enabled: true },
       metadata: {
         requestId: metadata?.requestId || `agent-chat-v2-${Date.now()}`,
-        channel: 'agent-chat-v2',
-        source: 'stream',
-        createdAt: new Date(),
       },
     }
   }

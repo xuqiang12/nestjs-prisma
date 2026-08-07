@@ -14,13 +14,7 @@ export type AgentRuntimeRequest = {
   conversation: {
     id?: string
   }
-  stream: {
-    enabled: boolean
-  }
   metadata: {
     requestId: string
-    channel: string
-    source: string
-    createdAt: Date
   }
 }

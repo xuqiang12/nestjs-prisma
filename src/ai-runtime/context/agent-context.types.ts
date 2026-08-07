@@ -17,8 +17,10 @@ export type AgentContext = {
   conversation: {
     id?: string
   }
+  message: {
+    content: string
+  }
   history: ChatMessage[]
-  request: AgentRuntimeRequest
   prompt: {
     id: string
     system: string
@@ -33,9 +35,6 @@ export type AgentContext = {
     workflowCode?: string
   }
   execution: {
-    stream: boolean
-    temperature?: number
-    topP?: number
     maxSteps: number
   }
   metadata: AgentRuntimeRequest['metadata']

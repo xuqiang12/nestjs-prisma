@@ -24,7 +24,7 @@ export class RulePlanner {
 
   // 按 AI 意图结果和能力列表选择本次要进入的能力步骤。
   private async createStep(context: AgentContext, plannerView: CapabilityType[]): Promise<ExecutionStep> {
-    const message = context.request.message.content
+    const message = context.message.content
     const classification = await this.classifyIntent(message, plannerView, context)
     const capability = this.resolveCapability(classification, plannerView)
     return this.createCapabilityStep(capability, message, context, classification)

@@ -27,19 +27,7 @@ function createContext(overrides = {}) {
     user: { id: 'user-1', roles: [], permissions: [] },
     conversation: { id: 'conv-1' },
     history: [],
-    request: {
-      message: { content: '企业版多少钱？' },
-      agent: { code: 'customer_service' },
-      user: { id: 'user-1' },
-      conversation: { id: 'conv-1' },
-      stream: { enabled: true },
-      metadata: {
-        requestId: 'req-1',
-        channel: 'test',
-        source: 'contract',
-        createdAt: new Date('2026-08-05T00:00:00.000Z'),
-      },
-    },
+    message: { content: '企业版多少钱？' },
     prompt: { id: 'prompt-1', system: '你是客服智能体。' },
     model: { model: 'mock-model', baseUrl: 'http://mock.local', apiKey: 'mock-key' },
     capabilities: {
@@ -50,13 +38,8 @@ function createContext(overrides = {}) {
       toolCodes: ['search_knowledge', 'weather'],
       workflowCode: 'customer_workflow',
     },
-    execution: { stream: true, maxSteps: 1 },
-    metadata: {
-      requestId: 'req-1',
-      channel: 'test',
-      source: 'contract',
-      createdAt: new Date('2026-08-05T00:00:00.000Z'),
-    },
+    execution: { maxSteps: 1 },
+    metadata: { requestId: 'req-1' },
     ...overrides,
   }
 }

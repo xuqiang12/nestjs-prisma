@@ -23,8 +23,6 @@ export class ChatHandler implements CapabilityHandler {
 
     for await (const text of this.llmService.streamWithMessages(messages, {
       ...context.model,
-      temperature: context.execution.temperature,
-      topP: context.execution.topP,
       finalAnswerGuard: true,
       roleTemplateStops: true,
     })) {
@@ -43,7 +41,7 @@ export class ChatHandler implements CapabilityHandler {
 
   // 构造第二次模型回答时可同时理解原问题和改写问题的用户消息。
   private buildUserQuestionPrompt(context: AgentContext, step: ExecutionStep) {
-    const originalQuestion = step.input.originalQuestion || context.request.message.content
+    const originalQuestion = step.input.originalQuestion || context.message.content
     const rewrittenQuestion = step.input.rewrittenQuestion || step.input.message || originalQuestion
     return [
       `用户原始问题：${originalQuestion}`,

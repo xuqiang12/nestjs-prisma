@@ -17,9 +17,9 @@ export class WorkflowHandler implements CapabilityHandler {
   async *execute(context: AgentContext, step: ExecutionStep): AsyncIterable<AgentEvent> {
     const workflowCode = step.input.workflowCode || context.capabilities.workflowCode
     const events = await this.workflowRuntimeService.stream(workflowCode, {
-      message: step.input.message || context.request.message.content,
-      originalQuestion: step.input.originalQuestion || context.request.message.content,
-      rewrittenQuestion: step.input.rewrittenQuestion || step.input.message || context.request.message.content,
+      message: step.input.message || context.message.content,
+      originalQuestion: step.input.originalQuestion || context.message.content,
+      rewrittenQuestion: step.input.rewrittenQuestion || step.input.message || context.message.content,
       rewriteApplied: !!step.input.rewriteApplied,
       userId: context.user.id,
       history: context.history,

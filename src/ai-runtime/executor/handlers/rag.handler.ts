@@ -15,10 +15,10 @@ export class RagHandler implements CapabilityHandler {
 
   // 使用 AgentContext 中已解析的知识库和模型配置生成知识库回答事件。
   async *execute(context: AgentContext, step: ExecutionStep): AsyncIterable<AgentEvent> {
-    const rewrittenQuestion = step.input.rewrittenQuestion || step.input.query || context.request.message.content
+    const rewrittenQuestion = step.input.rewrittenQuestion || step.input.query || context.message.content
     const result = await this.knowledgeQAService.answer({
       question: rewrittenQuestion,
-      originalQuestion: step.input.originalQuestion || context.request.message.content,
+      originalQuestion: step.input.originalQuestion || context.message.content,
       rewrittenQuestion,
       rewriteApplied: !!step.input.rewriteApplied,
       history: context.history,

@@ -19,7 +19,11 @@ export class AgentChatService {
   ) {}
 
   // 从用户消息开始完成 v2 对话安全检查、运行时调用和消息保存。
-  async *stream(body: AgentStreamRequestDto, userId: string, metadata?: AgentEventMetadata): AsyncIterable<AgentEvent> {
+  async *stream(
+    body: AgentStreamRequestDto,
+    userId: string,
+    metadata?: AgentEventMetadata,
+  ): AsyncIterable<AgentEvent> {
     const input = await this.sensitiveWordChecker.checkAndApply(body.message, 'input')
     const conversation = await this.conversationRepository.getOrCreateConversation(
       userId,
@@ -35,13 +39,21 @@ export class AgentChatService {
     })
 
     const events: AgentEvent[] = []
-    const request = this.createRuntimeRequest(body, userId, input.content, conversation.id, metadata)
+    const request = this.createRuntimeRequest(
+      body,
+      userId,
+      input.content,
+      conversation.id,
+      metadata,
+    )
+    // 运行agent
     for await (const event of this.runtime.stream(request)) {
       events.push(event)
       yield event
     }
 
     const result = this.composer.collectAssistantResult(events)
+    console.log('[agent-chat][ai-answer]', result.answer)
     if (result.answer) {
       const output = await this.sensitiveWordChecker.checkAndApply(result.answer, 'output')
       await this.conversationRepository.saveMessage({

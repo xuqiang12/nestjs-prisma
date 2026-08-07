@@ -55,7 +55,7 @@ export class AgentStreamService {
         type: 'error',
         payload: {
           code: 'AGENT_CHAT_V2_ERROR',
-          message: error instanceof Error ? error.message : 'agent chat v2 runtime error',
+          message: error instanceof Error ? error.message : '智能体对话运行异常',
         },
         metadata,
       }

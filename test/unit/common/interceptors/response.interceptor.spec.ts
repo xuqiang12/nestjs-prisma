@@ -1,5 +1,6 @@
+// 这个测试文件验证对应后端单元的关键行为。
 import { of, lastValueFrom } from 'rxjs'
-import { ResponseInterceptor } from './response.interceptor'
+import { ResponseInterceptor } from 'src/common/interceptors/response.interceptor'
 
 describe('ResponseInterceptor', () => {
   it('formats dates in response data recursively', async () => {

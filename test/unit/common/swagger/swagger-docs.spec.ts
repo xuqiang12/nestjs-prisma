@@ -1,16 +1,16 @@
 // 验证 Swagger 文档开关和 Knife4j 分组配置。
-import '../utils/logger'
-import { AgentChatModule } from '../../modules/agent-chat/agent-chat.module'
-import { AuthModule } from '../../modules/auth/auth.module'
-import { ChatModule } from '../../modules/chat/chat.module'
-import { MenuModule } from '../../modules/menu/menu.module'
-import { RoleModule } from '../../modules/role/role.module'
-import { UserModule } from '../../modules/user/user.module'
-import { HomeModule } from '../../modules/home/home.module'
-import { MobileTabBarModule } from '../../modules/mobile-tabbar/mobile-tabbar.module'
-import { AiPlatformModule } from '../../modules/ai-platform/ai-platform.module'
-import { AiConfigModule } from '../../modules/ai-config/ai-config.module'
-import { getKnife4jGroups, isApiDocsEnabled } from './swagger-docs'
+import 'src/common/utils/logger'
+import { AgentChatModule } from 'src/modules/agent-chat/agent-chat.module'
+import { AuthModule } from 'src/modules/auth/auth.module'
+import { ChatModule } from 'src/modules/chat/chat.module'
+import { MenuModule } from 'src/modules/menu/menu.module'
+import { RoleModule } from 'src/modules/role/role.module'
+import { UserModule } from 'src/modules/user/user.module'
+import { HomeModule } from 'src/modules/home/home.module'
+import { MobileTabBarModule } from 'src/modules/mobile-tabbar/mobile-tabbar.module'
+import { AiPlatformModule } from 'src/modules/ai-platform/ai-platform.module'
+import { AiConfigModule } from 'src/modules/ai-config/ai-config.module'
+import { getKnife4jGroups, isApiDocsEnabled } from 'src/common/swagger/swagger-docs'
 
 describe('swagger docs config', () => {
   it('enables api docs only for local, development, and test environments', () => {

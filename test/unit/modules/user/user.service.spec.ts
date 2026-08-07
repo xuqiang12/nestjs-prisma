@@ -1,6 +1,7 @@
+// 这个测试文件验证对应后端单元的关键行为。
 import { BadRequestException, NotFoundException } from '@nestjs/common'
 import * as bcrypt from 'bcryptjs'
-import { UserService } from './user.service'
+import { UserService } from 'src/modules/user/user.service'
 
 describe('UserService', () => {
   let prisma: any

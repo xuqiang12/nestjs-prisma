@@ -1,6 +1,7 @@
+// 这个测试文件验证对应后端单元的关键行为。
 import 'reflect-metadata'
-import { PERMISSIONS_KEY } from '../../common/decorators/permissions.decorator'
-import { UserController } from './user.controller'
+import { PERMISSIONS_KEY } from 'src/common/decorators/permissions.decorator'
+import { UserController } from 'src/modules/user/user.controller'
 
 describe('UserController permissions', () => {
   it('declares permissions for admin user management endpoints', () => {

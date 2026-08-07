@@ -1,13 +1,17 @@
 // 生成新版智能体流式入口的协议事件。
 import { Injectable } from '@nestjs/common'
 import { AgentEvent, AgentEventMetadata } from '../../../ai-runtime/events/agent-event.types'
+import { ExecutionTracePresenterService } from '../../../ai-runtime/trace/execution-trace-presenter.service'
 import { AgentChatService } from '../chat/agent-chat.service'
 import { AgentStreamRequestDto } from './dto/agent-stream.dto'
 
 @Injectable()
 export class AgentStreamService {
-  // 注入新版智能体对话服务，保持流式服务只维护入口事件生命周期。
-  constructor(private readonly agentChatService: AgentChatService) {}
+  // 注入新版智能体对话服务和执行轨迹转换器，保持入口只输出前端协议事件。
+  constructor(
+    private readonly agentChatService: AgentChatService,
+    private readonly executionTracePresenter: ExecutionTracePresenterService,
+  ) {}
 
   // 从 v2 流式入口请求开始产出内部事件并追加结束事件。
   async *stream(body: Partial<AgentStreamRequestDto>, userId?: string): AsyncIterable<AgentEvent> {
@@ -42,16 +46,23 @@ export class AgentStreamService {
       return
     }
 
+    let hasRuntimeError = false
     try {
       for await (const event of this.agentChatService.stream(
         body as AgentStreamRequestDto,
         userId,
         metadata,
       )) {
-        yield event
+        for (const traceEvent of this.executionTracePresenter.consume(event)) {
+          yield traceEvent
+        }
+        if (event.type === 'content' || event.type === 'error') {
+          yield event
+        }
       }
     } catch (error) {
-      yield {
+      hasRuntimeError = true
+      const errorEvent: AgentEvent = {
         type: 'error',
         payload: {
           code: 'AGENT_CHAT_V2_ERROR',
@@ -59,7 +70,17 @@ export class AgentStreamService {
         },
         metadata,
       }
+      for (const traceEvent of this.executionTracePresenter.consume(errorEvent)) {
+        yield traceEvent
+      }
+      yield errorEvent
     }
-    yield { type: 'done', payload: {}, metadata }
+    const doneEvent: AgentEvent = { type: 'done', payload: {}, metadata }
+    if (!hasRuntimeError) {
+      for (const traceEvent of this.executionTracePresenter.consume(doneEvent)) {
+        yield traceEvent
+      }
+    }
+    yield doneEvent
   }
 }

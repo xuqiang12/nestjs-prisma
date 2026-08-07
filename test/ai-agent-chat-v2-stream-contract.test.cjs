@@ -72,9 +72,9 @@ test('v2 stream service delegates real v2 chat flow and keeps entrance errors ex
   const service = readSource('src/modules/agent-chat/stream/agent-stream.service.ts')
 
   assert.match(service, /AGENT_CODE_REQUIRED/)
-  assert.match(service, /agentCode is required for agent chat v2 stream/)
+  assert.match(service, /agent聊天流式接口必须提供agentCode/)
   assert.match(service, /AgentChatService/)
-  assert.match(service, /agentChatService\.stream\(body as AgentStreamRequestDto, userId, metadata\)/)
+  assert.match(service, /agentChatService\.stream\([\s\S]*body as AgentStreamRequestDto,[\s\S]*userId,[\s\S]*metadata,[\s\S]*\)/)
   assert.match(service, /AGENT_CHAT_V2_USER_REQUIRED/)
   assert.doesNotMatch(service, /AGENT_CHAT_V2_NOT_IMPLEMENTED/)
   assert.match(service, /yield \{ type: 'done'/)

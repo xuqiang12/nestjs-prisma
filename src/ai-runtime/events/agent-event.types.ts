@@ -1,4 +1,5 @@
 // 定义新版智能体运行时的协议无关事件结构。
+import type { ExecutionTrace } from '../trace/execution-trace.types'
 export type AgentEventMetadata = {
   requestId?: string
   timestamp?: string
@@ -50,7 +51,7 @@ export type AgentPlanEvent = {
 }
 
 export type AgentWorkflowEvent = {
-  type: `workflow_${string}`
+  type: `workflow_${string}` | `node_${string}`
   payload: Record<string, any>
   metadata: AgentEventMetadata
 }
@@ -67,6 +68,14 @@ export type AgentToolEvent = {
   metadata: AgentEventMetadata
 }
 
+export type AgentTraceUpdateEvent = {
+  type: 'trace_update'
+  payload: {
+    executionTrace: ExecutionTrace
+  }
+  metadata: AgentEventMetadata
+}
+
 export type AgentEvent =
   | AgentContentEvent
   | AgentSourcesEvent
@@ -75,3 +84,4 @@ export type AgentEvent =
   | AgentPlanEvent
   | AgentToolEvent
   | AgentWorkflowEvent
+  | AgentTraceUpdateEvent

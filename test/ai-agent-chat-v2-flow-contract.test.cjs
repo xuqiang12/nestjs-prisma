@@ -180,7 +180,10 @@ test('AgentStreamService starts from user request and always emits done', async 
       throw new Error('runtime failed')
     },
   }
-  const service = new AgentStreamService(chatService)
+  const executionTracePresenter = {
+    consume: () => [],
+  }
+  const service = new AgentStreamService(chatService, executionTracePresenter)
   const events = await collect(service.stream({
     agentCode: 'customer_service',
     message: '你好',

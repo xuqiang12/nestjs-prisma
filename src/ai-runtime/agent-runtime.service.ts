@@ -6,7 +6,7 @@ import { AgentContextBuilder } from './context/agent-context.builder'
 import { AgentCapabilityExecutor } from './executor/agent-capability-executor.service'
 import { AgentEvent } from './events/agent-event.types'
 import { AgentRuntimeRequest } from './agent-runtime.types'
-import { AgentPlanner } from './planner/agent-planner.service'
+import { RulePlanner } from './planner/rule-planner.service'
 import { AgentPlanValidator } from './validator/agent-plan-validator.service'
 import { AgentTraceService } from './trace/agent-trace.service'
 
@@ -16,7 +16,7 @@ export class AgentRuntimeService {
   constructor(
     private readonly contextBuilder: AgentContextBuilder,
     private readonly capabilityResolver: CapabilityResolver,
-    private readonly planner: AgentPlanner,
+    private readonly planner: RulePlanner,
     private readonly validator: AgentPlanValidator,
     private readonly executor: AgentCapabilityExecutor,
     private readonly composer: AgentComposer,

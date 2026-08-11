@@ -9,7 +9,6 @@ import { RagHandler } from '../../ai-runtime/executor/handlers/rag.handler'
 import { ToolHandler } from '../../ai-runtime/executor/handlers/tool.handler'
 import { WorkflowHandler } from '../../ai-runtime/executor/handlers/workflow.handler'
 import { LlmService } from '../../ai-runtime/llm/llm.service'
-import { AgentPlanner } from '../../ai-runtime/planner/agent-planner.service'
 import { AgentRuntimeService } from '../../ai-runtime/agent-runtime.service'
 import { IntentClassifierService } from '../../ai-runtime/planner/intent-classifier.service'
 import { RulePlanner } from '../../ai-runtime/planner/rule-planner.service'
@@ -37,7 +36,6 @@ import { AgentStreamService } from './stream/agent-stream.service'
     LlmService,
     IntentClassifierService,
     RulePlanner,
-    AgentPlanner,
     AgentPlanValidator,
     AgentComposer,
     AgentTraceService,

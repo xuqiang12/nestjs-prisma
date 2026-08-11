@@ -9,5 +9,4 @@ export interface ToolDefinition {
 export interface ToolExecutor {
   execute(toolName: string, params: any): Promise<any>
   listTools(): ToolDefinition[]
-  registerTool(name: string, definition: ToolDefinition): void
 }

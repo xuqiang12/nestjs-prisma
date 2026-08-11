@@ -18,7 +18,6 @@
 [src/ai-runtime/agent-runtime.service.ts:27](agent-runtime.service.ts#L27) `AgentRuntimeService.stream()`  
 -> [src/ai-runtime/context/agent-context.builder.ts:20](context/agent-context.builder.ts#L20) `AgentContextBuilder.build()`  
 -> [src/ai-runtime/capability/capability-resolver.service.ts:11](capability/capability-resolver.service.ts#L11) `CapabilityResolver.resolve()`  
--> [src/ai-runtime/planner/agent-planner.service.ts:14](planner/agent-planner.service.ts#L14) `AgentPlanner.plan()`  
 -> [src/ai-runtime/planner/rule-planner.service.ts:17](planner/rule-planner.service.ts#L17) `RulePlanner.plan()`  
 -> [src/ai-runtime/planner/rule-planner.service.ts:26](planner/rule-planner.service.ts#L26) `RulePlanner.createStep()`
 

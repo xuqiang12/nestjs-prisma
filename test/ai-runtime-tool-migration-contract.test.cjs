@@ -38,6 +38,7 @@ test('runtime tool registry and built-in tools live under ai-runtime', () => {
 
 test('V2 runtime and management modules no longer import legacy tool registry', () => {
   const files = [
+    'src/ai-runtime/tools/tool.types.ts',
     'src/ai-runtime/executor/handlers/tool.handler.ts',
     'src/ai-runtime/ai-runtime.module.ts',
     'src/ai-runtime/workflow/workflow-executor.service.ts',
@@ -51,6 +52,8 @@ test('V2 runtime and management modules no longer import legacy tool registry', 
   assert.doesNotMatch(files, /ai-engine\/tools\/tool\.types/)
   assert.match(files, /RuntimeToolRegistry/)
   assert.match(files, /DefaultToolExecutor/)
+  assert.doesNotMatch(files, /registerTool\(name/)
+  assert.doesNotMatch(files, /void name/)
 })
 
 test('knowledge-bot is no longer loaded only to register AI tools', () => {

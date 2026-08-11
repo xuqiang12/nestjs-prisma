@@ -22,7 +22,6 @@ function loadRuntime() {
     ...require(join(rootDir, 'src/ai-runtime/llm/llm.service')),
     ...require(join(rootDir, 'src/ai-runtime/planner/intent-classifier.service')),
     ...require(join(rootDir, 'src/ai-runtime/planner/rule-planner.service')),
-    ...require(join(rootDir, 'src/ai-runtime/planner/agent-planner.service')),
     ...require(join(rootDir, 'src/ai-runtime/validator/agent-plan-validator.service')),
   }
 }
@@ -153,19 +152,19 @@ test('RulePlanner passes recent history to intent classifier and keeps rewritten
 })
 
 test('RulePlanner falls back to chat when AI classification is unavailable or unsafe', async () => {
-  const { AgentPlanner, RulePlanner } = loadRuntime()
+  const { RulePlanner } = loadRuntime()
   const context = createContext('企业版价格是多少？')
-  const unavailablePlan = await new AgentPlanner(new RulePlanner({
+  const unavailablePlan = await new RulePlanner({
     classify: async () => ({ capability: 'rag', confidence: 0.95, reason: '模型选择了未授权知识库', input: {} }),
-  })).plan(context, ['chat'])
-  const lowConfidencePlan = await new AgentPlanner(new RulePlanner({
+  }).plan(context, ['chat'])
+  const lowConfidencePlan = await new RulePlanner({
     classify: async () => ({ capability: 'tool', confidence: 0.49, reason: '模型不确定', input: {} }),
-  })).plan(context, ['chat', 'tool'])
-  const failedClassifierPlan = await new AgentPlanner(new RulePlanner({
+  }).plan(context, ['chat', 'tool'])
+  const failedClassifierPlan = await new RulePlanner({
     classify: async () => {
       throw new Error('classifier failed')
     },
-  })).plan(context, ['chat', 'rag'])
+  }).plan(context, ['chat', 'rag'])
 
   assert.deepEqual(unavailablePlan.steps.map((step) => step.capability), ['chat'])
   assert.deepEqual(lowConfidencePlan.steps.map((step) => step.capability), ['chat'])
@@ -319,14 +318,23 @@ test('Validator enforces maxSteps from AgentContext execution config', () => {
   }, context, ['rag', 'chat']), /计划步骤超过上限/)
 })
 
+test('AgentRuntime uses RulePlanner directly without AgentPlanner forwarding layer', () => {
+  const agentRuntime = readSource('src/ai-runtime/agent-runtime.service.ts')
+  const agentChatModule = readSource('src/modules/agent-chat/agent-chat.module.ts')
+  const agentPlannerPath = join(rootDir, 'src/ai-runtime/planner/agent-planner.service.ts')
+
+  assert.equal(existsSync(agentPlannerPath), false)
+  assert.match(agentRuntime, /RulePlanner/)
+  assert.doesNotMatch(agentRuntime, /AgentPlanner/)
+  assert.doesNotMatch(agentChatModule, /AgentPlanner/)
+})
+
 test('Planner and Validator do not reference old route runtime services', () => {
-  const planner = readSource('src/ai-runtime/planner/agent-planner.service.ts')
   const rulePlanner = readSource('src/ai-runtime/planner/rule-planner.service.ts')
   const intentClassifier = readSource('src/ai-runtime/planner/intent-classifier.service.ts')
   const validator = readSource('src/ai-runtime/validator/agent-plan-validator.service.ts')
-  const combined = [planner, rulePlanner, intentClassifier, validator].join('\n')
+  const combined = [rulePlanner, intentClassifier, validator].join('\n')
 
-  assert.match(planner, /^\/\/ 协调新版智能体计划生成入口。/)
   assert.match(rulePlanner, /^\/\/ 基于 AI 意图识别生成新版智能体第一版执行计划。/)
   assert.match(intentClassifier, /^\/\/ 使用大模型识别新版智能体本次请求应进入的能力。/)
   assert.match(validator, /^\/\/ 校验新版智能体执行计划是否只使用已授权能力。/)

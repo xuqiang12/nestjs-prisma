@@ -89,7 +89,8 @@ export class RulePlanner {
         input: {
           ...classification.input,
           ...questionInput,
-          toolCode: this.getFirstNormalToolCode(context),
+          // 从上下文授权工具中取第一个普通工具编码。
+          toolCode: context.capabilities.toolCodes.find((code) => code !== KNOWLEDGE_TOOL_CODE),
           params: {
             ...classification.input?.params,
             message: questionInput.rewrittenQuestion,
@@ -134,10 +135,5 @@ export class RulePlanner {
       rewrittenQuestion: rewrittenCandidate,
       rewriteApplied,
     }
-  }
-
-  // 从上下文授权工具中取第一个普通工具编码。
-  private getFirstNormalToolCode(context: AgentContext) {
-    return context.capabilities.toolCodes.find((code) => code !== KNOWLEDGE_TOOL_CODE)
   }
 }

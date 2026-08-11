@@ -1,3 +1,4 @@
+// 校验 Agent 历史清理契约使用真实过滤规则。
 const fs = require('fs')
 const path = require('path')
 const test = require('node:test')

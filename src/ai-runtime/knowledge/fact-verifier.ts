@@ -5,7 +5,6 @@ import {
   FactVerificationResult,
   FactVerificationStatus,
   FactVerificationSummary,
-  KnowledgeFact,
 } from './knowledge.types'
 
 export class FactVerifier {
@@ -33,14 +32,28 @@ export class FactVerifier {
     const { answerFact, knowledgeFacts } = alignment
     if (!knowledgeFacts.length) return 'NOT_FOUND'
 
-    const comparableFacts = knowledgeFacts.filter((fact) => this.hasSameSubjectAttribute(answerFact, fact))
+    // 预先归一化回答事实字段，后续只在双方字段都明确存在时参与比较。
+    const answerSubject = answerFact.subject ? normalizeFactText(answerFact.subject) : ''
+    const answerAttribute = answerFact.attribute ? normalizeFactText(answerFact.attribute) : ''
+    const answerValue = answerFact.value ? normalizeFactText(answerFact.value) : ''
+    // 对齐轻量归一化后一致的完整事实文本。
+    const sameText = knowledgeFacts.length === 1
+      && normalizeFactText(answerFact.text) === normalizeFactText(knowledgeFacts[0].text)
+
+    // 找出主体和属性都存在且归一化后一致的候选事实。
+    const comparableFacts = knowledgeFacts.filter((fact) => !!answerFact.subject
+      && !!answerFact.attribute
+      && !!fact.subject
+      && !!fact.attribute
+      && answerSubject === normalizeFactText(fact.subject)
+      && answerAttribute === normalizeFactText(fact.attribute))
     if (answerFact.subject && answerFact.attribute && answerFact.value && comparableFacts.length) {
       const values = new Set(comparableFacts
-        .map((fact) => this.normalizeValue(fact.value))
+        .map((fact) => fact.value ? normalizeFactText(fact.value) : '')
         .filter(Boolean))
       if (values.size > 1) return 'UNCERTAIN'
       if (values.size === 1) {
-        return values.has(this.normalizeValue(answerFact.value))
+        return values.has(answerValue)
           ? 'SUPPORTED'
           : 'CONTRADICTED'
       }
@@ -49,20 +62,26 @@ export class FactVerifier {
       return 'UNCERTAIN'
     }
 
-    const sameSubjectFacts = knowledgeFacts.filter((fact) => this.hasSameSubject(answerFact, fact))
+    // 找出主体都存在且归一化后一致的候选事实。
+    const sameSubjectFacts = knowledgeFacts.filter((fact) => !!answerFact.subject
+      && !!fact.subject
+      && answerSubject === normalizeFactText(fact.subject))
     if (answerFact.subject && answerFact.value && sameSubjectFacts.length) {
       const values = new Set(sameSubjectFacts
-        .map((fact) => this.normalizeValue(fact.value))
+        .map((fact) => fact.value ? normalizeFactText(fact.value) : '')
         .filter(Boolean))
       if (values.size > 1) return 'UNCERTAIN'
       if (values.size === 1) {
-        return values.has(this.normalizeValue(answerFact.value))
+        return values.has(answerValue)
           ? 'SUPPORTED'
           : 'CONTRADICTED'
       }
     }
 
-    if (knowledgeFacts.some((fact) => this.hasDifferentSubject(answerFact, fact))) {
+    // 判断候选事实是否与回答事实存在明确主体冲突。
+    if (knowledgeFacts.some((fact) => !!answerFact.subject
+      && !!fact.subject
+      && answerSubject !== normalizeFactText(fact.subject))) {
       return 'CONTRADICTED'
     }
 
@@ -70,57 +89,16 @@ export class FactVerifier {
       && answerFact.attribute
       && answerFact.value
       && knowledgeFacts.some((fact) => !fact.subject
-        && this.sameAttribute(answerFact.attribute, fact.attribute)
-        && this.sameValue(answerFact.value, fact.value))) {
+        && !!fact.attribute
+        && !!fact.value
+        // 无主体事实只在属性和值都明确一致时判定支持。
+        && answerAttribute === normalizeFactText(fact.attribute)
+        && answerValue === normalizeFactText(fact.value))) {
       return 'SUPPORTED'
     }
-    if (knowledgeFacts.length === 1 && this.sameText(answerFact.text, knowledgeFacts[0].text)) {
+    if (sameText) {
       return 'SUPPORTED'
     }
     return 'UNCERTAIN'
-  }
-
-  // 判断主体和属性是否都存在且归一化后一致。
-  private hasSameSubjectAttribute(answerFact: FactAlignment['answerFact'], knowledgeFact: KnowledgeFact) {
-    return !!answerFact.subject
-      && !!answerFact.attribute
-      && !!knowledgeFact.subject
-      && !!knowledgeFact.attribute
-      && normalizeFactText(answerFact.subject) === normalizeFactText(knowledgeFact.subject)
-      && normalizeFactText(answerFact.attribute) === normalizeFactText(knowledgeFact.attribute)
-  }
-
-  // 判断主体是否都存在且归一化后一致。
-  private hasSameSubject(answerFact: FactAlignment['answerFact'], knowledgeFact: KnowledgeFact) {
-    return !!answerFact.subject
-      && !!knowledgeFact.subject
-      && normalizeFactText(answerFact.subject) === normalizeFactText(knowledgeFact.subject)
-  }
-
-  // 判断候选事实是否与回答事实存在明确主体冲突。
-  private hasDifferentSubject(answerFact: FactAlignment['answerFact'], knowledgeFact: KnowledgeFact) {
-    return !!answerFact.subject
-      && !!knowledgeFact.subject
-      && normalizeFactText(answerFact.subject) !== normalizeFactText(knowledgeFact.subject)
-  }
-
-  // 判断两个事实属性是否经过轻量归一化后一致。
-  private sameAttribute(answerAttribute?: string, knowledgeAttribute?: string) {
-    return !!answerAttribute && !!knowledgeAttribute && normalizeFactText(answerAttribute) === normalizeFactText(knowledgeAttribute)
-  }
-
-  // 判断两个事实值是否经过轻量归一化后一致。
-  private sameValue(answerValue?: string, knowledgeValue?: string) {
-    return !!answerValue && !!knowledgeValue && this.normalizeValue(answerValue) === this.normalizeValue(knowledgeValue)
-  }
-
-  // 判断两个事实文本是否经过轻量归一化后一致。
-  private sameText(answerText: string, knowledgeText: string) {
-    return normalizeFactText(answerText) === normalizeFactText(knowledgeText)
-  }
-
-  // 归一化事实值，避免空格、标点和大小写造成误差。
-  private normalizeValue(value?: string) {
-    return value ? normalizeFactText(value) : ''
   }
 }

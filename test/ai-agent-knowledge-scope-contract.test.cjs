@@ -31,7 +31,7 @@ test('agent runtime passes knowledge tags into rag and workflow searches', () =>
   const vectorStore = readFileSync(join(rootDir, 'src/ai-runtime/vector/vector-store.service.ts'), 'utf8')
 
   assert.match(contextTypes, /knowledgeTags:\s*string\[\]/)
-  assert.match(contextBuilder, /knowledgeTags:\s*this\.normalizeStringArray\(agent\.knowledgeTags\)/)
+  assert.match(contextBuilder, /knowledgeTags:\s*Array\.isArray\(agent\.knowledgeTags\)[\s\S]*agent\.knowledgeTags\.filter/)
   assert.match(ragHandler, /knowledgeTags:\s*context\.capabilities\.knowledgeTags/)
   assert.match(knowledgeQA, /tags:\s*context\.knowledgeTags/)
   assert.match(knowledgeQA, /similaritySearch\(standaloneQuestion,\s*5,\s*\{[\s\S]*tags:\s*context\.knowledgeTags,[\s\S]*knowledgeBaseIds:\s*context\.knowledgeBaseIds,[\s\S]*\}\)/)

@@ -96,15 +96,11 @@ export class ConversationRepository {
     const history = messages
       .reverse()
       .filter((item) => item.role === 'user' || item.role === 'assistant')
-      .filter((item) => item.role !== 'assistant' || this.isCleanAssistantHistoryContent(item.content))
+      // 判断 assistant 历史内容是否不含角色模板标记。
+      .filter((item) => item.role !== 'assistant' || !ROLE_MARKER_PATTERN.test(item.content))
       .map((item) => ({ role: item.role as MessageRole, content: item.content }))
 
     return this.excludeCurrentMessageFromHistory(history, currentMessage)
-  }
-
-  // 判断 assistant 历史内容是否不含角色模板标记。
-  private isCleanAssistantHistoryContent(content: string) {
-    return !ROLE_MARKER_PATTERN.test(content)
   }
 
   // 只移除末尾与当前请求相同的用户消息，保留更早的同内容历史。

@@ -1,6 +1,5 @@
 // 构建新版智能体运行时所需的统一上下文。
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
 import { ModelResolverService } from '../model/model-resolver.service'
 import { ConversationRepository } from '../../modules/agent-chat/persistence/conversation.repository'
@@ -66,7 +65,8 @@ export class AgentContextBuilder {
       history,
       prompt: {
         id: prompt.id,
-        system: this.buildSystemPrompt(agent.promptSnapshot || prompt.content, agent.promptEnhancement),
+        // 拼出智能体最终系统提示词，保留 promptSnapshot 和增强提示的组合规则。
+        system: [agent.promptSnapshot || prompt.content, agent.promptEnhancement].filter(Boolean).join('\n\n'),
       },
       model: {
         ...model,
@@ -77,8 +77,14 @@ export class AgentContextBuilder {
         knowledgeEnabled: agent.knowledgeEnabled,
         knowledgeStrict: agent.knowledgeStrict,
         knowledgeBaseIds: agent.knowledgeBases.map((item) => item.knowledgeBaseId),
-        knowledgeTags: this.normalizeStringArray(agent.knowledgeTags),
-        toolCodes: this.normalizeToolCodes(agent.toolCodes),
+        // 把知识标签 JSON 字段规整为字符串数组。
+        knowledgeTags: Array.isArray(agent.knowledgeTags)
+          ? agent.knowledgeTags.filter((item): item is string => typeof item === 'string' && !!item.trim())
+          : [],
+        // 把工具授权 JSON 字段规整为工具编码数组。
+        toolCodes: Array.isArray(agent.toolCodes)
+          ? agent.toolCodes.filter((item): item is string => typeof item === 'string' && !!item.trim())
+          : [],
         workflowCode: agent.workflowCode || undefined,
       },
       execution: {
@@ -86,26 +92,5 @@ export class AgentContextBuilder {
       },
       metadata: request.metadata,
     }
-  }
-
-  // 拼出智能体最终系统提示词，保留 promptSnapshot 和增强提示的组合规则。
-  private buildSystemPrompt(basePrompt: string, promptEnhancement?: string | null) {
-    return [basePrompt, promptEnhancement].filter(Boolean).join('\n\n')
-  }
-
-  // 把 Prisma JSON 字段规整为字符串数组。
-  private normalizeStringArray(value: Prisma.JsonValue): string[] {
-    if (!Array.isArray(value)) {
-      return []
-    }
-    return value.filter((item): item is string => typeof item === 'string' && !!item.trim())
-  }
-
-  // 把工具授权 JSON 字段规整为工具编码数组。
-  private normalizeToolCodes(value: Prisma.JsonValue): string[] {
-    if (!Array.isArray(value)) {
-      return []
-    }
-    return value.filter((item): item is string => typeof item === 'string' && !!item.trim())
   }
 }

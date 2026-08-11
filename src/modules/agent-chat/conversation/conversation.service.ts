@@ -54,7 +54,8 @@ export class ConversationService {
       data: {
         userId,
         mode,
-        title: this.normalizeTitle(title),
+        // 清理标题两端空白，空标题统一使用默认会话名。
+        title: title.trim() || '新会话',
         agentCode,
       },
     })
@@ -87,7 +88,8 @@ export class ConversationService {
     await this.ensureOwnedConversation(userId, id)
     return this.prisma.aiConversation.update({
       where: { id },
-      data: { title: this.normalizeTitle(title) },
+      // 清理标题两端空白，空标题统一使用默认会话名。
+      data: { title: title.trim() || '新会话' },
     })
   }
 
@@ -130,7 +132,8 @@ export class ConversationService {
       data: {
         userId,
         mode: params.mode || 'chat',
-        title: this.buildTitle(params.message),
+        // 根据用户首条消息生成默认标题，并限制标题长度。
+        title: (params.message.trim() || '新会话').slice(0, 30),
         agentCode: params.agentCode,
       },
     })
@@ -199,16 +202,6 @@ export class ConversationService {
     }
 
     return conversation
-  }
-
-  // 根据用户首条消息生成默认标题，并限制标题长度。
-  private buildTitle(message: string) {
-    return this.normalizeTitle(message).slice(0, 30)
-  }
-
-  // 清理标题两端空白，空标题统一使用默认会话名。
-  private normalizeTitle(title: string) {
-    return title.trim() || '新会话'
   }
 
   // 判断助手历史内容是否适合继续进入模型上下文。

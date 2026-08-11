@@ -4,8 +4,8 @@ import { KnowledgeFact } from 'src/ai-runtime/knowledge/knowledge.types'
 
 describe('KnowledgeAnswerGuardService', () => {
   const facts: KnowledgeFact[] = [
-    { text: '基础版本：1999元/年', requiredTerms: ['1999元/年'] },
-    { text: '企业版本：4999元/年', requiredTerms: ['4999元/年'] },
+    { text: '基础版本：1999元/年', type: 'NUMBER', value: '1999元/年', requiredTerms: ['1999元/年'] },
+    { text: '企业版本：4999元/年', type: 'NUMBER', value: '4999元/年', requiredTerms: ['4999元/年'] },
   ]
 
   it('passes answers whose numeric facts come from knowledge facts', () => {

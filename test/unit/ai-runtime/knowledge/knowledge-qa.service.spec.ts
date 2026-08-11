@@ -118,6 +118,219 @@ describe('KnowledgeQAService', () => {
     expect(result.answer).not.toContain('4111元/年')
   })
 
+  it('returns fact alignment metadata without changing the answer', async () => {
+    const { service } = createService('基础版本为1999元/年。')
+
+    const result = await service.answer({
+      question: '智能办公助手Pro怎么卖？',
+      history: [],
+      allowedToolCodes: ['search_knowledge'],
+    })
+
+    expect(result.answer).toBe('基础版本为1999元/年。')
+    expect(result.answerFacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'NUMBER', value: '1999元/年' }),
+      ]),
+    )
+    expect(result.factAlignment.items[0].knowledgeFacts.length).toBeGreaterThan(0)
+  })
+
+  it('returns fact verification metadata without changing the answer', async () => {
+    const { service } = createService('基础版本为1999元/年。')
+
+    const result = await service.answer({
+      question: '智能办公助手Pro怎么卖？',
+      history: [],
+      allowedToolCodes: ['search_knowledge'],
+    })
+
+    expect(result.answer).toBe('基础版本为1999元/年。')
+    expect(result.factVerification.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ status: 'SUPPORTED' }),
+      ]),
+    )
+  })
+
+  it('returns allow grounding metadata for supported facts', async () => {
+    const { service } = createService('基础版本为1999元/年。')
+
+    const result = await service.answer({
+      question: '智能办公助手Pro怎么卖？',
+      history: [],
+      allowedToolCodes: ['search_knowledge'],
+    })
+
+    expect(result.answer).toBe('基础版本为1999元/年。')
+    expect(result.groundingDecision).toBe('ALLOW')
+  })
+
+  it('returns block grounding metadata when same subject and attribute have a different value', async () => {
+    const llmService = {
+      invokeWithMessages: jest.fn().mockResolvedValue('基础版价格为2999元/年。'),
+      streamWithMessages: jest.fn(),
+    }
+    const vectorStoreService = {
+      similaritySearch: jest.fn().mockResolvedValue([
+        {
+          id: 'doc-price',
+          distance: 0.2,
+          metadata: {},
+          content: '基础版价格为1999元/年。',
+        },
+      ]),
+    }
+    const service = new KnowledgeQAService(
+      llmService as any,
+      vectorStoreService as any,
+      new KnowledgeEvidenceService(),
+      new KnowledgeAnswerGuardService(),
+    )
+
+    const result = await service.answer({
+      question: '基础版价格是多少？',
+      history: [],
+      allowedToolCodes: ['search_knowledge'],
+    })
+
+    expect(result.factVerification.items[0].status).toBe('CONTRADICTED')
+    expect(result.groundingDecision).toBe('BLOCK')
+  })
+
+  it('does not support same-value facts when the subject differs', async () => {
+    const llmService = {
+      invokeWithMessages: jest.fn().mockResolvedValue('企业版价格为1999元/年。'),
+      streamWithMessages: jest.fn(),
+    }
+    const vectorStoreService = {
+      similaritySearch: jest.fn().mockResolvedValue([
+        {
+          id: 'doc-price',
+          distance: 0.2,
+          metadata: {},
+          content: '基础版价格为1999元/年。',
+        },
+      ]),
+    }
+    const service = new KnowledgeQAService(
+      llmService as any,
+      vectorStoreService as any,
+      new KnowledgeEvidenceService(),
+      new KnowledgeAnswerGuardService(),
+    )
+
+    const result = await service.answer({
+      question: '企业版价格是多少？',
+      history: [],
+      allowedToolCodes: ['search_knowledge'],
+    })
+
+    expect(result.factVerification.items[0].status).toBe('CONTRADICTED')
+    expect(result.groundingDecision).toBe('BLOCK')
+  })
+
+  it('allows attribute and value matches when both sides have no subject', async () => {
+    const llmService = {
+      invokeWithMessages: jest.fn().mockResolvedValue('价格为1999元/年。'),
+      streamWithMessages: jest.fn(),
+    }
+    const vectorStoreService = {
+      similaritySearch: jest.fn().mockResolvedValue([
+        {
+          id: 'doc-price',
+          distance: 0.2,
+          metadata: {},
+          content: '价格为1999元/年。',
+        },
+      ]),
+    }
+    const service = new KnowledgeQAService(
+      llmService as any,
+      vectorStoreService as any,
+      new KnowledgeEvidenceService(),
+      new KnowledgeAnswerGuardService(),
+    )
+
+    const result = await service.answer({
+      question: '价格是多少？',
+      history: [],
+      allowedToolCodes: ['search_knowledge'],
+    })
+
+    expect(result.factVerification.items[0].status).toBe('SUPPORTED')
+    expect(result.groundingDecision).toBe('ALLOW')
+  })
+
+  it('returns block grounding metadata without letting grounding rewrite the answer', async () => {
+    const llmService = {
+      invokeWithMessages: jest.fn().mockResolvedValue('基础版状态：不支持。'),
+      streamWithMessages: jest.fn(),
+    }
+    const vectorStoreService = {
+      similaritySearch: jest.fn().mockResolvedValue([
+        {
+          id: 'doc-policy',
+          distance: 0.2,
+          metadata: {},
+          content: '基础版状态：支持。',
+        },
+      ]),
+    }
+    const guardService = new KnowledgeAnswerGuardService()
+    const ensureAnswerSpy = jest.spyOn(guardService, 'ensureAnswer')
+    const service = new KnowledgeQAService(
+      llmService as any,
+      vectorStoreService as any,
+      new KnowledgeEvidenceService(),
+      guardService,
+    )
+
+    const result = await service.answer({
+      question: '基础版状态是什么？',
+      history: [],
+      allowedToolCodes: ['search_knowledge'],
+    })
+
+    expect(result.answer).toBe('基础版状态：不支持。')
+    expect(result.groundingDecision).toBe('BLOCK')
+    expect(llmService.invokeWithMessages).toHaveBeenCalledTimes(1)
+    expect(vectorStoreService.similaritySearch).toHaveBeenCalledTimes(1)
+    expect(ensureAnswerSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns warn grounding metadata for uncertain facts', async () => {
+    const llmService = {
+      invokeWithMessages: jest.fn().mockResolvedValue('基础版状态：支持。'),
+      streamWithMessages: jest.fn(),
+    }
+    const vectorStoreService = {
+      similaritySearch: jest.fn().mockResolvedValue([
+        {
+          id: 'doc-policy',
+          distance: 0.2,
+          metadata: {},
+          content: '基础版状态：支持；基础版状态：不支持。',
+        },
+      ]),
+    }
+    const service = new KnowledgeQAService(
+      llmService as any,
+      vectorStoreService as any,
+      new KnowledgeEvidenceService(),
+      new KnowledgeAnswerGuardService(),
+    )
+
+    const result = await service.answer({
+      question: '基础版状态是什么？',
+      history: [],
+      allowedToolCodes: ['search_knowledge'],
+    })
+
+    expect(result.answer).toBe('基础版状态：支持。')
+    expect(result.groundingDecision).toBe('WARN')
+  })
+
   it('does not carry previous user history into retrieval when current question is complete', async () => {
     const { service, vectorStoreService } = createService()
 
@@ -137,20 +350,23 @@ describe('KnowledgeQAService', () => {
     )
   })
 
-  it('uses recent user history for short follow-up questions', async () => {
+  it('uses planner rewritten question instead of rebuilding follow-up retrieval', async () => {
     const { service, vectorStoreService } = createService()
 
     await service.buildCompletion({
-      question: '企业版呢？',
+      question: 'enterprise?',
+      originalQuestion: 'enterprise?',
+      rewrittenQuestion: 'enterprise version price',
+      rewriteApplied: true,
       history: [
-        { role: 'user', content: '智能办公助手Pro怎么卖？' },
-        { role: 'assistant', content: '基础版是1999元/年。' },
+        { role: 'user', content: 'basic version price' },
+        { role: 'assistant', content: 'basic version is 1999 per year' },
       ],
       allowedToolCodes: ['search_knowledge'],
     })
 
     expect(vectorStoreService.similaritySearch).toHaveBeenCalledWith(
-      '智能办公助手Pro怎么卖？\n企业版呢？',
+      'enterprise version price',
       5,
       expect.any(Object),
     )

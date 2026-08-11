@@ -4,16 +4,65 @@ import { SearchResult } from '../vector/vector-store.service'
 
 export type ChatMode = 'chat' | 'knowledge'
 
+export type KnowledgeFactType = 'TEXT' | 'NUMBER' | 'VERSION' | 'DURATION' | 'POLICY'
+
 export type KnowledgeFact = {
   text: string
+  type: KnowledgeFactType
+  subject?: string
+  attribute?: string
+  condition?: string
+  value?: string
   requiredTerms: string[]
+  documentId?: string
+  knowledgeBaseId?: string
+  fileId?: string
+  chunkIndex?: number
 }
+
+export type AnswerFact = {
+  text: string
+  type: KnowledgeFactType
+  subject?: string
+  attribute?: string
+  condition?: string
+  value?: string
+}
+
+export type FactAlignment = {
+  answerFact: AnswerFact
+  knowledgeFacts: KnowledgeFact[]
+}
+
+export type FactAlignmentResult = {
+  items: FactAlignment[]
+}
+
+// 定义事实验证结果：SUPPORTED 表示知识库支持，CONTRADICTED 表示和知识库冲突，NOT_FOUND 表示无候选依据，UNCERTAIN 表示有候选但规则无法确定。
+export type FactVerificationStatus = 'SUPPORTED' | 'CONTRADICTED' | 'NOT_FOUND' | 'UNCERTAIN'
+
+export type FactVerificationResult = {
+  answerFact: AnswerFact
+  status: FactVerificationStatus
+  knowledgeFacts: KnowledgeFact[]
+}
+
+export type FactVerificationSummary = {
+  items: FactVerificationResult[]
+}
+
+// 定义 Grounding 执行决策：ALLOW 表示可放行，WARN 表示需警告但不自动改写，BLOCK 表示存在冲突事实但第一版仍不自动拒答。
+export type GroundingDecision = 'ALLOW' | 'WARN' | 'BLOCK'
 
 export type KnowledgeEvidenceItem = {
   sourceId: string
   content: string
   distance?: number
   metadata?: Record<string, any>
+  documentId?: string
+  knowledgeBaseId?: string
+  fileId?: string
+  chunkIndex?: number
 }
 
 export type KnowledgeEvidence = {
@@ -70,6 +119,10 @@ export type KnowledgeQAResult = {
   route: 'rag'
   sources: SearchResult[]
   evidence: KnowledgeEvidence
+  answerFacts: AnswerFact[]
+  factAlignment: FactAlignmentResult
+  factVerification: FactVerificationSummary
+  groundingDecision: GroundingDecision
   guardResult: KnowledgeGuardResult
   status: KnowledgeQAStatus
 }

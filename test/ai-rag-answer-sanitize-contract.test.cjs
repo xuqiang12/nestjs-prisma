@@ -215,7 +215,7 @@ test('knowledge prompts exclude assistant history so stale answers do not overri
   assert.deepEqual(plan.messages.map((message) => message.role), ['system', 'user'])
 })
 
-test('knowledge retrieval uses recent user context to make follow-up questions searchable', async () => {
+test('knowledge retrieval trusts planner rewritten question instead of rebuilding from history', async () => {
   require('ts-node/register')
   require('tsconfig-paths/register')
   let receivedQuery = ''
@@ -232,21 +232,24 @@ test('knowledge retrieval uses recent user context to make follow-up questions s
   })
 
   const plan = await service.buildCompletion({
-    question: '企业版呢？',
+    question: 'enterprise?',
+    originalQuestion: 'enterprise?',
+    rewrittenQuestion: 'enterprise version price',
+    rewriteApplied: true,
     history: [
-      { role: 'user', content: '智能办公助手Pro多少钱？' },
-      { role: 'assistant', content: '基础版本价格为1111元/年。' },
+      { role: 'user', content: 'basic version price' },
+      { role: 'assistant', content: 'basic version is 1111 per year' },
     ],
     allowedToolCodes: ['search_knowledge'],
   })
   const finalUserMessage = plan.messages[plan.messages.length - 1]
 
-  assert.match(receivedQuery, /智能办公助手Pro多少钱/)
-  assert.match(receivedQuery, /企业版呢/)
-  assert.doesNotMatch(receivedQuery, /1111元/)
+  assert.equal(receivedQuery, 'enterprise version price')
   assert.equal(finalUserMessage.role, 'user')
-  assert.match(finalUserMessage.content, /智能办公助手Pro多少钱/)
-  assert.match(finalUserMessage.content, /企业版呢/)
+  assert.match(finalUserMessage.content, /enterprise\?/)
+  assert.match(finalUserMessage.content, /enterprise version price/)
+  assert.doesNotMatch(finalUserMessage.content, /basic version price/)
+  assert.doesNotMatch(finalUserMessage.content, /1111/)
 })
 
 test('knowledge answer fallback rejects numeric claims that are not in retrieved facts', async () => {

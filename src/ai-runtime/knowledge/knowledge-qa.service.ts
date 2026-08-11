@@ -1,18 +1,23 @@
 // 组织知识库检索、证据整理和最终答案约束的 RAG 问答运行时。
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { ChatMessage, LlmOptions, LlmService } from '../llm/llm.service'
+import { LlmOptions, LlmService } from '../llm/llm.service'
 import { SearchResult, VectorStoreService } from '../vector/vector-store.service'
+import { FactAligner } from './fact-aligner'
+import { FactVerifier } from './fact-verifier'
 import { KnowledgeAnswerGuardService } from './knowledge-answer-guard.service'
 import { KnowledgeEvidenceService } from './knowledge-evidence.service'
-import { CompletionPlan, KnowledgeFact, KnowledgeRuntimeContext } from './knowledge.types'
+import { buildAnswerFacts } from './knowledge-fact-structure.util'
+import { CompletionPlan, FactVerificationResult, GroundingDecision, KnowledgeFact, KnowledgeRuntimeContext } from './knowledge.types'
 
 const STRICT_KNOWLEDGE_MAX_DISTANCE = 0.45
 const KNOWLEDGE_EVIDENCE_MAX_DISTANCE = 0.55
 const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
-const FOLLOW_UP_QUESTION_PATTERN = /(它|这个|那个|这些|那些|他们|它们|其|企业版|基础版|标准版|高级版|有没有|还有|呢|多少|价格|售价|售后|期限|怎么卖)/
 
 @Injectable()
 export class KnowledgeQAService {
+  private readonly factAligner = new FactAligner()
+  private readonly factVerifier = new FactVerifier()
+
   // 注入模型、向量检索、证据整理和答案校验服务以组成完整知识问答链路。
   constructor(
     private readonly llmService: LlmService,
@@ -30,12 +35,20 @@ export class KnowledgeQAService {
     )
     const answer = this.guardService.ensureAnswer(rawAnswer, plan.knowledgeFacts, context.question)
     const guardResult = this.guardService.validate(rawAnswer, plan.knowledgeFacts)
+    const answerFacts = buildAnswerFacts(rawAnswer)
+    const factAlignment = this.factAligner.align(answerFacts, plan.knowledgeFacts)
+    const factVerification = this.factVerifier.verify(factAlignment.items)
+    const groundingDecision = this.evaluateGroundingDecision(factVerification.items)
 
     return {
       answer,
       route: 'rag' as const,
       sources: plan.sources,
       evidence: plan.evidence,
+      answerFacts,
+      factAlignment,
+      factVerification,
+      groundingDecision,
       guardResult,
       status: guardResult.passed ? 'answered' as const : 'rejected' as const,
     }
@@ -44,9 +57,7 @@ export class KnowledgeQAService {
   // 构建知识库回答所需的检索结果、证据事实和模型消息。
   async buildCompletion(context: KnowledgeRuntimeContext): Promise<CompletionPlan> {
     this.ensureToolAllowed('search_knowledge', context.allowedToolCodes)
-    const standaloneQuestion = context.rewriteApplied
-      ? context.question.trim()
-      : this.buildRetrievalQuestion(context.question, context.history || [])
+    const standaloneQuestion = (context.rewrittenQuestion || context.question).trim()
     const matchedSources = await this.vectorStoreService.similaritySearch(standaloneQuestion, 5, {
       tags: context.knowledgeTags,
       knowledgeBaseIds: context.knowledgeBaseIds,
@@ -115,32 +126,6 @@ export class KnowledgeQAService {
       : sources.filter((item) => item.distance <= KNOWLEDGE_EVIDENCE_MAX_DISTANCE)
   }
 
-  // 根据当前问题是否为追问决定是否拼接最近用户历史作为检索问题。
-  private buildRetrievalQuestion(message: string, history: ChatMessage[]) {
-    const currentQuestion = message.trim()
-    if (!this.shouldUseHistory(currentQuestion)) {
-      return currentQuestion
-    }
-
-    const userContext = this.normalizeHistory(history)
-      .filter((item) => item.role === 'user')
-      .map((item) => item.content.trim())
-      .filter((content) => content && content !== currentQuestion)
-      .slice(-3)
-
-    return [...userContext, currentQuestion].filter(Boolean).join('\n')
-  }
-
-  // 判断当前问题是否需要借助上文才能表达完整检索意图。
-  private shouldUseHistory(question: string) {
-    return FOLLOW_UP_QUESTION_PATTERN.test(question)
-  }
-
-  // 只保留用户和助手历史，供追问判断时进一步筛选用户消息。
-  private normalizeHistory(history: ChatMessage[]) {
-    return history.filter((item) => item.role === 'user' || item.role === 'assistant')
-  }
-
   // 为知识库最终答案显式启用输出保护和角色模板停止词。
   private withFinalAnswerOptions(options: LlmOptions = {}): LlmOptions {
     return {
@@ -148,6 +133,15 @@ export class KnowledgeQAService {
       finalAnswerGuard: true,
       roleTemplateStops: true,
     }
+  }
+
+  // 按固定优先级把事实验证结果转换为当前 RAG 返回的 GroundingDecision。
+  private evaluateGroundingDecision(results: FactVerificationResult[]): GroundingDecision {
+    if (!results.length) return 'WARN'
+    if (results.some((result) => result.status === 'CONTRADICTED')) return 'BLOCK'
+    if (results.some((result) => result.status === 'UNCERTAIN')) return 'WARN'
+    if (results.some((result) => result.status === 'NOT_FOUND')) return 'WARN'
+    return results.every((result) => result.status === 'SUPPORTED') ? 'ALLOW' : 'WARN'
   }
 
   // 校验当前 Agent 是否允许执行知识检索工具。

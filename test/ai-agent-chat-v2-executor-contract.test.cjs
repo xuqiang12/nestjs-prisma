@@ -18,7 +18,6 @@ function loadRuntime() {
   require('ts-node/register')
   require('tsconfig-paths/register')
   return {
-    ...require(join(rootDir, 'src/ai-runtime/capability/capability-registry.service')),
     ...require(join(rootDir, 'src/ai-runtime/executor/agent-capability-executor.service')),
     ...require(join(rootDir, 'src/ai-runtime/executor/handlers/chat.handler')),
     ...require(join(rootDir, 'src/ai-runtime/executor/handlers/rag.handler')),
@@ -59,27 +58,85 @@ async function collect(iterable) {
   return events
 }
 
-test('CapabilityRegistry and Executor dispatch handlers without fixed capability branches', async () => {
-  const { CapabilityRegistry, AgentCapabilityExecutor } = loadRuntime()
-  const handler = {
-    capability: 'chat',
+test('AgentCapabilityExecutor exposes fixed capability to handler dispatch', async () => {
+  const { AgentCapabilityExecutor } = loadRuntime()
+  const calls = []
+  const createHandler = (name) => ({
     execute: async function* () {
-      yield { type: 'content', payload: { text: 'hello' }, metadata: { requestId: 'req-1', capability: 'chat' } }
+      calls.push(name)
+      yield { type: 'content', payload: { text: name }, metadata: { requestId: 'req-1', capability: name } }
     },
-  }
-  const registry = new CapabilityRegistry([handler])
-  const executor = new AgentCapabilityExecutor(registry)
+  })
+  const executor = new AgentCapabilityExecutor(
+    createHandler('chat'),
+    createHandler('rag'),
+    createHandler('tool'),
+    createHandler('workflow'),
+  )
   const events = await collect(executor.execute({
     metadata: { version: 1 },
     strategy: { mode: 'sequential' },
-    steps: [{ id: 'step_1', capability: 'chat', input: { message: '你好' } }],
+    steps: [
+      { id: 'step_chat', capability: 'chat', input: { message: '你好' } },
+      { id: 'step_rag', capability: 'rag', input: { query: '知识库' } },
+      { id: 'step_tool', capability: 'tool', input: { toolCode: 'weather' } },
+      { id: 'step_workflow', capability: 'workflow', input: { workflowCode: 'customer_workflow' } },
+    ],
   }, createContext('你好')))
 
-  assert.deepEqual(events.map((event) => event.payload.text), ['hello'])
+  assert.deepEqual(calls, ['chat', 'rag', 'tool', 'workflow'])
+  assert.deepEqual(events.map((event) => event.payload.text), ['chat', 'rag', 'tool', 'workflow'])
 
   const executorSource = readSource('src/ai-runtime/executor/agent-capability-executor.service.ts')
   assert.match(executorSource, /^\/\/ 执行已经校验通过的新版智能体能力计划。/)
-  assert.doesNotMatch(executorSource, /switch\s*\(|if\s*\(\s*step\.capability/)
+  assert.match(executorSource, /ChatHandler/)
+  assert.match(executorSource, /RagHandler/)
+  assert.match(executorSource, /ToolHandler/)
+  assert.match(executorSource, /WorkflowHandler/)
+  assert.match(executorSource, /step\.capability === 'chat'/)
+  assert.match(executorSource, /step\.capability === 'rag'/)
+  assert.match(executorSource, /step\.capability === 'tool'/)
+  assert.match(executorSource, /step\.capability === 'workflow'/)
+})
+
+test('CapabilityRegistry is removed from AgentChatModule dispatch wiring', () => {
+  const agentChatModule = readSource('src/modules/agent-chat/agent-chat.module.ts')
+  const executorSource = readSource('src/ai-runtime/executor/agent-capability-executor.service.ts')
+
+  assert.doesNotMatch(agentChatModule, /CapabilityRegistry/)
+  assert.doesNotMatch(executorSource, /CapabilityRegistry/)
+})
+
+test('removed CapabilityRegistry file is not part of capability dispatch', () => {
+  const registryPath = join(rootDir, 'src/ai-runtime/capability/capability-registry.service.ts')
+
+  assert.equal(existsSync(registryPath), false)
+})
+
+test('AgentCapabilityExecutor rejects unsupported validated capability explicitly', async () => {
+  const { AgentCapabilityExecutor } = loadRuntime()
+  const executor = new AgentCapabilityExecutor(
+    { execute: async function* () {} },
+    { execute: async function* () {} },
+    { execute: async function* () {} },
+    { execute: async function* () {} },
+  )
+
+  await assert.rejects(async () => {
+    await collect(executor.execute({
+      metadata: { version: 1 },
+      strategy: { mode: 'sequential' },
+      steps: [{ id: 'step_unknown', capability: 'unknown', input: {} }],
+    }, createContext('你好')))
+  }, /能力处理器未注册：unknown/)
+})
+
+test('AgentChatModule keeps direct capability handlers for executor injection', () => {
+  const agentChatModule = readSource('src/modules/agent-chat/agent-chat.module.ts')
+
+  for (const handlerName of ['ChatHandler', 'RagHandler', 'ToolHandler', 'WorkflowHandler']) {
+    assert.match(agentChatModule, new RegExp(`\\b${handlerName}\\b`))
+  }
 })
 
 test('ChatHandler streams LLM content with AgentContext prompt and history', async () => {
@@ -219,7 +276,6 @@ test('WorkflowHandler maps workflow stream events into AgentEvent envelope', asy
 
 test('Capability handlers do not reference old agent runtime main services', () => {
   const files = [
-    'src/ai-runtime/capability/capability-registry.service.ts',
     'src/ai-runtime/executor/agent-capability-executor.service.ts',
     'src/ai-runtime/executor/handlers/chat.handler.ts',
     'src/ai-runtime/executor/handlers/rag.handler.ts',

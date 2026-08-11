@@ -1,6 +1,5 @@
 // 注册新版智能体流式对话模块。
 import { Module } from '@nestjs/common'
-import { CapabilityRegistry } from '../../ai-runtime/capability/capability-registry.service'
 import { CapabilityResolver } from '../../ai-runtime/capability/capability-resolver.service'
 import { AgentComposer } from '../../ai-runtime/composer/agent-composer.service'
 import { AgentContextBuilder } from '../../ai-runtime/context/agent-context.builder'
@@ -50,16 +49,6 @@ import { AgentStreamService } from './stream/agent-stream.service'
     RagHandler,
     ToolHandler,
     WorkflowHandler,
-    {
-      provide: CapabilityRegistry,
-      useFactory: (
-        chatHandler: ChatHandler,
-        ragHandler: RagHandler,
-        toolHandler: ToolHandler,
-        workflowHandler: WorkflowHandler,
-      ) => new CapabilityRegistry([chatHandler, ragHandler, toolHandler, workflowHandler]),
-      inject: [ChatHandler, RagHandler, ToolHandler, WorkflowHandler],
-    },
     AgentCapabilityExecutor,
   ],
 })

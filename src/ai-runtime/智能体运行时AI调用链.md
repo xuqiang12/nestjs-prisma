@@ -40,8 +40,7 @@
 -> [src/ai-runtime/composer/agent-composer.service.ts:18](composer/agent-composer.service.ts#L18) `AgentComposer.createPlanEvent()`  
 -> [src/ai-runtime/trace/agent-trace.service.ts:17](trace/agent-trace.service.ts#L17) `AgentTraceService.start()`  
 -> [src/ai-runtime/executor/agent-capability-executor.service.ts:14](executor/agent-capability-executor.service.ts#L14) `AgentCapabilityExecutor.execute()`  
--> [src/ai-runtime/executor/agent-capability-executor.service.ts:16](executor/agent-capability-executor.service.ts#L16) `registry.get(step.capability)`  
--> [src/ai-runtime/capability/capability-registry.service.ts:20](capability/capability-registry.service.ts#L20) `CapabilityRegistry.get()`
+-> [src/ai-runtime/executor/agent-capability-executor.service.ts:19](executor/agent-capability-executor.service.ts#L19) 按 `step.capability` 显式分发到对应 Handler
 
 从这里开始按 `step.capability` 分叉。
 

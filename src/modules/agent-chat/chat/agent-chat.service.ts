@@ -55,7 +55,6 @@ export class AgentChatService {
     }
 
     const result = this.composer.collectAssistantResult(events)
-    console.log('[agent-chat][ai-answer]', result.answer)
     if (result.answer) {
       const output = await this.sensitiveWordChecker.checkAndApply(result.answer, 'output')
       const finalTrace = this.executionTraceBuilder.buildFinalTrace(events, input.content)

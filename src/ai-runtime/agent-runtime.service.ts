@@ -26,13 +26,26 @@ export class AgentRuntimeService {
   // 从统一请求开始执行新版智能体运行时并产出协议无关事件。
   async *stream(request: AgentRuntimeRequest): AsyncIterable<AgentEvent> {
     const context = await this.contextBuilder.build(request)
+    if (request.signal?.aborted) {
+      return
+    }
     const capabilities = this.capabilityResolver.resolve(context)
+    if (request.signal?.aborted) {
+      return
+    }
     const plan = await this.planner.plan(context, capabilities.plannerView)
+    if (request.signal?.aborted) {
+      return
+    }
     const validatedPlan = this.validator.validate(plan, context, capabilities.plannerView)
     yield this.composer.createPlanEvent(validatedPlan, capabilities.plannerView, context)
 
     const traceRecord = await this.trace.start(context, validatedPlan)
     try {
+      if (request.signal?.aborted) {
+        await this.trace.finish(traceRecord.id)
+        return
+      }
       for await (const event of this.executor.execute(validatedPlan, context)) {
         yield event
       }

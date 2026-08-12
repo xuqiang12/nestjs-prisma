@@ -72,6 +72,7 @@ export class AgentContextBuilder {
         ...model,
         temperature: agent.temperature ?? undefined,
         topP: agent.topP ?? undefined,
+        signal: request.signal,
       },
       capabilities: {
         knowledgeEnabled: agent.knowledgeEnabled,

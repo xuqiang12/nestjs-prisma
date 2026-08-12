@@ -16,6 +16,7 @@ export type LlmOptions = {
   topP?: number
   finalAnswerGuard?: boolean
   roleTemplateStops?: boolean
+  signal?: AbortSignal
 }
 
 const FINAL_ANSWER_GUARD = [
@@ -43,6 +44,8 @@ export class LlmService {
       temperature: options.temperature ?? 0.2,
       top_p: options.topP ?? 0.8,
       ...(options.roleTemplateStops ? { stop: ROLE_TEMPLATE_STOPS } : {}),
+    }, {
+      signal: options.signal,
     })
 
     return res.choices[0].message.content || ''
@@ -62,9 +65,14 @@ export class LlmService {
       top_p: options.topP ?? 0.8,
       stream: true,
       ...(options.roleTemplateStops ? { stop: ROLE_TEMPLATE_STOPS } : {}),
+    }, {
+      signal: options.signal,
     })
 
     for await (const chunk of stream) {
+      if (options.signal?.aborted) {
+        return
+      }
       const content = chunk.choices?.[0]?.delta?.content
       if (content) {
         // 只向上层暴露文本增量，事件格式由调用方负责。

@@ -38,10 +38,24 @@ export class AgentStreamController {
     res.setHeader('Cache-Control', 'no-cache')
     res.setHeader('Connection', 'keep-alive')
 
-    for await (const event of this.agentStreamService.stream(body, req.user.userId)) {
-      res.write(this.sseEventAdapter.toSseData(event))
-    }
+    const controller = new AbortController()
+    let completed = false
+    req.on('close', () => {
+      if (!completed) {
+        controller.abort()
+      }
+    })
 
-    res.end()
+    try {
+      for await (const event of this.agentStreamService.stream(body, req.user.userId, controller.signal)) {
+        if (controller.signal.aborted) {
+          return
+        }
+        res.write(this.sseEventAdapter.toSseData(event))
+      }
+    } finally {
+      completed = true
+      res.end()
+    }
   }
 }

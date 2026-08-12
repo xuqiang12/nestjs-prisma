@@ -14,7 +14,7 @@ export class AgentStreamService {
   ) {}
 
   // 从 v2 流式入口请求开始产出内部事件并追加结束事件。
-  async *stream(body: Partial<AgentStreamRequestDto>, userId?: string): AsyncIterable<AgentEvent> {
+  async *stream(body: Partial<AgentStreamRequestDto>, userId?: string, signal?: AbortSignal): AsyncIterable<AgentEvent> {
     const metadata: AgentEventMetadata = {
       requestId: `agent-chat-v2-${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -52,6 +52,7 @@ export class AgentStreamService {
         body as AgentStreamRequestDto,
         userId,
         metadata,
+        signal,
       )) {
         for (const traceEvent of this.executionTracePresenter.consume(event)) {
           yield traceEvent
@@ -61,6 +62,9 @@ export class AgentStreamService {
         }
       }
     } catch (error) {
+      if (signal?.aborted || this.isAbortError(error)) {
+        return
+      }
       hasRuntimeError = true
       const errorEvent: AgentEvent = {
         type: 'error',
@@ -75,6 +79,9 @@ export class AgentStreamService {
       }
       yield errorEvent
     }
+    if (signal?.aborted) {
+      return
+    }
     const doneEvent: AgentEvent = { type: 'done', payload: {}, metadata }
     if (!hasRuntimeError) {
       for (const traceEvent of this.executionTracePresenter.consume(doneEvent)) {
@@ -82,5 +89,10 @@ export class AgentStreamService {
       }
     }
     yield doneEvent
+  }
+
+  // 判断底层请求是否因 AbortSignal 主动取消而结束。
+  private isAbortError(error: unknown) {
+    return error instanceof Error && (error.name === 'AbortError' || (error as any).code === 'ERR_CANCELED')
   }
 }

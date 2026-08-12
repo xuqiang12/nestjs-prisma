@@ -25,6 +25,7 @@ export class AgentChatService {
     body: AgentStreamRequestDto,
     userId: string,
     metadata?: AgentEventMetadata,
+    signal?: AbortSignal,
   ): AsyncIterable<AgentEvent> {
     const input = await this.sensitiveWordChecker.checkAndApply(body.message, 'input')
     const conversation = await this.conversationRepository.getOrCreateConversation(
@@ -47,11 +48,15 @@ export class AgentChatService {
       input.content,
       conversation.id,
       metadata,
+      signal,
     )
     // 运行agent
     for await (const event of this.runtime.stream(request)) {
       events.push(event)
       yield event
+    }
+    if (signal?.aborted) {
+      return
     }
 
     const result = this.composer.collectAssistantResult(events)
@@ -79,6 +84,7 @@ export class AgentChatService {
     message: string,
     conversationId: string,
     metadata?: AgentEventMetadata,
+    signal?: AbortSignal,
   ): AgentRuntimeRequest {
     return {
       message: { content: message },
@@ -88,6 +94,7 @@ export class AgentChatService {
       metadata: {
         requestId: metadata?.requestId || `agent-chat-v2-${Date.now()}`,
       },
+      signal,
     }
   }
 }

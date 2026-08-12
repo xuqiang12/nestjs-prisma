@@ -30,9 +30,6 @@ export class AgentRuntimeService {
       return
     }
     const capabilities = this.capabilityResolver.resolve(context)
-    if (request.signal?.aborted) {
-      return
-    }
     const plan = await this.planner.plan(context, capabilities.plannerView)
     if (request.signal?.aborted) {
       return

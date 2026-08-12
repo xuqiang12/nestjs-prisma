@@ -197,7 +197,7 @@ test('RagHandler answers customer price questions from knowledge QA result and e
   assert.equal(captured.context.rewrittenQuestion, '智能办公助手Pro 的售后服务政策是什么？')
   assert.equal(captured.context.rewriteApplied, true)
   assert.deepEqual(captured.context.knowledgeBaseIds, ['kb-price'])
-  assert.deepEqual(captured.context.allowedToolCodes, ['search_knowledge', 'weather'])
+  assert.equal(captured.context.allowedToolCodes, undefined)
   assert.equal(captured.context.knowledgeStrict, true)
 })
 
@@ -240,6 +240,31 @@ test('ToolHandler executes only the tool requested by the validated step', async
   }])
   assert.equal(events[0].type, 'tool_start')
   assert.equal(events[1].type, 'tool_done')
+  assert.equal(events[2].type, 'content')
+  assert.match(events[2].payload.text, /工具调用完成/)
+  assert.match(events[2].payload.text, /上海/)
+})
+
+test('ToolHandler emits readable content when tool returns failure result', async () => {
+  const { ToolHandler } = loadRuntime()
+  const toolExecutor = {
+    execute: async () => ({ success: false, message: '查询用户菜单权限失败' }),
+  }
+  const events = await collect(new ToolHandler(toolExecutor).execute(createContext('当前用户有哪些权限？'), {
+    id: 'step_1',
+    capability: 'tool',
+    input: {
+      toolCode: 'get_user_menu_permissions',
+      params: {
+        message: '当前用户有哪些权限？',
+      },
+    },
+  }))
+
+  assert.equal(events[0].type, 'tool_start')
+  assert.equal(events[1].type, 'tool_done')
+  assert.equal(events[2].type, 'content')
+  assert.equal(events[2].payload.text, '工具调用失败：查询用户菜单权限失败')
 })
 
 test('WorkflowHandler maps workflow stream events into AgentEvent envelope', async () => {

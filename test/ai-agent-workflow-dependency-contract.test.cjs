@@ -1,3 +1,4 @@
+// 校验智能体保存时工作流依赖工具的配置合同。
 const assert = require('node:assert/strict')
 const { readFileSync } = require('node:fs')
 const { test } = require('node:test')
@@ -24,11 +25,11 @@ test('agent config options expose workflow dependency metadata', () => {
   assert.match(service, /promptIds:\s*this\.collectWorkflowPromptIds\(workflow\.nodes\)/)
 })
 
-test('workflow dependency extraction treats knowledge and tool nodes as required tools', () => {
+test('workflow dependency extraction treats only tool nodes as required tools', () => {
   const service = readFileSync(join(rootDir, 'src/modules/ai-platform/agent/agent.service.ts'), 'utf8')
 
-  assert.match(service, /node\.type === 'knowledge'/)
-  assert.match(service, /requiredToolCodes\.add\('search_knowledge'\)/)
+  assert.doesNotMatch(service, /node\.type === 'knowledge'/)
+  assert.doesNotMatch(service, /requiredToolCodes\.add\('search_knowledge'\)/)
   assert.match(service, /node\.type === 'tool'/)
   assert.match(service, /requiredToolCodes\.add\(String\(config\.toolCode\)\)/)
 })

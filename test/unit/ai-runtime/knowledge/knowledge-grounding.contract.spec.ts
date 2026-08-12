@@ -39,7 +39,6 @@ describe('KnowledgeQAService Grounding contract', () => {
     const result = await setup.service.answer({
       question: '查询知识库事实',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     return { ...setup, result }

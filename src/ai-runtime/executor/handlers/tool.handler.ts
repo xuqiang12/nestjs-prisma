@@ -39,5 +39,35 @@ export class ToolHandler implements CapabilityHandler {
         timestamp: new Date().toISOString(),
       },
     }
+    yield {
+      type: 'content',
+      payload: { text: this.formatToolResult(result) },
+      metadata: {
+        requestId: context.metadata.requestId,
+        stepId: step.id,
+        capability: this.capability,
+        timestamp: new Date().toISOString(),
+      },
+    }
+  }
+
+  // 将工具结果转换为聊天区可展示的简短文本。
+  private formatToolResult(result: any) {
+    if (result && typeof result === 'object' && result.success === false) {
+      return `工具调用失败：${typeof result.message === 'string' && result.message.trim() ? result.message : '请稍后重试'}`
+    }
+    if (typeof result === 'string') {
+      return result
+    }
+    return `工具调用完成：${this.stringifyResult(result)}`
+  }
+
+  // 安全序列化工具结果，避免复杂对象导致响应中断。
+  private stringifyResult(result: any) {
+    try {
+      return JSON.stringify(result)
+    } catch {
+      return String(result)
+    }
   }
 }

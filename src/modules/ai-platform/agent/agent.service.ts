@@ -367,9 +367,6 @@ export class AgentService {
     const requiredToolCodes = new Set<string>()
     nodes.forEach((node) => {
       const config = this.normalizeNodeConfig(node.config)
-      if (node.type === 'knowledge') {
-        requiredToolCodes.add('search_knowledge')
-      }
       if (node.type === 'tool' && config.toolCode) {
         requiredToolCodes.add(String(config.toolCode))
       }

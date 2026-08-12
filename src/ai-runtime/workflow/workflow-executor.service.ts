@@ -207,8 +207,7 @@ export class WorkflowExecutorService {
     }
 
     if (node.type === 'knowledge') {
-      this.ensureToolAllowed('search_knowledge', input.allowedToolCodes)
-      // 工作流 knowledge 节点独立走向量检索，但仍复用 Agent 的工具授权和知识库范围。
+      // 工作流 knowledge 节点独立走向量检索，并复用 Agent 的知识库范围。
       const query = this.readValue(values, config.queryField)
       const standaloneQuestion = this.buildStandaloneKnowledgeQuestion(String(query || ''), input.history || [])
       const matchedSources = await this.vectorStore.similaritySearch(standaloneQuestion, config.limit ? Number(config.limit) : 5, { tags: input.knowledgeTags, knowledgeBaseIds: input.knowledgeBaseIds })

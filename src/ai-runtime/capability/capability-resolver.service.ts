@@ -38,9 +38,6 @@ export class CapabilityResolver {
     if (!context.capabilities.knowledgeBaseIds.length) {
       return { capability: 'rag', available: false, reason: '未绑定可用知识库' }
     }
-    if (!context.capabilities.toolCodes.includes(KNOWLEDGE_TOOL_CODE)) {
-      return { capability: 'rag', available: false, reason: '未授权知识检索工具' }
-    }
     return { capability: 'rag', available: true }
   }
 

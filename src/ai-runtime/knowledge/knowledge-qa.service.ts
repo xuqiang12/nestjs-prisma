@@ -1,5 +1,5 @@
 // 组织知识库检索、证据整理和最终答案约束的 RAG 问答运行时。
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { LlmOptions, LlmService } from '../llm/llm.service'
 import { SearchResult, VectorStoreService } from '../vector/vector-store.service'
 import { FactAligner } from './fact-aligner'
@@ -56,7 +56,6 @@ export class KnowledgeQAService {
 
   // 构建知识库回答所需的检索结果、证据事实和模型消息。
   async buildCompletion(context: KnowledgeRuntimeContext): Promise<CompletionPlan> {
-    this.ensureToolAllowed('search_knowledge', context.allowedToolCodes)
     const standaloneQuestion = (context.rewrittenQuestion || context.question).trim()
     const matchedSources = await this.vectorStoreService.similaritySearch(standaloneQuestion, 5, {
       tags: context.knowledgeTags,
@@ -144,10 +143,4 @@ export class KnowledgeQAService {
     return results.every((result) => result.status === 'SUPPORTED') ? 'ALLOW' : 'WARN'
   }
 
-  // 校验当前 Agent 是否允许执行知识检索工具。
-  private ensureToolAllowed(toolCode: string, allowedToolCodes?: string[]) {
-    if (allowedToolCodes && !allowedToolCodes.includes(toolCode)) {
-      throw new BadRequestException(`智能体未授权工具：${toolCode}`)
-    }
-  }
 }

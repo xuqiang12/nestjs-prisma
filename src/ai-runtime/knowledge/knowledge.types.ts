@@ -94,7 +94,6 @@ export type CompletionPlan = {
 
 export type BuildCompletionOptions = {
   systemPrompt?: string
-  allowedToolCodes?: string[]
   knowledgeStrict?: boolean
   knowledgeTags?: string[]
   knowledgeBaseIds?: string[]
@@ -107,7 +106,6 @@ export type KnowledgeRuntimeContext = {
   rewriteApplied?: boolean
   history: ChatMessage[]
   systemPrompt?: string
-  allowedToolCodes?: string[]
   knowledgeStrict?: boolean
   knowledgeTags?: string[]
   knowledgeBaseIds?: string[]

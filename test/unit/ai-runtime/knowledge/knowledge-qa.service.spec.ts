@@ -1,5 +1,4 @@
 // 校验知识库问答服务的检索、历史和答案校验行为。
-import { BadRequestException } from '@nestjs/common'
 import { KnowledgeAnswerGuardService } from 'src/ai-runtime/knowledge/knowledge-answer-guard.service'
 import { KnowledgeEvidenceService } from 'src/ai-runtime/knowledge/knowledge-evidence.service'
 import { KnowledgeQAService } from 'src/ai-runtime/knowledge/knowledge-qa.service'
@@ -35,17 +34,19 @@ describe('KnowledgeQAService', () => {
     return { service, llmService, vectorStoreService }
   }
 
-  it('rejects knowledge search when the agent does not allow search_knowledge', async () => {
+  it('searches knowledge without requiring search_knowledge tool authorization', async () => {
     const { service, vectorStoreService } = createService()
 
-    await expect(
-      service.buildCompletion({
-        question: '查询知识库',
-        history: [],
-        allowedToolCodes: [],
-      }),
-    ).rejects.toThrow(BadRequestException)
-    expect(vectorStoreService.similaritySearch).not.toHaveBeenCalled()
+    await service.buildCompletion({
+      question: '查询知识库',
+      history: [],
+    })
+
+    expect(vectorStoreService.similaritySearch).toHaveBeenCalledWith(
+      '查询知识库',
+      5,
+      expect.any(Object),
+    )
   })
 
   it('answers through retrieved facts and guard fallback', async () => {
@@ -54,7 +55,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '智能办公助手Pro怎么卖？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.answer).toContain('1999元/年')
@@ -107,7 +107,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '智能办公助手Pro怎么卖？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.answer).toContain('1999元/年')
@@ -124,7 +123,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '智能办公助手Pro怎么卖？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.answer).toBe('基础版本为1999元/年。')
@@ -142,7 +140,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '智能办公助手Pro怎么卖？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.answer).toBe('基础版本为1999元/年。')
@@ -159,7 +156,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '智能办公助手Pro怎么卖？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.answer).toBe('基础版本为1999元/年。')
@@ -191,7 +187,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '基础版价格是多少？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.factVerification.items[0].status).toBe('CONTRADICTED')
@@ -223,7 +218,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '企业版价格是多少？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.factVerification.items[0].status).toBe('CONTRADICTED')
@@ -255,7 +249,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '价格是多少？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.factVerification.items[0].status).toBe('SUPPORTED')
@@ -289,7 +282,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '基础版状态是什么？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.answer).toBe('基础版状态：不支持。')
@@ -324,7 +316,6 @@ describe('KnowledgeQAService', () => {
     const result = await service.answer({
       question: '基础版状态是什么？',
       history: [],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(result.answer).toBe('基础版状态：支持。')
@@ -340,7 +331,6 @@ describe('KnowledgeQAService', () => {
         { role: 'user', content: '智能办公助手Pro怎么卖？' },
         { role: 'assistant', content: '基础版是1999元/年。' },
       ],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(vectorStoreService.similaritySearch).toHaveBeenCalledWith(
@@ -362,7 +352,6 @@ describe('KnowledgeQAService', () => {
         { role: 'user', content: 'basic version price' },
         { role: 'assistant', content: 'basic version is 1999 per year' },
       ],
-      allowedToolCodes: ['search_knowledge'],
     })
 
     expect(vectorStoreService.similaritySearch).toHaveBeenCalledWith(

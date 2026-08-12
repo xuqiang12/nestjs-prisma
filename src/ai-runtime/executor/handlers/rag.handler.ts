@@ -23,7 +23,6 @@ export class RagHandler implements CapabilityHandler {
       rewriteApplied: !!step.input.rewriteApplied,
       history: context.history,
       systemPrompt: context.prompt.system,
-      allowedToolCodes: context.capabilities.toolCodes,
       knowledgeStrict: context.capabilities.knowledgeStrict,
       knowledgeTags: context.capabilities.knowledgeTags,
       knowledgeBaseIds: context.capabilities.knowledgeBaseIds,

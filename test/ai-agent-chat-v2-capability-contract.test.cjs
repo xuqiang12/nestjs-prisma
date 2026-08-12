@@ -94,7 +94,7 @@ test('Planner view only includes available capabilities and keeps reasons in dia
   ])
 })
 
-test('RAG requires knowledgeEnabled, knowledgeBaseIds and search_knowledge together', () => {
+test('RAG requires only knowledgeEnabled and knowledgeBaseIds', () => {
   const { CapabilityResolver } = loadRuntime()
   const resolver = new CapabilityResolver()
 
@@ -118,7 +118,7 @@ test('RAG requires knowledgeEnabled, knowledgeBaseIds and search_knowledge toget
   }))
 
   assert.equal(disabled.plannerView.includes('rag'), false)
-  assert.equal(noSearchTool.plannerView.includes('rag'), false)
+  assert.equal(noSearchTool.plannerView.includes('rag'), true)
 })
 
 test('CapabilityResolver does not treat search_knowledge as normal tool capability', () => {

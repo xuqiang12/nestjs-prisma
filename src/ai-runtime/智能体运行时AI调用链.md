@@ -77,7 +77,7 @@
 [src/ai-runtime/capability/capability-resolver.service.ts](capability/capability-resolver.service.ts) `CapabilityResolver.resolve()`
 
 - `chat`：只要模型配置解析成功即可用。
-- `rag`：必须同时满足 `knowledgeEnabled = true`、绑定了启用知识库、`toolCodes` 包含 `search_knowledge`。
+- `rag`：必须同时满足 `knowledgeEnabled = true`、绑定了启用知识库。
 - `tool`：必须授权了除 `search_knowledge` 之外的普通工具。
 - `workflow`：必须绑定了 `workflowCode`。
 
@@ -140,7 +140,7 @@ LLM 节点：
 knowledge 节点：
 
 [src/ai-runtime/workflow/workflow-executor.service.ts](workflow/workflow-executor.service.ts) `executeNode()` 中 `node.type === 'knowledge'`  
--> 校验 `search_knowledge` 授权  
+-> 按 Agent 绑定的知识库范围检索
 -> [src/ai-runtime/vector/vector-store.service.ts](vector/vector-store.service.ts) `VectorStoreService.similaritySearch()`  
 -> [src/ai-runtime/knowledge/knowledge-evidence.service.ts](knowledge/knowledge-evidence.service.ts) `KnowledgeEvidenceService.buildEvidence()`  
 -> 把 `sources / knowledgeEvidence / knowledgeFacts` 写入工作流上下文
@@ -190,7 +190,6 @@ RAG 能力完整知识链：
 `RagHandler.execute()`  
 -> `KnowledgeQAService.answer(context)`  
 -> `KnowledgeQAService.buildCompletion(context)`  
--> `ensureToolAllowed('search_knowledge', context.allowedToolCodes)`  
 -> `VectorStoreService.similaritySearch(rewrittenQuestion, 5, { tags, knowledgeBaseIds })`  
 -> `filterSources()` 按严格/非严格阈值筛选  
 -> `KnowledgeEvidenceService.buildEvidence(sources)`  

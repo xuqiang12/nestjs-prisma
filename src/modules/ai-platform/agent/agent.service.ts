@@ -121,9 +121,10 @@ export class AgentService {
         requiredToolCodes: this.collectWorkflowRequiredToolCodes(workflow.nodes),
         promptIds: this.collectWorkflowPromptIds(workflow.nodes),
       })),
-      tools: this.registry.listTools().map((tool) => ({
-        code: tool.name,
-        name: tool.description || tool.name,
+      tools: this.registry.listToolsByCodes(this.registry.getToolCodes()).map((tool) => ({
+        code: tool.code,
+        name: tool.name || tool.description || tool.code,
+        description: tool.description,
       })),
       models: models.map((item) => ({
         id: item.id,
@@ -148,7 +149,7 @@ export class AgentService {
     const knowledgeBaseIds = this.normalizeKnowledgeBaseIds(dto.knowledgeBaseIds)
     await this.ensureEnabledKnowledgeBases(knowledgeBaseIds)
     await this.ensureEnabledChatModelConfig(dto.modelConfigId)
-    this.ensureKnownTools(dto.toolCodes)
+    this.ensureConfigurableTools(dto.toolCodes)
     await this.ensureWorkflowRequiredTools(dto.workflowCode, dto.toolCodes)
 
     const data = await this.toAgentData(dto)
@@ -176,7 +177,7 @@ export class AgentService {
       await this.ensureEnabledKnowledgeBases(knowledgeBaseIds)
     }
     await this.ensureEnabledChatModelConfig(dto.modelConfigId)
-    this.ensureKnownTools(dto.toolCodes)
+    this.ensureConfigurableTools(dto.toolCodes)
     await this.ensureWorkflowRequiredTools(dto.workflowCode, dto.toolCodes)
 
     const data = await this.toAgentData(dto, agent.promptId)
@@ -319,15 +320,17 @@ export class AgentService {
     }
   }
 
-  private ensureKnownTools(toolCodes?: string[]) {
+  private ensureConfigurableTools(toolCodes?: string[]) {
     if (!toolCodes || !toolCodes.length) {
       return
     }
 
-    const toolNames = new Set(this.registry.getToolNames())
-    const unknownTool = toolCodes.find((code) => !toolNames.has(code))
-    if (unknownTool) {
-      throw new BadRequestException(`工具不存在：${unknownTool}`)
+    const invalidTool = toolCodes.find((code) => {
+      const tool = this.registry.getTool(code)
+      return !tool || !tool.enabled || tool.exposure !== 'agent'
+    })
+    if (invalidTool) {
+      throw new BadRequestException(`工具不可配置：${invalidTool}`)
     }
   }
 

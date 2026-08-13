@@ -248,7 +248,7 @@ test('ToolHandler executes only the tool requested by the validated step', async
 test('ToolHandler emits readable content when tool returns failure result', async () => {
   const { ToolHandler } = loadRuntime()
   const toolExecutor = {
-    execute: async () => ({ success: false, message: '查询用户菜单权限失败' }),
+    execute: async () => ({ success: false, error: { code: 'TOOL_EXECUTION_FAILED', message: '查询用户菜单权限失败' } }),
   }
   const events = await collect(new ToolHandler(toolExecutor).execute(createContext('当前用户有哪些权限？'), {
     id: 'step_1',
@@ -265,6 +265,42 @@ test('ToolHandler emits readable content when tool returns failure result', asyn
   assert.equal(events[1].type, 'tool_done')
   assert.equal(events[2].type, 'content')
   assert.equal(events[2].payload.text, '工具调用失败：查询用户菜单权限失败')
+})
+
+test('ToolHandler executes multi tool calls serially through the existing ToolExecutor', async () => {
+  const { ToolHandler } = loadRuntime()
+  const calls = []
+  const toolExecutor = {
+    execute: async (toolCode, params) => {
+      calls.push({ toolCode, params })
+      return { success: true, data: { toolCode, params } }
+    },
+  }
+  const events = await collect(new ToolHandler(toolExecutor).execute(createContext('查天气并搜索新闻'), {
+    id: 'step_1',
+    capability: 'tool',
+    input: {
+      toolCalls: [
+        { toolCode: 'weather', params: { city: '上海' } },
+        { toolCode: 'search', params: { query: '上海今天重大新闻' } },
+      ],
+    },
+  }))
+
+  assert.deepEqual(calls, [
+    { toolCode: 'weather', params: { city: '上海' } },
+    { toolCode: 'search', params: { query: '上海今天重大新闻' } },
+  ])
+  assert.deepEqual(events.map((event) => event.type), [
+    'tool_start',
+    'tool_done',
+    'content',
+    'tool_start',
+    'tool_done',
+    'content',
+  ])
+  assert.equal(events[0].payload.tool.code, 'weather')
+  assert.equal(events[3].payload.tool.code, 'search')
 })
 
 test('WorkflowHandler maps workflow stream events into AgentEvent envelope', async () => {

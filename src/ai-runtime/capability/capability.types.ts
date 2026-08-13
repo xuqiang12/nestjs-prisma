@@ -2,6 +2,7 @@
 import { AgentEvent } from '../events/agent-event.types'
 import { AgentContext } from '../context/agent-context.types'
 import { ExecutionStep } from '../planner/agent-planner.types'
+import { JsonSchemaObject } from '../tools/tool.types'
 
 export type CapabilityType = 'chat' | 'rag' | 'tool' | 'workflow'
 
@@ -11,8 +12,16 @@ export type CapabilityStatus = {
   reason?: string
 }
 
+export type PlannerToolDefinition = {
+  code: string
+  name: string
+  description: string
+  inputSchema: JsonSchemaObject
+}
+
 export type ResolvedCapabilities = {
   plannerView: CapabilityType[]
+  plannerToolCatalog: PlannerToolDefinition[]
   diagnosticView: CapabilityStatus[]
 }
 

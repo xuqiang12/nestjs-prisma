@@ -43,10 +43,24 @@ export class ChatHandler implements CapabilityHandler {
   private buildUserQuestionPrompt(context: AgentContext, step: ExecutionStep) {
     const originalQuestion = step.input.originalQuestion || context.message.content
     const rewrittenQuestion = step.input.rewrittenQuestion || step.input.message || originalQuestion
-    return [
+    const lines = [
       `用户原始问题：${originalQuestion}`,
       `上下文改写问题：${rewrittenQuestion}`,
+      ...this.buildToolResultPromptLines(step.input.toolResults),
       '请优先围绕上下文改写问题回答，同时保持对用户原始问题的自然回应。',
-    ].join('\n')
+    ]
+    return lines.join('\n')
+  }
+
+  // 将 Agent Loop 收集到的工具结果作为最终回答上下文交给模型。
+  private buildToolResultPromptLines(toolResults: any) {
+    if (!Array.isArray(toolResults) || !toolResults.length) {
+      return []
+    }
+    return [
+      '已执行工具结果：',
+      JSON.stringify(toolResults),
+      '请基于这些工具结果生成最终回答，不要要求用户重复提供已经查询到的信息。',
+    ]
   }
 }

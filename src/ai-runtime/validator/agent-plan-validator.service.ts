@@ -3,11 +3,15 @@ import { BadRequestException, Injectable } from '@nestjs/common'
 import { CapabilityType } from '../capability/capability.types'
 import { AgentContext } from '../context/agent-context.types'
 import { ExecutionPlan, ExecutionStep } from '../planner/agent-planner.types'
+import { RuntimeToolRegistry } from '../tools/runtime-tool-registry.service'
 
 const KNOWLEDGE_TOOL_CODE = 'search_knowledge'
 
 @Injectable()
 export class AgentPlanValidator {
+  // 注入运行时工具目录，作为工具计划最终授权和状态校验边界。
+  constructor(private readonly toolRegistry: RuntimeToolRegistry) {}
+
   // 校验计划步骤数量和每一步能力是否在上下文授权范围内。
   validate(plan: ExecutionPlan, context: AgentContext, plannerView: CapabilityType[]): ExecutionPlan {
     if (!plan.steps.length) {
@@ -34,13 +38,35 @@ export class AgentPlanValidator {
     }
   }
 
-  // 校验工具步骤只能调用当前智能体授权的普通工具。
+  // 校验工具步骤中的每个 ToolCall 都只能调用当前智能体授权的普通工具。
   private validateToolStep(step: ExecutionStep, context: AgentContext) {
-    const toolCode = step.input.toolCode
+    const toolCalls = this.normalizeToolCalls(step)
+    if (!toolCalls.length) {
+      throw new BadRequestException('工具未授权：undefined')
+    }
+    toolCalls.forEach((toolCall) => this.validateToolCall(toolCall.toolCode, context))
+  }
+
+  // 校验单个工具调用是否通过 Agent 授权和运行时工具状态边界。
+  private validateToolCall(toolCode: string, context: AgentContext) {
     const allowedToolCodes = context.capabilities.toolCodes.filter((code) => code !== KNOWLEDGE_TOOL_CODE)
     if (!toolCode || !allowedToolCodes.includes(toolCode)) {
       throw new BadRequestException(`工具未授权：${toolCode}`)
     }
+    const tool = this.toolRegistry.getTool(toolCode)
+    if (!tool || !tool.enabled || tool.exposure !== 'agent') {
+      throw new BadRequestException(`工具不可用：${toolCode}`)
+    }
+  }
+
+  // 将新版 toolCalls 或旧版 toolCode 字段归一化为统一校验列表。
+  private normalizeToolCalls(step: ExecutionStep): Array<{ toolCode: string }> {
+    if (Array.isArray(step.input.toolCalls)) {
+      return step.input.toolCalls
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({ toolCode: String(item.toolCode || '') }))
+    }
+    return [{ toolCode: step.input.toolCode }]
   }
 
   // 校验工作流步骤只能调用当前智能体绑定的工作流。

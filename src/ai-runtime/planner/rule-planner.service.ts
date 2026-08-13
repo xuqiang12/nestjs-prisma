@@ -1,12 +1,12 @@
 // 基于 AI 意图识别生成新版智能体第一版执行计划。
 import { Injectable } from '@nestjs/common'
-import { CapabilityType } from '../capability/capability.types'
+import { CapabilityType, PlannerToolDefinition } from '../capability/capability.types'
 import { AgentContext } from '../context/agent-context.types'
 import { IntentClassification, IntentClassifierService } from './intent-classifier.service'
-import { ExecutionPlan, ExecutionStep } from './agent-planner.types'
+import { ExecutionPlan, ExecutionStep, ToolCallPlan, ToolExecutionRecord } from './agent-planner.types'
 
-const KNOWLEDGE_TOOL_CODE = 'search_knowledge'
 const MIN_INTENT_CONFIDENCE = 0.6
+const RUNTIME_CONTEXT_FIELDS = new Set(['userId', 'agentCode', 'conversationId', 'requestId', 'traceId', 'signal'])
 
 @Injectable()
 export class RulePlanner {
@@ -14,35 +14,48 @@ export class RulePlanner {
   constructor(private readonly intentClassifier: IntentClassifierService) {}
 
   // 根据用户问题、Planner 可见能力和 AI 意图识别结果生成第一版单步执行计划。
-  async plan(context: AgentContext, plannerView: CapabilityType[]): Promise<ExecutionPlan> {
+  async plan(
+    context: AgentContext,
+    plannerView: CapabilityType[],
+    plannerToolCatalog: PlannerToolDefinition[] = [],
+    toolResults: ToolExecutionRecord[] = [],
+  ): Promise<ExecutionPlan> {
     return {
       metadata: { version: 1 },
       strategy: { mode: 'sequential' },
-      steps: [await this.createStep(context, plannerView)],
+      steps: [await this.createStep(context, plannerView, plannerToolCatalog, toolResults)],
     }
   }
 
   // 按 AI 意图结果和能力列表选择本次要进入的能力步骤。
-  private async createStep(context: AgentContext, plannerView: CapabilityType[]): Promise<ExecutionStep> {
+  private async createStep(
+    context: AgentContext,
+    plannerView: CapabilityType[],
+    plannerToolCatalog: PlannerToolDefinition[],
+    toolResults: ToolExecutionRecord[],
+  ): Promise<ExecutionStep> {
     const message = context.message.content
-    const classification = await this.classifyIntent(message, plannerView, context)
-    const capability = this.resolveCapability(classification, plannerView)
-    return this.createCapabilityStep(capability, message, context, classification)
+    const classification = await this.classifyIntent(message, plannerView, plannerToolCatalog, context, toolResults)
+    const capability = this.resolveCapability(classification, plannerView, plannerToolCatalog)
+    return this.createCapabilityStep(capability, message, context, classification, plannerToolCatalog, toolResults)
   }
 
   // 调用 AI 意图识别器，识别失败时返回低置信度普通对话候选。
   private async classifyIntent(
     message: string,
     plannerView: CapabilityType[],
+    plannerToolCatalog: PlannerToolDefinition[],
     context: AgentContext,
+    toolResults: ToolExecutionRecord[],
   ): Promise<IntentClassification> {
     try {
       return await this.intentClassifier.classify({
         message,
         availableCapabilities: plannerView,
+        plannerToolCatalog,
         agent: context.agent,
-        capabilities: context.capabilities,
         history: context.history,
+        toolResults,
       }, context)
     } catch {
       return {
@@ -55,11 +68,18 @@ export class RulePlanner {
   }
 
   // 判断 AI 返回能力是否可信且处于 Planner 可见能力范围内。
-  private resolveCapability(classification: IntentClassification, plannerView: CapabilityType[]) {
+  private resolveCapability(
+    classification: IntentClassification,
+    plannerView: CapabilityType[],
+    plannerToolCatalog: PlannerToolDefinition[],
+  ) {
     if (
       classification.confidence >= MIN_INTENT_CONFIDENCE
       && plannerView.includes(classification.capability)
     ) {
+      if (classification.capability === 'tool' && !this.resolveToolCalls(classification, plannerToolCatalog).length) {
+        return plannerView.includes('chat') ? 'chat' : plannerView[0]
+      }
       return classification.capability
     }
     return plannerView.includes('chat') ? 'chat' : plannerView[0]
@@ -71,6 +91,8 @@ export class RulePlanner {
     message: string,
     context: AgentContext,
     classification: IntentClassification,
+    plannerToolCatalog: PlannerToolDefinition[],
+    toolResults: ToolExecutionRecord[],
   ): ExecutionStep {
     const questionInput = this.buildQuestionInput(message, classification)
     if (capability === 'workflow') {
@@ -82,22 +104,20 @@ export class RulePlanner {
       }
     }
     if (capability === 'tool') {
+      const toolCalls = this.resolveToolCalls(classification, plannerToolCatalog)
+      if (!toolCalls.length) {
+        return this.createChatStep(message, classification, toolResults)
+      }
+      const firstToolCall = toolCalls[0]
       return {
         id: 'step_1',
         capability,
         reason: classification.reason || 'AI 意图识别选择已授权工具',
         input: {
-          ...classification.input,
           ...questionInput,
-          // 从上下文授权工具中取第一个普通工具编码。
-          toolCode: context.capabilities.toolCodes.find((code) => code !== KNOWLEDGE_TOOL_CODE),
-          params: {
-            ...classification.input?.params,
-            message: questionInput.rewrittenQuestion,
-            originalQuestion: questionInput.originalQuestion,
-            rewrittenQuestion: questionInput.rewrittenQuestion,
-            rewriteApplied: questionInput.rewriteApplied,
-          },
+          toolCode: firstToolCall.toolCode,
+          params: firstToolCall.params,
+          toolCalls,
         },
       }
     }
@@ -109,11 +129,17 @@ export class RulePlanner {
         input: { ...classification.input, ...questionInput, query: questionInput.rewrittenQuestion },
       }
     }
+    return this.createChatStep(message, classification, toolResults)
+  }
+
+  // 构造普通对话步骤作为低置信度或非法工具选择的安全返回。
+  private createChatStep(message: string, classification: IntentClassification, toolResults: ToolExecutionRecord[] = []): ExecutionStep {
+    const questionInput = this.buildQuestionInput(message, classification)
     return {
       id: 'step_1',
-      capability,
+      capability: 'chat',
       reason: classification.reason || 'AI 意图识别选择普通对话',
-      input: { ...classification.input, ...questionInput, message: questionInput.rewrittenQuestion },
+      input: { ...classification.input, ...questionInput, message: questionInput.rewrittenQuestion, toolResults },
     }
   }
 
@@ -135,5 +161,77 @@ export class RulePlanner {
       rewrittenQuestion: rewrittenCandidate,
       rewriteApplied,
     }
+  }
+
+  // 根据模型输出的 toolCalls 或旧 toolCode 生成可执行工具调用列表。
+  private resolveToolCalls(classification: IntentClassification, plannerToolCatalog: PlannerToolDefinition[]): ToolCallPlan[] {
+    const requestedToolCalls = Array.isArray(classification.toolCalls) && classification.toolCalls.length
+      ? classification.toolCalls
+      : this.resolveLegacyToolCall(classification)
+    const resolvedToolCalls: ToolCallPlan[] = []
+
+    for (const toolCall of requestedToolCalls) {
+      const tool = plannerToolCatalog.find((item) => item.code === toolCall.toolCode.trim())
+      if (!tool) {
+        return []
+      }
+      const params = this.buildToolInput(toolCall.params, tool)
+      if (!this.isValidToolInput(params, tool)) {
+        return []
+      }
+      resolvedToolCalls.push({ toolCode: tool.code, params })
+    }
+
+    return resolvedToolCalls
+  }
+
+  // 将旧版 toolCode + input 归一化为单个 ToolCall。
+  private resolveLegacyToolCall(classification: IntentClassification): ToolCallPlan[] {
+    if (typeof classification.toolCode !== 'string' || !classification.toolCode.trim()) {
+      return []
+    }
+    return [{ toolCode: classification.toolCode.trim(), params: classification.input || {} }]
+  }
+
+  // 从模型输出中提取 Tool Input，并剔除运行时上下文字段。
+  private buildToolInput(input: Record<string, any> | undefined, tool: PlannerToolDefinition) {
+    const source = input && typeof input === 'object' && !Array.isArray(input)
+      ? input
+      : {}
+    const allowedProperties = tool.inputSchema.properties || {}
+    return Object.entries(source).reduce<Record<string, unknown>>((result, [key, value]) => {
+      if (RUNTIME_CONTEXT_FIELDS.has(key)) {
+        return result
+      }
+      if (Object.prototype.hasOwnProperty.call(allowedProperties, key)) {
+        result[key] = value
+      }
+      return result
+    }, {})
+  }
+
+  // 执行最小 Tool Input Schema 校验，覆盖 required 和基础类型。
+  private isValidToolInput(input: Record<string, unknown>, tool: PlannerToolDefinition) {
+    const schema = tool.inputSchema
+    const required = schema.required || []
+    if (required.some((field) => input[field] === undefined || input[field] === null || input[field] === '')) {
+      return false
+    }
+    return Object.entries(input).every(([key, value]) => {
+      const property = schema.properties?.[key]
+      if (!property) {
+        return false
+      }
+      if (property.type === 'array') {
+        return Array.isArray(value)
+      }
+      if (property.type === 'integer') {
+        return Number.isInteger(value)
+      }
+      if (property.type === 'number') {
+        return typeof value === 'number'
+      }
+      return typeof value === property.type
+    })
   }
 }

@@ -1,4 +1,4 @@
-// 校验工作流执行器的节点执行、工具授权和流式输出行为。
+// 校验工作流执行器的节点执行、工具调用收口和流式输出行为。
 import { BadRequestException } from '@nestjs/common'
 import { KnowledgeAnswerGuardService } from 'src/ai-runtime/knowledge/knowledge-answer-guard.service'
 import { KnowledgeEvidenceService } from 'src/ai-runtime/knowledge/knowledge-evidence.service'
@@ -91,44 +91,49 @@ describe('WorkflowExecutorService', () => {
     expect(runLogger.finishRun).toHaveBeenCalledWith('run-1', { answer: '工作流回答', sources: [] })
   })
 
-  it('rejects tool nodes that are not allowed by the agent', async () => {
+  it('delegates tool nodes to ToolExecutor without repeating agent authorization', async () => {
     const { service, toolExecutor, runLogger } = createService()
+    toolExecutor.execute.mockResolvedValue({ success: true, data: '10:00' })
 
-    await expect(
-      service.execute(
-        {
-          nodes: [
-            { nodeKey: 'start', type: 'start', name: '开始', config: { inputField: 'message' }, sortNo: 1 },
-            { nodeKey: 'tool', type: 'tool', name: '工具', config: { toolCode: 'get_time', outputField: 'toolResult' }, sortNo: 2 },
-            { nodeKey: 'output', type: 'output', name: '输出', config: { outputField: 'toolResult' }, sortNo: 3 },
-          ],
-          edges: [
-            { fromNodeKey: 'start', toNodeKey: 'tool', sortNo: 1 },
-            { fromNodeKey: 'tool', toNodeKey: 'output', sortNo: 1 },
-          ],
-        },
-        {
-          message: '几点了',
-          agentCode: 'agent',
-          workflowCode: 'wf',
-          allowedToolCodes: [],
-        },
-      ),
-    ).rejects.toThrow(BadRequestException)
-    expect(toolExecutor.execute).not.toHaveBeenCalled()
-    expect(runLogger.logStep).toHaveBeenCalledWith({
+    const result = await service.execute(
+      {
+        nodes: [
+          { nodeKey: 'start', type: 'start', name: '开始', config: { inputField: 'message' }, sortNo: 1 },
+          { nodeKey: 'tool', type: 'tool', name: '工具', config: { toolCode: 'get_time', outputField: 'toolResult' }, sortNo: 2 },
+          { nodeKey: 'output', type: 'output', name: '输出', config: { outputField: 'toolResult' }, sortNo: 3 },
+        ],
+        edges: [
+          { fromNodeKey: 'start', toNodeKey: 'tool', sortNo: 1 },
+          { fromNodeKey: 'tool', toNodeKey: 'output', sortNo: 1 },
+        ],
+      },
+      {
+        message: '几点了',
+        agentCode: 'agent',
+        workflowCode: 'wf',
+        userId: '1',
+        allowedToolCodes: [],
+      },
+    )
+
+    expect(result.values.toolResult).toEqual('10:00')
+    expect(toolExecutor.execute).toHaveBeenCalledWith(
+      'get_time',
+      {},
+      { userId: '1', agentCode: 'agent', conversationId: undefined },
+    )
+    expect(runLogger.logStep).toHaveBeenCalledWith(expect.objectContaining({
       runId: 'run-1',
       nodeKey: 'tool',
       nodeType: 'tool',
-      status: 'failed',
-      input: { nodeKey: 'tool' },
-      errorMessage: '智能体未授权工具：get_time',
-    })
+      status: 'success',
+      output: { toolResult: '10:00' },
+    }))
   })
 
-  it('uses authenticated user id for user permission tool params', async () => {
+  it('passes authenticated user id through runtime context instead of tool input', async () => {
     const { service, toolExecutor } = createService()
-    toolExecutor.execute.mockResolvedValue({ success: true })
+    toolExecutor.execute.mockResolvedValue({ success: true, data: { menuCount: 1 } })
 
     await service.execute(
       {
@@ -151,7 +156,52 @@ describe('WorkflowExecutorService', () => {
       },
     )
 
-    expect(toolExecutor.execute).toHaveBeenCalledWith('get_user_menu_permissions', { userId: '1' })
+    expect(toolExecutor.execute).toHaveBeenCalledWith(
+      'get_user_menu_permissions',
+      {},
+      { userId: '1', agentCode: 'agent', conversationId: undefined },
+    )
+  })
+
+  it('stops workflow when ToolExecutor returns failure ToolResult', async () => {
+    const { service, toolExecutor, runLogger } = createService()
+    toolExecutor.execute.mockResolvedValue({
+      success: false,
+      error: { code: 'TOOL_DISABLED', message: '工具已禁用：get_time' },
+    })
+
+    await expect(
+      service.execute(
+        {
+          nodes: [
+            { nodeKey: 'start', type: 'start', name: '开始', config: { inputField: 'message' }, sortNo: 1 },
+            { nodeKey: 'tool', type: 'tool', name: '工具', config: { toolCode: 'get_time', outputField: 'toolResult' }, sortNo: 2 },
+            { nodeKey: 'output', type: 'output', name: '输出', config: { outputField: 'toolResult' }, sortNo: 3 },
+          ],
+          edges: [
+            { fromNodeKey: 'start', toNodeKey: 'tool', sortNo: 1 },
+            { fromNodeKey: 'tool', toNodeKey: 'output', sortNo: 1 },
+          ],
+        },
+        {
+          message: '几点了',
+          agentCode: 'agent',
+          workflowCode: 'wf',
+          userId: '1',
+          allowedToolCodes: [],
+        },
+      ),
+    ).rejects.toThrow('工具已禁用：get_time')
+    expect(toolExecutor.execute).toHaveBeenCalledTimes(1)
+    expect(runLogger.logStep).toHaveBeenCalledWith({
+      runId: 'run-1',
+      nodeKey: 'tool',
+      nodeType: 'tool',
+      status: 'failed',
+      input: { nodeKey: 'tool' },
+      errorMessage: '工具已禁用：get_time',
+    })
+    expect(runLogger.finishRun).not.toHaveBeenCalled()
   })
 
   it('streams a start llm output workflow with node events', async () => {

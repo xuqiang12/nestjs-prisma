@@ -44,6 +44,15 @@ function createContext(overrides = {}) {
   }
 }
 
+// 构造最小运行时工具目录，模拟 Phase 1 Registry 的过滤行为。
+function createToolRegistry(tools) {
+  return {
+    listToolsByCodes: (toolCodes) => toolCodes
+      .map((code) => tools.find((tool) => tool.code === code))
+      .filter((tool) => tool && tool.enabled && tool.exposure === 'agent'),
+  }
+}
+
 test('Capability types expose only planner-safe capability status models', () => {
   const types = readSource('src/ai-runtime/capability/capability.types.ts')
 
@@ -62,18 +71,120 @@ test('Capability types expose only planner-safe capability status models', () =>
 
 test('CapabilityResolver splits plannerView from diagnosticView', () => {
   const { CapabilityResolver } = loadRuntime()
-  const resolver = new CapabilityResolver()
+  const resolver = new CapabilityResolver(createToolRegistry([
+    {
+      code: 'weather',
+      name: '天气查询',
+      description: '查询指定城市天气',
+      enabled: true,
+      exposure: 'agent',
+      inputSchema: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] },
+    },
+  ]))
 
   const result = resolver.resolve(createContext())
 
   assert.deepEqual(result.plannerView, ['chat', 'rag', 'tool', 'workflow'])
+  assert.deepEqual(result.plannerToolCatalog, [{
+    code: 'weather',
+    name: '天气查询',
+    description: '查询指定城市天气',
+    inputSchema: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] },
+  }])
   assert.deepEqual(result.diagnosticView.map((item) => item.capability), ['chat', 'rag', 'tool', 'workflow'])
   assert.equal(result.diagnosticView.every((item) => item.available), true)
 })
 
+test('CapabilityResolver builds planner tool catalog from authorized enabled agent tools only', () => {
+  const { CapabilityResolver } = loadRuntime()
+  const resolver = new CapabilityResolver(createToolRegistry([
+    {
+      code: 'weather',
+      name: '天气查询',
+      description: '查询指定城市天气',
+      enabled: true,
+      exposure: 'agent',
+      inputSchema: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] },
+    },
+    {
+      code: 'disabled_weather',
+      name: '停用天气',
+      description: '停用工具',
+      enabled: false,
+      exposure: 'agent',
+      inputSchema: { type: 'object' },
+    },
+    {
+      code: 'search_knowledge',
+      name: '搜索知识库',
+      description: '内部知识库工具',
+      enabled: true,
+      exposure: 'internal',
+      inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
+    },
+  ]))
+
+  const result = resolver.resolve(createContext({
+    capabilities: {
+      knowledgeEnabled: true,
+      knowledgeStrict: false,
+      knowledgeBaseIds: ['kb-price'],
+      knowledgeTags: [],
+      toolCodes: ['weather', 'disabled_weather', 'search_knowledge', 'unknown_tool'],
+      workflowCode: '',
+    },
+  }))
+
+  assert.equal(result.plannerView.includes('tool'), true)
+  assert.deepEqual(result.plannerToolCatalog.map((tool) => tool.code), ['weather'])
+  assert.equal(JSON.stringify(result.plannerToolCatalog).includes('search_knowledge'), false)
+  assert.equal(JSON.stringify(result.plannerToolCatalog).includes('disabled_weather'), false)
+  assert.equal(JSON.stringify(result.plannerToolCatalog).includes('unknown_tool'), false)
+})
+
+test('CapabilityResolver hides tool capability when no enabled agent-exposed tools are visible', () => {
+  const { CapabilityResolver } = loadRuntime()
+  const resolver = new CapabilityResolver(createToolRegistry([
+    {
+      code: 'search_knowledge',
+      name: '搜索知识库',
+      description: '内部知识库工具',
+      enabled: true,
+      exposure: 'internal',
+      inputSchema: { type: 'object' },
+    },
+  ]))
+
+  const result = resolver.resolve(createContext({
+    capabilities: {
+      knowledgeEnabled: false,
+      knowledgeStrict: false,
+      knowledgeBaseIds: [],
+      knowledgeTags: [],
+      toolCodes: ['search_knowledge'],
+      workflowCode: '',
+    },
+  }))
+
+  assert.deepEqual(result.plannerView, ['chat'])
+  assert.deepEqual(result.plannerToolCatalog, [])
+})
+
+test('Capability types expose PlannerToolCatalog without runtime context fields', () => {
+  const types = readSource('src/ai-runtime/capability/capability.types.ts')
+
+  assert.match(types, /export type PlannerToolDefinition = \{/)
+  assert.match(types, /code: string/)
+  assert.match(types, /name: string/)
+  assert.match(types, /description: string/)
+  assert.match(types, /inputSchema: JsonSchemaObject/)
+  assert.match(types, /plannerToolCatalog: PlannerToolDefinition\[\]/)
+  assert.doesNotMatch(types, /ToolRuntimeContext/)
+})
+
 test('Planner view only includes available capabilities and keeps reasons in diagnostics', () => {
   const { CapabilityResolver } = loadRuntime()
-  const resolver = new CapabilityResolver()
+  const resolver = new CapabilityResolver(createToolRegistry([]))
 
   const result = resolver.resolve(createContext({
     capabilities: {
@@ -96,7 +207,7 @@ test('Planner view only includes available capabilities and keeps reasons in dia
 
 test('RAG requires only knowledgeEnabled and knowledgeBaseIds', () => {
   const { CapabilityResolver } = loadRuntime()
-  const resolver = new CapabilityResolver()
+  const resolver = new CapabilityResolver(createToolRegistry([]))
 
   const disabled = resolver.resolve(createContext({
     capabilities: {
@@ -123,7 +234,7 @@ test('RAG requires only knowledgeEnabled and knowledgeBaseIds', () => {
 
 test('CapabilityResolver does not treat search_knowledge as normal tool capability', () => {
   const { CapabilityResolver } = loadRuntime()
-  const resolver = new CapabilityResolver()
+  const resolver = new CapabilityResolver(createToolRegistry([]))
 
   const result = resolver.resolve(createContext({
     capabilities: {
@@ -140,7 +251,7 @@ test('CapabilityResolver does not treat search_knowledge as normal tool capabili
 
 test('Workflow capability depends only on workflowCode presence', () => {
   const { CapabilityResolver } = loadRuntime()
-  const resolver = new CapabilityResolver()
+  const resolver = new CapabilityResolver(createToolRegistry([]))
 
   const result = resolver.resolve(createContext({
     capabilities: {

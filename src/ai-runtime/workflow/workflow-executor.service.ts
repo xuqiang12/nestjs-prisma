@@ -9,6 +9,7 @@ import { LlmService } from '../llm/llm.service'
 import { VectorStoreService } from '../vector/vector-store.service'
 import { WorkflowExecutionInput, WorkflowExecutionResult, WorkflowGraph, WorkflowNode, WorkflowStreamEvent } from './workflow.types'
 import { WorkflowRunLoggerService } from './workflow-run-logger.service'
+import { ToolResult } from '../tools/tool.types'
 
 const STRICT_KNOWLEDGE_MAX_DISTANCE = 0.45
 const STRICT_KNOWLEDGE_FALLBACK = '未找到相关制度。'
@@ -238,12 +239,12 @@ export class WorkflowExecutorService {
     }
 
     if (node.type === 'tool') {
-      this.ensureToolAllowed(config.toolCode, input.allowedToolCodes)
-      // tool 节点只执行运行时工具注册表中已注册且被当前 Agent 授权的工具。
-      const params = this.buildToolParams(config.toolCode, config.paramsField ? this.readValue(values, config.paramsField) : {}, input)
-      const result = await this.toolExecutor.execute(config.toolCode, params || {})
-      values[config.outputField] = result
-      return { [config.outputField]: result }
+      // tool 节点只规整节点参数并交给统一工具执行器处理。
+      const toolInput = this.buildToolInput(config.paramsField ? this.readValue(values, config.paramsField) : {})
+      const result = await this.toolExecutor.execute(config.toolCode, toolInput, this.buildToolRuntimeContext(input))
+      const output = this.unwrapToolResult(result)
+      values[config.outputField] = output
+      return { [config.outputField]: output }
     }
 
     if (node.type === 'condition') {
@@ -366,20 +367,27 @@ export class WorkflowExecutorService {
     return actual === condition.value
   }
 
-  // 校验当前 Agent 是否授权执行指定工具。
-  private ensureToolAllowed(toolCode: string, allowedToolCodes: string[]) {
-    if (!allowedToolCodes.includes(toolCode)) {
-      throw new BadRequestException(`智能体未授权工具：${toolCode}`)
+  // 将 Workflow 节点参数规整为 Tool Input。
+  private buildToolInput(params: any) {
+    return params && typeof params === 'object' && !Array.isArray(params) ? params : {}
+  }
+
+  // 从 Workflow 运行输入构建工具运行时上下文。
+  private buildToolRuntimeContext(input: WorkflowExecutionInput) {
+    return {
+      userId: input.userId || '',
+      agentCode: input.agentCode,
+      conversationId: input.conversationId,
     }
   }
 
-  // 为特殊工具补充运行时上下文参数。
-  private buildToolParams(toolCode: string, params: any, input: WorkflowExecutionInput) {
-    const baseParams = params && typeof params === 'object' && !Array.isArray(params) ? params : {}
-    if (toolCode === 'get_user_menu_permissions') {
-      return { ...baseParams, userId: input.userId }
+  // 读取工具执行结果，失败时中断当前工作流。
+  private unwrapToolResult(result: ToolResult) {
+    if (!result.success) {
+      const failure = result as Extract<ToolResult, { success: false }>
+      throw new BadRequestException(failure.error.message)
     }
-    return baseParams
+    return result.data
   }
 
   // 按点路径从 values 中读取节点字段。

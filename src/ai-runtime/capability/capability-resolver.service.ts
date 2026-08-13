@@ -1,23 +1,27 @@
 // 解析新版智能体当前请求可进入规划的能力边界。
 import { Injectable } from '@nestjs/common'
 import { AgentContext } from '../context/agent-context.types'
-import { CapabilityStatus, ResolvedCapabilities } from './capability.types'
-
-const KNOWLEDGE_TOOL_CODE = 'search_knowledge'
+import { RuntimeToolRegistry } from '../tools/runtime-tool-registry.service'
+import { CapabilityStatus, PlannerToolDefinition, ResolvedCapabilities } from './capability.types'
 
 @Injectable()
 export class CapabilityResolver {
+  // 注入运行时工具目录，用于生成 Planner 可见的工具 Catalog。
+  constructor(private readonly toolRegistry: RuntimeToolRegistry) {}
+
   // 根据 AgentContext 生成 Planner 可见能力和诊断状态。
   resolve(context: AgentContext): ResolvedCapabilities {
+    const plannerToolCatalog = this.buildPlannerToolCatalog(context)
     const diagnosticView = [
       this.resolveChat(context),
       this.resolveRag(context),
-      this.resolveTool(context),
+      this.resolveTool(plannerToolCatalog),
       this.resolveWorkflow(context),
     ]
 
     return {
       plannerView: diagnosticView.filter((item) => item.available).map((item) => item.capability),
+      plannerToolCatalog,
       diagnosticView,
     }
   }
@@ -42,9 +46,8 @@ export class CapabilityResolver {
   }
 
   // 判断当前上下文是否具备普通工具规划资格。
-  private resolveTool(context: AgentContext): CapabilityStatus {
-    const normalToolCodes = context.capabilities.toolCodes.filter((code) => code !== KNOWLEDGE_TOOL_CODE)
-    if (normalToolCodes.length) {
+  private resolveTool(plannerToolCatalog: PlannerToolDefinition[]): CapabilityStatus {
+    if (plannerToolCatalog.length) {
       return { capability: 'tool', available: true }
     }
     return { capability: 'tool', available: false, reason: '未授权普通工具' }
@@ -56,5 +59,16 @@ export class CapabilityResolver {
       return { capability: 'workflow', available: true }
     }
     return { capability: 'workflow', available: false, reason: '未绑定工作流' }
+  }
+
+  // 从 Agent 授权工具编码和运行时工具目录生成 Planner 可见工具目录。
+  private buildPlannerToolCatalog(context: AgentContext): PlannerToolDefinition[] {
+    return this.toolRegistry.listToolsByCodes(context.capabilities.toolCodes)
+      .map((tool) => ({
+        code: tool.code,
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+      }))
   }
 }

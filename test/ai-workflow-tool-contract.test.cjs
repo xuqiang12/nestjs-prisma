@@ -40,12 +40,12 @@ test('tool list endpoint returns metadata without handlers', () => {
   assert.match(menuSeed, /permissionCode:\s*'ai:tool:list'/)
 })
 
-test('agent config tool options use tool descriptions as display names', () => {
+test('agent config tool options expose configurable tool codes and display names', () => {
   const service = readFileSync(join(rootDir, 'src/modules/ai-platform/agent/agent.service.ts'), 'utf8')
 
-  assert.match(service, /this\.registry\.listTools\(\)\.map/)
-  assert.match(service, /code:\s*tool\.name/)
-  assert.match(service, /name:\s*tool\.description\s*\|\|\s*tool\.name/)
+  assert.match(service, /this\.registry\.listToolsByCodes\(this\.registry\.getToolCodes\(\)\)\.map/)
+  assert.match(service, /code:\s*tool\.code/)
+  assert.match(service, /name:\s*tool\.name\s*\|\|\s*tool\.description\s*\|\|\s*tool\.code/)
 })
 
 test('runtime tool registry does not register demo or mock tools', () => {

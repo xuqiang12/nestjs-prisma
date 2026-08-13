@@ -10,8 +10,13 @@ export class ToolService {
   // 返回工具元数据列表，不暴露运行时 handler。
   list() {
     const list = this.registry.listTools().map((tool) => ({
+      code: tool.code,
       name: tool.name,
       description: tool.description,
+      source: tool.source,
+      exposure: tool.exposure,
+      enabled: tool.enabled,
+      inputSchema: tool.inputSchema,
       params: tool.params,
     }))
     return { list, total: list.length }

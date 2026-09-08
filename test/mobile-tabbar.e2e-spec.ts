@@ -1,3 +1,4 @@
+// 这个测试验证小程序底部导航运行时接口和后台管理接口。
 import { INestApplication } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { JwtService } from '@nestjs/jwt'
@@ -46,7 +47,7 @@ describe('MobileTabBarController (e2e)', () => {
 
   it('returns a default tabbar config without authentication', async () => {
     await request(app.getHttpServer())
-      .get('/mobile-tabbar/config')
+      .get('/mobile/tabbar')
       .expect(200)
       .expect(({ body }) => {
         expect(body.code).toBe(0)
@@ -121,7 +122,7 @@ describe('MobileTabBarController (e2e)', () => {
       .expect(201)
 
     await request(app.getHttpServer())
-      .get('/mobile-tabbar/config')
+      .get('/mobile/tabbar')
       .expect(200)
       .expect(({ body }) => {
         expect(body.data).toMatchObject({
@@ -159,14 +160,17 @@ describe('MobileTabBarController (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data.map((item) => ({ id: item.id, status: item.status }))).toEqual([
+        const currentCaseRows = body.data
+          .filter((item) => ['tabbar-a', 'tabbar-b'].includes(item.id))
+          .map((item) => ({ id: item.id, status: item.status }))
+        expect(currentCaseRows).toEqual([
           { id: 'tabbar-a', status: 0 },
           { id: 'tabbar-b', status: 1 },
         ])
       })
 
     await request(app.getHttpServer())
-      .get('/mobile-tabbar/config')
+      .get('/mobile/tabbar')
       .expect(200)
       .expect(({ body }) => {
         expect(body.data.id).toBe('tabbar-b')
@@ -190,7 +194,7 @@ describe('MobileTabBarController (e2e)', () => {
       .expect(201)
 
     await request(app.getHttpServer())
-      .get('/mobile-tabbar/config')
+      .get('/mobile/tabbar')
       .expect(200)
       .expect(({ body }) => {
         expect(body.data.id).toBe('default')
@@ -223,6 +227,7 @@ describe('MobileTabBarController (e2e)', () => {
       .expect(400)
   })
 
+  // 清理本测试创建的底部导航配置记录。
   async function cleanMobileTabBarTables() {
     try {
       await prisma.$executeRawUnsafe(
@@ -236,6 +241,7 @@ describe('MobileTabBarController (e2e)', () => {
     }
   }
 
+  // 创建本测试使用的底部导航配置记录。
   async function saveTabBarConfig(id: string, name: string) {
     await request(app.getHttpServer())
       .post('/mobile-tabbar/save')

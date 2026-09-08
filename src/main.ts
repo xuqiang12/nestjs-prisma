@@ -1,3 +1,4 @@
+// 启动 Nest HTTP 服务并注册全局中间件。
 import './common/utils/logger'
 
 import { BadRequestException, ValidationPipe } from '@nestjs/common'
@@ -12,10 +13,13 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { AllExceptionFilter } from './common/filters/all-exception.filter'
 import { getKnife4jGroups, isApiDocsEnabled } from './common/swagger/swagger-docs'
 import { requestLogMiddleware } from './common/middlewares/request-log.middleware'
+
+// 启动后端服务并挂载全局管道、过滤器和中间件。
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     // 关闭所有 Nest 自带的启动日志
     logger: false,
+    abortOnError: false,
   })
 
   // Validation Pipe
@@ -78,4 +82,7 @@ async function bootstrap() {
   // 启动服务，监听端口
   await app.listen(process.env.PORT || nestConfig.port || 3000)
 }
-bootstrap()
+bootstrap().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})

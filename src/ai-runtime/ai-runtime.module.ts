@@ -65,7 +65,11 @@ import { WorkflowValidatorService } from './workflow/workflow-validator.service'
       ]),
       inject: [SearchKnowledgeTool, GetUserMenuPermissionsTool],
     },
-    RestToolAdapter,
+    {
+      provide: RestToolAdapter,
+      // 创建 REST 工具适配器，避免 Nest 注入接口类型的 HTTP Client。
+      useFactory: () => new RestToolAdapter(),
+    },
     {
       provide: McpToolAdapter,
       useFactory: () => new McpToolAdapter({

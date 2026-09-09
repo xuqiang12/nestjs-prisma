@@ -1,6 +1,8 @@
+// 这个服务负责首页配置和首页组件的查询保存。
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from 'nestjs-prisma'
+import { formatPage } from 'src/common/utils/pagination'
 import { SaveHomeComponentsDto } from './dto/component.dto'
 import {
   CreateHomeDecorationDto,
@@ -20,6 +22,7 @@ type HomeDecorationWithComponents = Prisma.HomeDecorationGetPayload<{
 export class HomeService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // 查询当前启用的首页主配置，供小程序首页公开读取。
   async getHomeConfig() {
     const decoration = await this.prisma.homeDecoration.findFirst({
       where: { scene: 'homePage', status: HOME_STATUS.enabled },
@@ -30,6 +33,7 @@ export class HomeService {
     return decoration ? this.toHomeDecoration(decoration) : this.emptyDecoration('mock-home')
   }
 
+  // 查询启用的频道或联动内容配置，供小程序按 ID 读取内容。
   async getContentDetail(id: string) {
     const decoration = await this.prisma.homeDecoration.findFirst({
       where: { id, status: HOME_STATUS.enabled },
@@ -39,13 +43,29 @@ export class HomeService {
     return decoration ? this.toHomeDecoration(decoration) : this.emptyDecoration(id)
   }
 
+  // 查询首页配置分页列表，并按后台搜索条件筛选。
   async listDecorations(query: HomeDecorationListQueryDto) {
-    return this.prisma.homeDecoration.findMany({
-      where: query.scene ? { scene: query.scene } : undefined,
-      orderBy: [{ sortNo: 'asc' }, { id: 'asc' }],
-    })
+    const pageNum = Number(query.pageNum || 1)
+    const pageSize = Number(query.pageSize || 10)
+    const where: Prisma.HomeDecorationWhereInput = {
+      scene: query.scene || undefined,
+      name: query.name ? { contains: query.name, mode: 'insensitive' as const } : undefined,
+      status: query.status !== undefined ? Number(query.status) : undefined,
+    }
+    const [list, total] = await this.prisma.$transaction([
+      this.prisma.homeDecoration.findMany({
+        where,
+        orderBy: [{ sortNo: 'asc' }, { id: 'asc' }],
+        skip: (pageNum - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.homeDecoration.count({ where }),
+    ])
+
+    return formatPage(list, total, pageNum, pageSize)
   }
 
+  // 查询单个首页配置详情，并带出当前配置下的组件。
   async getDecorationDetail(id: string) {
     const decoration = await this.prisma.homeDecoration.findUnique({
       where: { id },
@@ -61,6 +81,7 @@ export class HomeService {
     return decoration
   }
 
+  // 创建首页配置，并在启用首页主配置时关闭其它主配置。
   async createDecoration(dto: CreateHomeDecorationDto) {
     const data = {
       name: dto.name,
@@ -83,6 +104,7 @@ export class HomeService {
     return '首页配置新增成功'
   }
 
+  // 更新首页配置基础信息，并保护当前首页主配置不被直接停用。
   async updateDecoration(dto: UpdateHomeDecorationDto) {
     const { id, ...data } = dto
     const decoration = await this.ensureDecoration(id)
@@ -107,6 +129,7 @@ export class HomeService {
     return '首页配置修改成功'
   }
 
+  // 更新首页配置启用状态，并保证首页主配置切换规则。
   async updateDecorationStatus(dto: UpdateHomeDecorationStatusDto) {
     const decoration = await this.ensureDecoration(dto.id)
     if (
@@ -136,6 +159,7 @@ export class HomeService {
     return '首页配置状态修改成功'
   }
 
+  // 查询指定首页配置下的组件列表。
   async listComponents(decorationId: string) {
     await this.ensureDecoration(decorationId)
     return this.prisma.homeComponent.findMany({
@@ -144,6 +168,7 @@ export class HomeService {
     })
   }
 
+  // 一次性保存首页装修组件列表，统一处理新增、更新、排序和软删除。
   async saveComponents(dto: SaveHomeComponentsDto) {
     await this.ensureDecoration(dto.decorationId)
     const existingComponents = await this.prisma.homeComponent.findMany({
@@ -197,6 +222,7 @@ export class HomeService {
     })
   }
 
+  // 生成只包含启用组件的 Prisma include 参数。
   private enabledComponentsInclude() {
     return {
       components: {
@@ -206,6 +232,7 @@ export class HomeService {
     }
   }
 
+  // 将首页配置数据库记录转换为小程序使用的数据结构。
   private toHomeDecoration(decoration: HomeDecorationWithComponents) {
     return {
       id: decoration.id,
@@ -220,6 +247,7 @@ export class HomeService {
     }
   }
 
+  // 生成空首页配置结构，保证公开读取接口有稳定返回。
   private emptyDecoration(id: string) {
     return {
       id,
@@ -229,6 +257,7 @@ export class HomeService {
     }
   }
 
+  // 确认首页配置存在并返回记录。
   private async ensureDecoration(id: string) {
     const decoration = await this.prisma.homeDecoration.findUnique({ where: { id } })
     if (!decoration) {

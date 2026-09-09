@@ -5,6 +5,8 @@ import { seedRole } from './seeds/role'
 import { seedUser } from './seeds/user'
 import { seedMenus } from './seeds/menu'
 import { seedHomeDecorations } from './seeds/home'
+import { seedMobileTabBarConfig } from './seeds/mobile-tabbar'
+import { seedAiBaseData } from './seeds/ai'
 
 // 根据命令参数执行完整初始化或单独恢复首页装修模板。
 async function main() {
@@ -21,8 +23,11 @@ async function main() {
 
   await seedUser(role.id)
   await seedMenus(permissions, role.id)
+  const homeResult = await seedHomeDecorations()
+  await seedMobileTabBarConfig()
+  await seedAiBaseData()
 
-  console.log('初始化完成')
+  console.log(`初始化完成：首页 ${homeResult.decorations} 个配置，${homeResult.components} 个组件`)
 }
 
 main()

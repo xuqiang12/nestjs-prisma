@@ -222,7 +222,7 @@ const menuSeeds: MenuSeed[] = [
     name: '底部导航配置',
     path: '/mobile/tabBar/index',
     component: '/mobile/tabBar/index',
-    icon: 'el-icon-menu',
+    icon: '',
     sort: 1,
     type: MenuType.MENU,
     parentPath: '/mobile',

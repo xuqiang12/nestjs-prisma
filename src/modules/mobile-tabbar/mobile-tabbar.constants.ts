@@ -1,3 +1,4 @@
+// 这个文件维护小程序底部导航的页面白名单和默认配置。
 export const MOBILE_TABBAR_CONFIG_ID = 'default'
 
 export const MOBILE_TABBAR_COLOR_MODES = ['system', 'custom'] as const
@@ -9,8 +10,7 @@ export const MOBILE_TABBAR_RADIUS_MODES = ['square', 'round', 'largeRound'] as c
 export const MOBILE_TABBAR_PAGE_OPTIONS = [
   { label: '首页', value: '/pages/index/index' },
   { label: '分类', value: '/pages/category/index' },
-  { label: '购物车', value: '/pages/cart/index' },
-  { label: '买家秀', value: '/pages/buyerShow/index' },
+  { label: 'AI 对话', value: '/pages/aiChat/index' },
   { label: '我的', value: '/pages/mine/index' },
 ] as const
 
@@ -22,53 +22,7 @@ export const DEFAULT_MOBILE_TABBAR_CONFIG = {
   bgColor: '#ffffff',
   textColorMode: 'system',
   textColor: '#999999',
-  activeColor: '#018d71',
+  activeColor: '#E83524',
   radiusMode: 'square',
-  items: [
-    {
-      id: 'home',
-      name: '首页',
-      icon: 'static/tabbar/home.png',
-      activeIcon: 'static/tabbar/homeHL.png',
-      linkType: 'page',
-      pagePath: '/pages/index/index',
-      sortNo: 0,
-    },
-    {
-      id: 'category',
-      name: '分类',
-      icon: '',
-      activeIcon: '',
-      linkType: 'page',
-      pagePath: '/pages/category/index',
-      sortNo: 1,
-    },
-    {
-      id: 'cart',
-      name: '购物车',
-      icon: '',
-      activeIcon: '',
-      linkType: 'page',
-      pagePath: '/pages/cart/index',
-      sortNo: 2,
-    },
-    {
-      id: 'buyer-show',
-      name: '买家秀',
-      icon: '',
-      activeIcon: '',
-      linkType: 'page',
-      pagePath: '/pages/buyerShow/index',
-      sortNo: 3,
-    },
-    {
-      id: 'mine',
-      name: '我的',
-      icon: 'static/tabbar/example.png',
-      activeIcon: 'static/tabbar/exampleHL.png',
-      linkType: 'page',
-      pagePath: '/pages/mine/index',
-      sortNo: 4,
-    },
-  ],
+  items: [],
 } as const

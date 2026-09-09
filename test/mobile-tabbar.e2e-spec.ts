@@ -1,4 +1,4 @@
-// 这个测试验证小程序底部导航运行时接口和后台管理接口。
+// 这个测试校验小程序底部导航运行时和后台管理接口。
 import { INestApplication } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { JwtService } from '@nestjs/jwt'
@@ -43,9 +43,12 @@ describe('MobileTabBarController (e2e)', () => {
 
   afterEach(async () => {
     await cleanMobileTabBarTables()
+    await restoreSeedTabBarStatus()
   })
 
   it('returns a default tabbar config without authentication', async () => {
+    await prisma.$executeRawUnsafe('UPDATE "mobile_tabbar_config" SET "status" = 0')
+
     await request(app.getHttpServer())
       .get('/mobile/tabbar')
       .expect(200)
@@ -59,16 +62,10 @@ describe('MobileTabBarController (e2e)', () => {
           bgColor: '#ffffff',
           textColorMode: 'system',
           textColor: '#999999',
-          activeColor: '#018d71',
+          activeColor: '#E83524',
           radiusMode: 'square',
         })
-        expect(body.data.items.map((item) => item.pagePath)).toEqual([
-          '/pages/index/index',
-          '/pages/category/index',
-          '/pages/cart/index',
-          '/pages/buyerShow/index',
-          '/pages/mine/index',
-        ])
+        expect(body.data.items).toEqual([])
       })
   })
 
@@ -87,19 +84,19 @@ describe('MobileTabBarController (e2e)', () => {
         {
           id: 'home',
           name: '首页',
-          icon: 'static/tabbar/home.png',
-          activeIcon: 'static/tabbar/homeHL.png',
+          icon: 'static/tabbar/home-normal.png',
+          activeIcon: 'static/tabbar/home-active.png',
           linkType: 'page',
           pagePath: '/pages/index/index',
           sortNo: 0,
         },
         {
-          id: 'about',
-          name: '我的',
-          icon: 'static/tabbar/example.png',
-          activeIcon: 'static/tabbar/exampleHL.png',
+          id: 'ai-chat',
+          name: 'AI 对话',
+          icon: 'static/tabbar/ai-chat-normal.png',
+          activeIcon: 'static/tabbar/ai-chat-active.png',
           linkType: 'page',
-          pagePath: '/pages/mine/index',
+          pagePath: '/pages/aiChat/index',
           sortNo: 1,
         },
       ],
@@ -112,7 +109,7 @@ describe('MobileTabBarController (e2e)', () => {
       .expect(201)
       .expect(({ body }) => {
         expect(body.code).toBe(0)
-        expect(body.data.items.map((item) => item.name)).toEqual(['首页', '我的'])
+        expect(body.data.items.map((item) => item.name)).toEqual(['首页', 'AI 对话'])
       })
 
     await request(app.getHttpServer())
@@ -178,7 +175,7 @@ describe('MobileTabBarController (e2e)', () => {
       })
   })
 
-  it('allows disabling the last enabled tabbar and returns native default publicly', async () => {
+  it('rejects disabling the last enabled tabbar so published data remains explicit', async () => {
     await saveTabBarConfig('tabbar-a', '导航 A')
 
     await request(app.getHttpServer())
@@ -191,14 +188,14 @@ describe('MobileTabBarController (e2e)', () => {
       .post('/mobile-tabbar/status')
       .set('Authorization', `Bearer ${token}`)
       .send({ id: 'tabbar-a', status: 0 })
-      .expect(201)
+      .expect(400)
 
     await request(app.getHttpServer())
       .get('/mobile/tabbar')
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data.id).toBe('default')
-        expect(body.data.tabBarMode).toBe('native')
+        expect(body.data.id).toBe('tabbar-a')
+        expect(body.data.name).toBe('导航 A')
       })
   })
 
@@ -239,6 +236,14 @@ describe('MobileTabBarController (e2e)', () => {
         throw error
       }
     }
+  }
+
+  // 恢复默认底部导航配置的启用状态，避免 e2e 临时配置影响开发库。
+  async function restoreSeedTabBarStatus() {
+    await prisma.$executeRawUnsafe(
+      'UPDATE "mobile_tabbar_config" SET "status" = 1 WHERE "id" = $1',
+      '340740439936077981',
+    )
   }
 
   // 创建本测试使用的底部导航配置记录。

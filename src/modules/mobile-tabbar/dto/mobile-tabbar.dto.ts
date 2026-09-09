@@ -1,3 +1,4 @@
+// 这个文件定义小程序底部导航后台接口的入参校验。
 import { Type } from 'class-transformer'
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import {
@@ -22,9 +23,9 @@ export class MobileTabBarItemDto {
   @IsOptional()
   id?: string
 
-  @ApiProperty({ description: '菜单名称，最多 4 个字' })
+  @ApiProperty({ description: '菜单名称，最多 5 个字符' })
   @IsString()
-  @MaxLength(4)
+  @MaxLength(5)
   name: string
 
   @ApiPropertyOptional({ description: '未选中图标地址' })

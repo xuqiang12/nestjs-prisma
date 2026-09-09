@@ -1,4 +1,4 @@
-// prisma/seeds/menu.ts
+// 这个文件负责维护系统菜单、按钮和角色菜单授权的种子数据。
 import { prisma } from '../client'
 
 export enum MenuType {
@@ -210,6 +210,15 @@ const menuSeeds: MenuSeed[] = [
     legacyPaths: ['/mobile/homeConfig'],
   },
   {
+    name: '首页装修',
+    path: '/mobile/homeConfig/detail',
+    component: '/mobile/homeConfig/detail',
+    icon: '',
+    sort: 0,
+    type: MenuType.PAGE,
+    parentPath: '/mobile',
+  },
+  {
     name: '底部导航配置',
     path: '/mobile/tabBar/index',
     component: '/mobile/tabBar/index',
@@ -218,6 +227,24 @@ const menuSeeds: MenuSeed[] = [
     type: MenuType.MENU,
     parentPath: '/mobile',
     legacyPaths: ['/mobile/tabBar'],
+  },
+  {
+    name: '底部导航装修详情',
+    path: '/mobile/tabBar/detail',
+    component: '/mobile/tabBar/detail',
+    icon: '',
+    sort: 0,
+    type: MenuType.PAGE,
+    parentPath: '/mobile',
+  },
+  {
+    name: '文档管理',
+    path: '/AIEngine/knowledge/document',
+    component: '/AIEngine/knowledge/document',
+    icon: '',
+    sort: 0,
+    type: MenuType.PAGE,
+    parentPath: '/AIEngine/base',
   },
 ]
 

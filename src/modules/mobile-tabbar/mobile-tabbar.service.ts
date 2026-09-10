@@ -2,11 +2,25 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { randomUUID } from 'crypto'
 import { PrismaService } from 'nestjs-prisma'
+import { ConfigCenterService } from '../../common/config-center/config-center.service'
 import { SaveMobileTabBarConfigDto, UpdateMobileTabBarStatusDto } from './dto/mobile-tabbar.dto'
-import {
-  DEFAULT_MOBILE_TABBAR_CONFIG,
-  MOBILE_TABBAR_PAGE_OPTIONS,
-} from './mobile-tabbar.constants'
+import { DEFAULT_MOBILE_TABBAR_CONFIG } from './mobile-tabbar.constants'
+
+const MOBILE_TABBAR_OPTIONS_KEY = {
+  dataId: 'tabbar',
+}
+
+type MobileTabBarLocalIconOption = {
+  value: string
+  label: string
+  icon: string
+  activeIcon: string
+}
+
+type MobileTabBarOptionsConfig = {
+  iconOptions: MobileTabBarLocalIconOption[]
+  pageOptions: Array<{ label: string; value: string }>
+}
 
 type MobileTabBarItem = {
   id: string
@@ -41,7 +55,10 @@ type MobileTabBarRow = {
 
 @Injectable()
 export class MobileTabBarService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configCenterService: ConfigCenterService,
+  ) {}
 
   // 查询当前启用的底部导航配置，没有启用项时交给小程序原生 tabBar 展示。
   async getConfig() {
@@ -53,7 +70,10 @@ export class MobileTabBarService {
       LIMIT 1
     `
     const row = rows[0]
-    return row ? this.toConfig(row) : this.getNativeDefaultConfig()
+    if (!row || row.config.tabBarMode === 'native' || !this.hasCompleteIconPairs(row.config.items)) {
+      return this.getNativeDefaultConfig()
+    }
+    return this.toConfig(row)
   }
 
   // 查询后台维护的全部底部导航配置列表。
@@ -133,21 +153,38 @@ export class MobileTabBarService {
     return '底部导航配置已禁用'
   }
 
-  // 规范化底部导航保存参数，统一补齐默认配置字段。
+  // 规范化底部导航保存参数，原生模式不保存运行时菜单配置。
   private normalizeConfig(dto: SaveMobileTabBarConfigDto, id: string): MobileTabBarConfig {
+    const tabBarMode = dto.tabBarMode ?? DEFAULT_MOBILE_TABBAR_CONFIG.tabBarMode
+    if (tabBarMode === 'native') {
+      return {
+        id,
+        name: dto.name,
+        tabBarMode,
+        bgColorMode: dto.bgColorMode ?? DEFAULT_MOBILE_TABBAR_CONFIG.bgColorMode,
+        bgColor: dto.bgColor ?? DEFAULT_MOBILE_TABBAR_CONFIG.bgColor,
+        textColorMode: dto.textColorMode ?? DEFAULT_MOBILE_TABBAR_CONFIG.textColorMode,
+        textColor: dto.textColor ?? DEFAULT_MOBILE_TABBAR_CONFIG.textColor,
+        activeColor: dto.activeColor ?? DEFAULT_MOBILE_TABBAR_CONFIG.activeColor,
+        radiusMode: dto.radiusMode ?? DEFAULT_MOBILE_TABBAR_CONFIG.radiusMode,
+        items: [],
+      }
+    }
     if (!Array.isArray(dto.items) || dto.items.length < 2 || dto.items.length > 5) {
       throw new BadRequestException('底部导航菜单数量必须为 2-5 个')
     }
-    const validPagePaths = new Set<string>(MOBILE_TABBAR_PAGE_OPTIONS.map((item) => item.value))
+    const options = this.getTabBarOptions()
+    const validPagePaths = new Set<string>(options.pageOptions.map((item) => item.value))
     const invalidItem = dto.items.find((item) => !validPagePaths.has(item.pagePath))
     if (invalidItem) {
       throw new BadRequestException('底部导航跳转页面不在允许范围内')
     }
+    this.ensureIconPairs(dto.items, options.iconOptions)
 
     return {
       id,
       name: dto.name,
-      tabBarMode: dto.tabBarMode ?? DEFAULT_MOBILE_TABBAR_CONFIG.tabBarMode,
+      tabBarMode,
       bgColorMode: dto.bgColorMode ?? DEFAULT_MOBILE_TABBAR_CONFIG.bgColorMode,
       bgColor: dto.bgColor ?? DEFAULT_MOBILE_TABBAR_CONFIG.bgColor,
       textColorMode: dto.textColorMode ?? DEFAULT_MOBILE_TABBAR_CONFIG.textColorMode,
@@ -164,6 +201,59 @@ export class MobileTabBarService {
         sortNo: item.sortNo ?? index,
       })),
     }
+  }
+
+  // 校验自定义导航仅使用配置文件中的图标对或 HTTPS 图标对。
+  private ensureIconPairs(
+    items: SaveMobileTabBarConfigDto['items'],
+    localIconOptions: MobileTabBarLocalIconOption[],
+  ) {
+    if (this.hasAllowedIconPairs(items, localIconOptions)) return
+    throw new BadRequestException('自定义 tabBar 图标必须使用预置本地 PNG 或 HTTPS 图标链接')
+  }
+
+  // 判断整套自定义导航图标是否来自配置文件或 HTTPS 地址。
+  private hasAllowedIconPairs(
+    items: Array<{ icon?: string; activeIcon?: string }>,
+    localIconOptions: MobileTabBarLocalIconOption[],
+  ) {
+    if (!Array.isArray(items) || !items.length) {
+      return false
+    }
+    return items.every((item) => {
+      const isLocalIconPair = localIconOptions.some(
+        (option) => option.icon === item.icon && option.activeIcon === item.activeIcon,
+      )
+      if (isLocalIconPair) {
+        return true
+      }
+      return this.isHttpsIconPair(item.icon, item.activeIcon)
+    })
+  }
+
+  // 判断已保存的导航配置是否仍具备可渲染的完整图标字段。
+  private hasCompleteIconPairs(items: Array<{ icon?: string; activeIcon?: string }>) {
+    return Array.isArray(items) && items.length > 0 && items.every((item) => item.icon && item.activeIcon)
+  }
+
+  // 判断一组图标是否都是格式正确的 HTTPS 地址。
+  private isHttpsIconPair(icon?: string, activeIcon?: string) {
+    return this.isHttpsUrl(icon) && this.isHttpsUrl(activeIcon)
+  }
+
+  // 判断图标地址是否为 HTTPS URL，避免后台保存 HTTP 或任意协议地址。
+  private isHttpsUrl(value?: string) {
+    if (!value) return false
+    try {
+      return new URL(value).protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
+
+  // 读取后台编辑和保存校验共用的底部导航选项配置。
+  private getTabBarOptions() {
+    return this.configCenterService.readJsonConfig<MobileTabBarOptionsConfig>(MOBILE_TABBAR_OPTIONS_KEY)
   }
 
   // 将数据库记录转换为前端使用的底部导航配置。

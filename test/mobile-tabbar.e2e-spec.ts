@@ -69,7 +69,7 @@ describe('MobileTabBarController (e2e)', () => {
       })
   })
 
-  it('saves one published tabbar config and returns it publicly', async () => {
+  it('returns the release-time native tabbar without dynamic menu items', async () => {
     const config = {
       id: 'main-tabbar',
       name: '主导航栏',
@@ -80,26 +80,7 @@ describe('MobileTabBarController (e2e)', () => {
       textColor: '#666666',
       activeColor: '#ff3b30',
       radiusMode: 'largeRound',
-      items: [
-        {
-          id: 'home',
-          name: '首页',
-          icon: 'static/tabbar/home-normal.png',
-          activeIcon: 'static/tabbar/home-active.png',
-          linkType: 'page',
-          pagePath: '/pages/index/index',
-          sortNo: 0,
-        },
-        {
-          id: 'ai-chat',
-          name: 'AI 对话',
-          icon: 'static/tabbar/ai-chat-normal.png',
-          activeIcon: 'static/tabbar/ai-chat-active.png',
-          linkType: 'page',
-          pagePath: '/pages/aiChat/index',
-          sortNo: 1,
-        },
-      ],
+      items: [],
     }
 
     await request(app.getHttpServer())
@@ -109,7 +90,7 @@ describe('MobileTabBarController (e2e)', () => {
       .expect(201)
       .expect(({ body }) => {
         expect(body.code).toBe(0)
-        expect(body.data.items.map((item) => item.name)).toEqual(['首页', 'AI 对话'])
+        expect(body.data.items).toEqual([])
       })
 
     await request(app.getHttpServer())
@@ -125,14 +106,8 @@ describe('MobileTabBarController (e2e)', () => {
         expect(body.data).toMatchObject({
           name: '主导航栏',
           tabBarMode: 'native',
-          bgColorMode: 'custom',
-          bgColor: '#fefefe',
-          textColorMode: 'custom',
-          textColor: '#666666',
-          activeColor: '#ff3b30',
-          radiusMode: 'largeRound',
         })
-        expect(body.data.items).toEqual(config.items)
+        expect(body.data.items).toEqual([])
       })
   })
 
@@ -255,8 +230,22 @@ describe('MobileTabBarController (e2e)', () => {
         id,
         name,
         items: [
-          { name: '首页', icon: '', activeIcon: '', linkType: 'page', pagePath: '/pages/index/index', sortNo: 0 },
-          { name: '我的', icon: '', activeIcon: '', linkType: 'page', pagePath: '/pages/mine/index', sortNo: 1 },
+          {
+            name: '首页',
+            icon: 'static/tabbar/home-normal.png',
+            activeIcon: 'static/tabbar/home-active.png',
+            linkType: 'page',
+            pagePath: '/pages/index/index',
+            sortNo: 0,
+          },
+          {
+            name: '我的',
+            icon: 'static/tabbar/profile-normal.png',
+            activeIcon: 'static/tabbar/profile-active.png',
+            linkType: 'page',
+            pagePath: '/pages/mine/index',
+            sortNo: 1,
+          },
         ],
       })
       .expect(201)

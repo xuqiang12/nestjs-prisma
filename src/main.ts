@@ -13,14 +13,19 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { AllExceptionFilter } from './common/filters/all-exception.filter'
 import { getKnife4jGroups, isApiDocsEnabled } from './common/swagger/swagger-docs'
 import { requestLogMiddleware } from './common/middlewares/request-log.middleware'
+import { join } from 'path'
+import { NestExpressApplication } from '@nestjs/platform-express'
 
 // 启动后端服务并挂载全局管道、过滤器和中间件。
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     // 关闭所有 Nest 自带的启动日志
     logger: false,
     abortOnError: false,
   })
+
+  // 公开根目录 nacos 配置文件，供后台页面直接读取下拉选项。
+  app.useStaticAssets(join(process.cwd(), 'nacos'), { prefix: '/nacos/' })
 
   // Validation Pipe
   app.useGlobalPipes(

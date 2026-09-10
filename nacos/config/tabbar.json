@@ -1,0 +1,34 @@
+{
+  "iconOptions": [
+    {
+      "value": "home",
+      "label": "首页图标",
+      "icon": "static/tabbar/home-normal.png",
+      "activeIcon": "static/tabbar/home-active.png"
+    },
+    {
+      "value": "category",
+      "label": "分类图标",
+      "icon": "static/tabbar/category-normal.png",
+      "activeIcon": "static/tabbar/category-active.png"
+    },
+    {
+      "value": "ai-chat",
+      "label": "AI 对话图标",
+      "icon": "static/tabbar/ai-chat-normal.png",
+      "activeIcon": "static/tabbar/ai-chat-active.png"
+    },
+    {
+      "value": "profile",
+      "label": "我的图标",
+      "icon": "static/tabbar/profile-normal.png",
+      "activeIcon": "static/tabbar/profile-active.png"
+    }
+  ],
+  "pageOptions": [
+    { "label": "首页", "value": "/pages/index/index" },
+    { "label": "分类", "value": "/pages/category/index" },
+    { "label": "AI 对话", "value": "/pages/aiChat/index" },
+    { "label": "我的", "value": "/pages/mine/index" }
+  ]
+}

@@ -13,7 +13,6 @@ import {
 import {
   MOBILE_TABBAR_COLOR_MODES,
   MOBILE_TABBAR_MODES,
-  MOBILE_TABBAR_PAGE_OPTIONS,
   MOBILE_TABBAR_RADIUS_MODES,
 } from '../mobile-tabbar.constants'
 
@@ -42,7 +41,7 @@ export class MobileTabBarItemDto {
   @IsIn(['page'])
   linkType: string
 
-  @ApiProperty({ description: '跳转页面', enum: MOBILE_TABBAR_PAGE_OPTIONS.map((item) => item.value) })
+  @ApiProperty({ description: '跳转页面' })
   @IsString()
   pagePath: string
 

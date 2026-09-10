@@ -13,6 +13,12 @@
       "activeIcon": "static/tabbar/category-active.png"
     },
     {
+      "value": "tools",
+      "label": "工具图标",
+      "icon": "static/tabbar/tools-normal.png",
+      "activeIcon": "static/tabbar/tools-active.png"
+    },
+    {
       "value": "ai-chat",
       "label": "AI 对话图标",
       "icon": "static/tabbar/ai-chat-normal.png",
@@ -28,6 +34,7 @@
   "pageOptions": [
     { "label": "首页", "value": "/pages/index/index" },
     { "label": "分类", "value": "/pages/category/index" },
+    { "label": "工具", "value": "/pages/tools/index" },
     { "label": "AI 对话", "value": "/pages/aiChat/index" },
     { "label": "我的", "value": "/pages/mine/index" }
   ]

@@ -45,6 +45,20 @@ test('mobile tabbar seed restores the editable default config', () => {
   assert.doesNotMatch(seed, /pagePath:\s*'\/pages\/buyerShow\/index'/)
 })
 
+// 校验后台编辑器允许选择小程序已发布的五个导航页面。
+test('tabbar editor options expose the five released destinations', () => {
+  const options = JSON.parse(readFileSync(join(rootDir, 'nacos/config/tabbar.json'), 'utf8'))
+
+  assert.deepEqual(options.pageOptions, [
+    { label: '首页', value: '/pages/index/index' },
+    { label: '分类', value: '/pages/category/index' },
+    { label: '工具', value: '/pages/tools/index' },
+    { label: 'AI 对话', value: '/pages/aiChat/index' },
+    { label: '我的', value: '/pages/mine/index' },
+  ])
+  assert.ok(options.iconOptions.some((item) => item.value === 'tools'))
+})
+
 // AI 基础配置应能用 seed 重建，且跨表引用应通过稳定 code 解析。
 test('AI base seed restores model prompt agent and workflow configuration', () => {
   const seedPath = join(rootDir, 'prisma/seeds/ai.ts')

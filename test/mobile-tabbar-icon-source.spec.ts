@@ -136,20 +136,18 @@ describe('MobileTabBarService icon source validation', () => {
     })
   })
 
-  // 原生导航使用小程序发版配置，保存时不接收运行时菜单图标。
-  it('saves native tabbar configs without dynamic menu items', async () => {
+  // 原生导航保存本地图标菜单草稿，供后续切回自定义模式继续编辑。
+  it('keeps local menu items when saving a native tabbar draft', async () => {
     const service = createService()
 
-    await expect(
-      service.saveConfig({
-        id: 'native-without-items',
-        name: '原生导航',
-        tabBarMode: 'native',
-        items: [],
-      }),
-    ).resolves.toMatchObject({
+    await expect(service.saveConfig({
+      id: 'native-with-local-items',
+      name: '原生导航',
       tabBarMode: 'native',
-      items: [],
+      items: localItems,
+    })).resolves.toMatchObject({
+      tabBarMode: 'native',
+      items: localItems,
     })
   })
 
